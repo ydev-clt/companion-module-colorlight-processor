@@ -1,19 +1,86 @@
 import type { CompanionActionDefinition } from '@companion-module/base'
-import type { ActionContext } from '../types'
-import { logger } from '../log'
+import type { ActionContext } from '../../types'
+import { logger } from '../../log'
+import { DeviceProtocolEnum } from '../../types'
 
 type OptionValues = {
   deviceId: number
-  brightness: number
+  modeValue: number
   isSelectAll: boolean
 }
 
 /**
- * Set brightness action
+ * test mode choices
  */
-export function setupSetBrightnessAction(context: ActionContext) {
+const TEST_MODES_CHOICES = [
+  {
+    id: 0x00,
+    label: 'Normal'
+  },
+  {
+    id: 0x01,
+    label: 'Red'
+  },
+  {
+    id: 0x02,
+    label: 'Green'
+  },
+  {
+    id: 0x03,
+    label: 'Blue'
+  },
+  {
+    id: 0x04,
+    label: 'White'
+  },
+  {
+    id: 0x05,
+    label: 'Horizontal Moving Line'
+  },
+  {
+    id: 0x06,
+    label: 'Vertical Moving Line'
+  },
+  {
+    id: 0x07,
+    label: 'Left Slash Move Down'
+  },
+  {
+    id: 0x08,
+    label: 'Right Slash Move Down'
+  },
+  {
+    id: 0x09,
+    label: 'Grid Move Down'
+  },
+  {
+    id: 0x0a,
+    label: 'Gradient Red'
+  },
+  {
+    id: 0x0b,
+    label: 'Gradient Green'
+  },
+  {
+    id: 0x0c,
+    label: 'Gradient Blue'
+  },
+  {
+    id: 0x0d,
+    label: 'Gradient White'
+  },
+  {
+    id: 0x0e,
+    label: 'Black'
+  }
+]
+
+/**
+ * test mode action
+ */
+export function setupTestModeAction(context: ActionContext) {
   const action: CompanionActionDefinition = {
-    name: 'Adjust brightness',
+    name: 'Switch test mode',
     options: [
       {
         type: 'number',
@@ -26,16 +93,11 @@ export function setupSetBrightnessAction(context: ActionContext) {
         isVisible: (action) => !action.isSelectAll
       },
       {
-        type: 'number',
-        label: 'Brightness',
-        id: 'brightness',
-        tooltip: 'Sets the brightness percent (0-100)',
-        min: 0,
-        max: 100,
-        default: 50,
-        step: 1.0,
-        required: true,
-        range: false
+        type: 'dropdown',
+        label: 'Switch test mode',
+        id: 'modeValue',
+        default: 0x00,
+        choices: TEST_MODES_CHOICES
       },
       {
         type: 'checkbox',
@@ -44,8 +106,8 @@ export function setupSetBrightnessAction(context: ActionContext) {
         default: false
       }
     ],
-    callback: async (action) => {
-      const { deviceId = 1, brightness = 50, isSelectAll = false } = action.options as OptionValues
+    callback: (action) => {
+      const { deviceId = 1, modeValue = 0, isSelectAll = false } = action.options as OptionValues
       const deviceIndex = deviceId - 1
       let deviceIndexBuf: Buffer = Buffer.from([0xff, 0xff])
 
@@ -59,23 +121,12 @@ export function setupSetBrightnessAction(context: ActionContext) {
 
       let command: number[] = []
 
-      if (context.config.protocol === 'V-Protocol') {
-        const transBrightness = brightness * 100
-        let brightnessBuf = Buffer.from([0x10, 0x27])
-
-        if (transBrightness >= 0) {
-          const buf = Buffer.alloc(2)
-
-          buf.writeUInt16LE(transBrightness & 0xffff, 0)
-
-          brightnessBuf = buf
-        }
-
+      if (context.config.protocol === DeviceProtocolEnum.B) {
         command = [
-          0x50,
+          0x12,
           0x10,
           0x00,
-          0x13,
+          0x12,
           0x00,
           0x00,
           0x00,
@@ -89,28 +140,15 @@ export function setupSetBrightnessAction(context: ActionContext) {
           0x00,
           0x00,
           0x00,
-          brightnessBuf[0],
-          brightnessBuf[1]
+          modeValue
         ]
       }
 
-      if (context.config.protocol === 'Z-Protocol') {
-        const transBrightness = Math.round(brightness * 100) / 100 // Keep two decimal places
-        let brightnessBuf = Buffer.from([0x00, 0x00, 0x00, 0x00])
-
-        if (transBrightness >= 0) {
-          const buf = Buffer.alloc(4)
-
-          // 小端序写入
-          buf.writeFloatLE(transBrightness, 0)
-
-          brightnessBuf = buf
-        }
-
+      if (context.config.protocol === DeviceProtocolEnum.A) {
         command = [
-          0x21,
+          0x32,
           0x00,
-          0x14,
+          0x18,
           0x00,
           0x00,
           0x00,
@@ -124,10 +162,14 @@ export function setupSetBrightnessAction(context: ActionContext) {
           0x00,
           0x00,
           0x00,
-          brightnessBuf[0],
-          brightnessBuf[1],
-          brightnessBuf[2],
-          brightnessBuf[3]
+          modeValue,
+          0xff,
+          0x00,
+          0xff,
+          0x00,
+          0xff,
+          0x00,
+          0x00
         ]
       }
 
@@ -140,7 +182,7 @@ export function setupSetBrightnessAction(context: ActionContext) {
       const sendBuf = Buffer.from(command)
       context.send(sendBuf)
 
-      logger.info('set brightness action trigger')
+      logger.info('test mode action trigger')
     }
   }
 

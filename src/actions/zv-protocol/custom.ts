@@ -1,6 +1,6 @@
 import type { CompanionActionDefinition } from '@companion-module/base'
-import type { ActionContext } from '../types'
-import { logger } from '../log'
+import type { ActionContext } from '../../types'
+import { logger } from '../../log'
 
 type OptionValues = {
   command: string

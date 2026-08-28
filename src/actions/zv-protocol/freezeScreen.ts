@@ -1,85 +1,20 @@
 import type { CompanionActionDefinition } from '@companion-module/base'
-import type { ActionContext } from '../types'
-import { logger } from '../log'
+import type { ActionContext } from '../../types'
+import { logger } from '../../log'
+import { DeviceProtocolEnum } from '../../types'
 
 type OptionValues = {
   deviceId: number
-  modeValue: number
+  openStatus: number
   isSelectAll: boolean
 }
 
 /**
- * test mode choices
+ * freeze screen action
  */
-const TEST_MODES_CHOICES = [
-  {
-    id: 0x00,
-    label: 'Normal'
-  },
-  {
-    id: 0x01,
-    label: 'Red'
-  },
-  {
-    id: 0x02,
-    label: 'Green'
-  },
-  {
-    id: 0x03,
-    label: 'Blue'
-  },
-  {
-    id: 0x04,
-    label: 'White'
-  },
-  {
-    id: 0x05,
-    label: 'Horizontal Moving Line'
-  },
-  {
-    id: 0x06,
-    label: 'Vertical Moving Line'
-  },
-  {
-    id: 0x07,
-    label: 'Left Slash Move Down'
-  },
-  {
-    id: 0x08,
-    label: 'Right Slash Move Down'
-  },
-  {
-    id: 0x09,
-    label: 'Grid Move Down'
-  },
-  {
-    id: 0x0a,
-    label: 'Gradient Red'
-  },
-  {
-    id: 0x0b,
-    label: 'Gradient Green'
-  },
-  {
-    id: 0x0c,
-    label: 'Gradient Blue'
-  },
-  {
-    id: 0x0d,
-    label: 'Gradient White'
-  },
-  {
-    id: 0x0e,
-    label: 'Black'
-  }
-]
-
-/**
- * test mode action
- */
-export function setupTestModeAction(context: ActionContext) {
+export function setupFreezeScreenAction(context: ActionContext) {
   const action: CompanionActionDefinition = {
-    name: 'Switch test mode',
+    name: 'Open/Close freeze screen',
     options: [
       {
         type: 'number',
@@ -93,10 +28,20 @@ export function setupTestModeAction(context: ActionContext) {
       },
       {
         type: 'dropdown',
-        label: 'Switch test mode',
-        id: 'modeValue',
-        default: 0x00,
-        choices: TEST_MODES_CHOICES
+        label: 'Open/Close',
+        id: 'openStatus',
+        tooltip: 'Open/Close freeze screen',
+        default: 1,
+        choices: [
+          {
+            id: 1,
+            label: 'Open'
+          },
+          {
+            id: 0,
+            label: 'Close'
+          }
+        ]
       },
       {
         type: 'checkbox',
@@ -105,8 +50,8 @@ export function setupTestModeAction(context: ActionContext) {
         default: false
       }
     ],
-    callback: (action) => {
-      const { deviceId = 1, modeValue = 0, isSelectAll = false } = action.options as OptionValues
+    callback: async (action) => {
+      const { deviceId = 1, openStatus = 1, isSelectAll = false } = action.options as OptionValues
       const deviceIndex = deviceId - 1
       let deviceIndexBuf: Buffer = Buffer.from([0xff, 0xff])
 
@@ -120,9 +65,9 @@ export function setupTestModeAction(context: ActionContext) {
 
       let command: number[] = []
 
-      if (context.config.protocol === 'V-Protocol') {
+      if (context.config.protocol === DeviceProtocolEnum.B) {
         command = [
-          0x12,
+          0x11,
           0x10,
           0x00,
           0x12,
@@ -139,15 +84,15 @@ export function setupTestModeAction(context: ActionContext) {
           0x00,
           0x00,
           0x00,
-          modeValue
+          openStatus
         ]
       }
 
-      if (context.config.protocol === 'Z-Protocol') {
+      if (context.config.protocol === DeviceProtocolEnum.A) {
         command = [
-          0x32,
+          0x12,
           0x00,
-          0x18,
+          0x11,
           0x00,
           0x00,
           0x00,
@@ -161,14 +106,7 @@ export function setupTestModeAction(context: ActionContext) {
           0x00,
           0x00,
           0x00,
-          modeValue,
-          0xff,
-          0x00,
-          0xff,
-          0x00,
-          0xff,
-          0x00,
-          0x00
+          openStatus
         ]
       }
 
@@ -181,7 +119,7 @@ export function setupTestModeAction(context: ActionContext) {
       const sendBuf = Buffer.from(command)
       context.send(sendBuf)
 
-      logger.info('test mode action trigger')
+      logger.info('freeze screen action trigger')
     }
   }
 

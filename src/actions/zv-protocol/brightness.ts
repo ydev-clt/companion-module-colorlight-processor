@@ -1,19 +1,20 @@
 import type { CompanionActionDefinition } from '@companion-module/base'
-import type { ActionContext } from '../types'
-import { logger } from '../log'
+import type { ActionContext } from '../../types'
+import { logger } from '../../log'
+import { DeviceProtocolEnum } from '../../types'
 
 type OptionValues = {
   deviceId: number
-  presetId: number
+  brightness: number
   isSelectAll: boolean
 }
 
 /**
- * switch preset action
+ * Set brightness action
  */
-export function setupSwitchPresetAction(context: ActionContext) {
+export function setupSetBrightnessAction(context: ActionContext) {
   const action: CompanionActionDefinition = {
-    name: 'Switch preset',
+    name: 'Adjust brightness',
     options: [
       {
         type: 'number',
@@ -27,12 +28,12 @@ export function setupSwitchPresetAction(context: ActionContext) {
       },
       {
         type: 'number',
-        label: 'preset',
-        id: 'presetId',
-        tooltip: 'Switch preset',
-        min: 1,
-        max: 16,
-        default: 1,
+        label: 'Brightness',
+        id: 'brightness',
+        tooltip: 'Sets the brightness percent (0-100)',
+        min: 0,
+        max: 100,
+        default: 50,
         step: 1.0,
         required: true,
         range: false
@@ -44,12 +45,10 @@ export function setupSwitchPresetAction(context: ActionContext) {
         default: false
       }
     ],
-    callback: (action) => {
-      const { deviceId = 1, presetId = 1, isSelectAll = false } = action.options as OptionValues
+    callback: async (action) => {
+      const { deviceId = 1, brightness = 50, isSelectAll = false } = action.options as OptionValues
       const deviceIndex = deviceId - 1
       let deviceIndexBuf: Buffer = Buffer.from([0xff, 0xff])
-      const presetIndex = presetId - 1
-      let presetIndexBuf: Buffer = Buffer.from([0x00])
 
       if (deviceIndex >= 0 && !isSelectAll) {
         const buf = Buffer.alloc(2)
@@ -59,27 +58,31 @@ export function setupSwitchPresetAction(context: ActionContext) {
         deviceIndexBuf = buf
       }
 
-      if (presetIndex >= 0) {
-        const buf = Buffer.alloc(1)
-
-        buf.writeUInt8(presetIndex & 0xff, 0)
-
-        presetIndexBuf = buf
-      }
-
       let command: number[] = []
 
-      if (context.config.protocol === 'V-Protocol') {
+      if (context.config.protocol === DeviceProtocolEnum.B) {
+        const transBrightness = brightness * 100
+        let brightnessBuf = Buffer.from([0x10, 0x27])
+
+        if (transBrightness >= 0) {
+          const buf = Buffer.alloc(2)
+
+          buf.writeUInt16LE(transBrightness & 0xffff, 0)
+
+          brightnessBuf = buf
+        }
+
         command = [
-          0x07,
+          0x50,
           0x10,
-          0x03,
+          0x00,
           0x13,
           0x00,
           0x00,
           0x00,
           deviceIndexBuf[0],
           deviceIndexBuf[1],
+          0x02,
           0x00,
           0x00,
           0x00,
@@ -87,17 +90,28 @@ export function setupSwitchPresetAction(context: ActionContext) {
           0x00,
           0x00,
           0x00,
-          0x00,
-          presetIndexBuf[0],
-          0x00
+          brightnessBuf[0],
+          brightnessBuf[1]
         ]
       }
 
-      if (context.config.protocol === 'Z-Protocol') {
+      if (context.config.protocol === DeviceProtocolEnum.A) {
+        const transBrightness = Math.round(brightness * 100) / 100 // Keep two decimal places
+        let brightnessBuf = Buffer.from([0x00, 0x00, 0x00, 0x00])
+
+        if (transBrightness >= 0) {
+          const buf = Buffer.alloc(4)
+
+          // Write in little-endian order
+          buf.writeFloatLE(transBrightness, 0)
+
+          brightnessBuf = buf
+        }
+
         command = [
-          0x74,
+          0x21,
           0x00,
-          0x11,
+          0x14,
           0x00,
           0x00,
           0x00,
@@ -111,7 +125,10 @@ export function setupSwitchPresetAction(context: ActionContext) {
           0x00,
           0x00,
           0x00,
-          presetIndexBuf[0]
+          brightnessBuf[0],
+          brightnessBuf[1],
+          brightnessBuf[2],
+          brightnessBuf[3]
         ]
       }
 
@@ -124,7 +141,7 @@ export function setupSwitchPresetAction(context: ActionContext) {
       const sendBuf = Buffer.from(command)
       context.send(sendBuf)
 
-      logger.info('switch preset action trigger')
+      logger.info('set brightness action trigger')
     }
   }
 

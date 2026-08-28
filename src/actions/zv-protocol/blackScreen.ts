@@ -1,6 +1,7 @@
 import type { CompanionActionDefinition } from '@companion-module/base'
-import type { ActionContext } from '../types'
-import { logger } from '../log'
+import { DeviceProtocolEnum } from '../../types'
+import type { ActionContext } from '../../types'
+import { logger } from '../../log'
 
 type OptionValues = {
   deviceId: number
@@ -9,11 +10,11 @@ type OptionValues = {
 }
 
 /**
- * freeze screen action
+ * black screen action
  */
-export function setupFreezeScreenAction(context: ActionContext) {
+export function setupBlackScreenAction(context: ActionContext) {
   const action: CompanionActionDefinition = {
-    name: 'Open/Close freeze screen',
+    name: 'Open/Close black screen',
     options: [
       {
         type: 'number',
@@ -29,7 +30,7 @@ export function setupFreezeScreenAction(context: ActionContext) {
         type: 'dropdown',
         label: 'Open/Close',
         id: 'openStatus',
-        tooltip: 'Open/Close freeze screen',
+        tooltip: 'Open/Close black screen',
         default: 1,
         choices: [
           {
@@ -49,7 +50,7 @@ export function setupFreezeScreenAction(context: ActionContext) {
         default: false
       }
     ],
-    callback: async (action) => {
+    callback: (action) => {
       const { deviceId = 1, openStatus = 1, isSelectAll = false } = action.options as OptionValues
       const deviceIndex = deviceId - 1
       let deviceIndexBuf: Buffer = Buffer.from([0xff, 0xff])
@@ -64,9 +65,9 @@ export function setupFreezeScreenAction(context: ActionContext) {
 
       let command: number[] = []
 
-      if (context.config.protocol === 'V-Protocol') {
+      if (context.config.protocol === DeviceProtocolEnum.B) {
         command = [
-          0x11,
+          0x10,
           0x10,
           0x00,
           0x12,
@@ -87,9 +88,9 @@ export function setupFreezeScreenAction(context: ActionContext) {
         ]
       }
 
-      if (context.config.protocol === 'Z-Protocol') {
+      if (context.config.protocol === DeviceProtocolEnum.A) {
         command = [
-          0x12,
+          0x11,
           0x00,
           0x11,
           0x00,
@@ -105,7 +106,7 @@ export function setupFreezeScreenAction(context: ActionContext) {
           0x00,
           0x00,
           0x00,
-          openStatus
+          openStatus === 0 ? 1 : 0
         ]
       }
 
@@ -118,7 +119,7 @@ export function setupFreezeScreenAction(context: ActionContext) {
       const sendBuf = Buffer.from(command)
       context.send(sendBuf)
 
-      logger.info('freeze screen action trigger')
+      logger.info('black screen action trigger')
     }
   }
 

@@ -1,6 +1,7 @@
 import type { CompanionActionDefinition } from '@companion-module/base'
-import type { ActionContext } from '../types'
-import { logger } from '../log'
+import type { ActionContext } from '../../types'
+import { logger } from '../../log'
+import { DeviceProtocolEnum } from '../../types'
 
 type OptionValues = {
   deviceId: number
@@ -1040,7 +1041,7 @@ export function setupLayerSignalAction(context: ActionContext) {
       if (deviceIndex >= 0 && !isSelectAll) {
         const buf = Buffer.alloc(2)
 
-        // 小端字节序写入
+        // Write in little-endian byte order
         buf.writeUInt16LE(deviceIndex & 0xffff, 0)
 
         deviceIndexBuf = buf
@@ -1058,7 +1059,7 @@ export function setupLayerSignalAction(context: ActionContext) {
 
       // boardId - 2 bytes
       const boardIdBuf = Buffer.alloc(2)
-      // Small endian byte order write
+      // Write in little-endian byte order
       boardIdBuf.writeUInt16LE(interfaceMark.boardId & 0xffff, 0)
 
       const actionCommand = [
@@ -1121,9 +1122,9 @@ export function setupLayerSignalAction(context: ActionContext) {
         id: 'deviceType',
         label: 'Device type',
         type: 'dropdown',
-        default: Z_PROTOCOL_DEVICES[1].id, // 默认选择 Other
+        default: Z_PROTOCOL_DEVICES[1].id, // Default to "Other"
         choices: Z_PROTOCOL_DEVICES,
-        isVisible: () => false // 暂时屏蔽掉
+        isVisible: () => false // Temporarily hidden
       },
       {
         id: 'interfaceName',
@@ -1146,7 +1147,7 @@ export function setupLayerSignalAction(context: ActionContext) {
       if (deviceIndex >= 0 && !isSelectAll) {
         const buf = Buffer.alloc(2)
 
-        // 小端字节序写入
+        // Write in little-endian byte order
         buf.writeUInt16LE(deviceIndex & 0xffff, 0)
 
         deviceIndexBuf = buf
@@ -1233,5 +1234,5 @@ export function setupLayerSignalAction(context: ActionContext) {
     }
   }
 
-  return context.config.protocol === 'V-Protocol' ? vProtocolAction : zProtocolAction
+  return context.config.protocol === DeviceProtocolEnum.B ? vProtocolAction : zProtocolAction
 }
