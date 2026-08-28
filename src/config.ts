@@ -1,14 +1,15 @@
 import type { SomeCompanionConfigField } from '@companion-module/base'
 import type { DeviceConfig } from './types'
 import { Regex } from '@companion-module/base'
+import { DeviceProtocolEnum } from './types'
 
 /**
  * default config
  */
 export const defaultConfig: DeviceConfig = {
   host: '192.168.1.10',
-  port: 9999,
-  protocol: 'V-Protocol'
+  port: 9099,
+  protocol: DeviceProtocolEnum.None
 }
 
 /**
@@ -37,15 +38,20 @@ export function generateConfigFields(): SomeCompanionConfigField[] {
       width: 6,
       choices: [
         {
-          id: 'V-Protocol',
-          label: 'V-Protocol Device'
+          id: DeviceProtocolEnum.A,
+          label: 'A-Protocol Device'
         },
         {
-          id: 'Z-Protocol',
-          label: 'Z-Protocol Device'
+          id: DeviceProtocolEnum.B,
+          label: 'B-Protocol Device'
+        },
+        {
+          id: DeviceProtocolEnum.None,
+          label: 'None'
         }
       ],
-      default: 'V-Protocol'
+      isVisible: () => false,
+      default: DeviceProtocolEnum.None
     }
   ]
 }
