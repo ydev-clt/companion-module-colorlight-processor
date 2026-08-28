@@ -3,3 +3,12 @@ dist
 docs
 pkg
 colorlight-processor-*.tgz
+
+# ai setting ignore
+.claude
+.cursor
+.agents
+.codegraph
+.mcp.json
+CLAUDE.md
+skills-lock.json
