@@ -1,43 +1,17 @@
 import type { CompanionActionDefinitions } from '@companion-module/base'
 import type { ActionContext } from '../types'
 import { logger } from '../log'
-import { setupBlackScreenAction } from './blackScreen'
-import { setupFreezeScreenAction } from './freezeScreen'
-import { setupTestModeAction } from './testMode'
-import { setupSetBrightnessAction } from './brightness'
-import { setupSwitchPresetAction } from './preset'
-import { setCustomCommandAction } from './custom'
-import { setupLayerSignalAction } from './layerSignal'
+import { setupStringActions, type SPTransmitter } from './string-protocol'
 
 /**
- * action ids
+ * Initialize actions.
+ *
+ * After refactor: the action set is unified to String-Protocol. The V/Z byte-stream
+ * template actions (src/actions/zv-protocol/) are kept as source but are no
+ * longer registered. `config.protocol` only decides which proto (1=Z, 2=V)
+ * the SpSession uses; it no longer affects the action-registration branch.
  */
-export enum ACTION_ID {
-  BLACK_SCREEN = 'black_screen',
-  FREEZE_SCREEN = 'freeze_screen',
-  TEST_MODE = 'test_mode',
-  SET_BRIGHTNESS = 'set_brightness',
-  SWITCH_PRESET = 'switch_preset',
-  CUSTOM_COMMAND = 'custom_command',
-  LAYER_SIGNAL = 'layer_signal'
-}
-
-/**
- * init actions
- */
-export function setupActions(context: ActionContext): CompanionActionDefinitions {
-  // setup actions
-  const actions: CompanionActionDefinitions = {
-    [ACTION_ID.BLACK_SCREEN]: setupBlackScreenAction(context),
-    [ACTION_ID.FREEZE_SCREEN]: setupFreezeScreenAction(context),
-    [ACTION_ID.TEST_MODE]: setupTestModeAction(context),
-    [ACTION_ID.SET_BRIGHTNESS]: setupSetBrightnessAction(context),
-    [ACTION_ID.SWITCH_PRESET]: setupSwitchPresetAction(context),
-    [ACTION_ID.CUSTOM_COMMAND]: setCustomCommandAction(context),
-    [ACTION_ID.LAYER_SIGNAL]: setupLayerSignalAction(context)
-  }
-
-  logger.info('Actions setup completed.')
-
-  return actions
+export function setupActions(context: ActionContext, spTransmitter: SPTransmitter): CompanionActionDefinitions {
+  logger.info('Actions setup start')
+  return context.config.protocol === 'None' ? {} : setupStringActions(context, spTransmitter)
 }
