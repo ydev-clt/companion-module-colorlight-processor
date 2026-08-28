@@ -5,5 +5,14 @@ module.exports = {
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-floating-promises': 'off',
     'node/no-unsupported-features/es-syntax': 'off'
-  }
+  },
+  overrides: [
+    {
+      files: ['src/**/*.ts'],
+      rules: {
+        'n/no-missing-import': 'off',
+        'n/no-missing-require': 'off'
+      }
+    }
+  ]
 }
