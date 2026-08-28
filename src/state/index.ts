@@ -1,9 +1,13 @@
 import type { StateContext } from '../types'
-import { FEEDBACK_ID } from '../feedbacks'
+import { FEEDBACK_ID as STRING_FEEDBACK_ID } from '../actions/string-protocol/core/ids'
 import { logger } from '../log'
 
 /**
  * state cache
+ *
+ * After refactoring: only triggers String-Protocol feedback ids.
+ * The legacy V/Z feedback definitions (formerly src/feedbacks/) were
+ * unregistered from Companion and the directory has been removed.
  */
 class StateCache {
   private context: StateContext
@@ -26,8 +30,7 @@ class StateCache {
 
     logger.info(`Black screen state changed: ${value}`)
 
-    // trigger black screen feedback
-    this.context.triggerFeedbacks(FEEDBACK_ID.BLACK_SCREEN)
+    this.context.triggerFeedbacks(STRING_FEEDBACK_ID.BLACKOUT)
   }
 
   get isFreezeScreen(): boolean {
@@ -39,8 +42,7 @@ class StateCache {
 
     logger.info(`Freeze screen state changed: ${value}`)
 
-    // 触发冻结反馈
-    this.context.triggerFeedbacks(FEEDBACK_ID.FREEZE_SCREEN)
+    this.context.triggerFeedbacks(STRING_FEEDBACK_ID.FREEZE_SCREEN)
   }
 }
 
