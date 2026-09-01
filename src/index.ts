@@ -9,7 +9,7 @@ import { StateCache } from './state'
 import { setupLogger, logger } from './log'
 import { setupActions } from './actions'
 import { SPTransmitter } from './actions/string-protocol/core/transmitter'
-import { setupStringFeedbacks } from './actions/string-protocol/feedbacks'
+import { setupFeedbacks } from './feedbacks'
 import { getProtocolForDeviceType, type ProbeResult } from './udp-probe'
 
 class CltProcessor extends InstanceBase<DeviceConfig> implements ProcessorBase {
@@ -82,7 +82,7 @@ class CltProcessor extends InstanceBase<DeviceConfig> implements ProcessorBase {
   private initFeedbacks(): void {
     logger.info('Init feedbacks.')
     // After refactoring: feedbacks unified to String-Protocol
-    this.setFeedbackDefinitions(setupStringFeedbacks(this))
+    this.setFeedbackDefinitions(setupFeedbacks(this))
   }
 
   /**

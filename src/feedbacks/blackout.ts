@@ -1,18 +1,18 @@
 import type { CompanionAdvancedFeedbackDefinition } from '@companion-module/base'
 import { combineRgb } from '@companion-module/base'
-import type { FeedbackContext } from '../../../types'
+import type { FeedbackContext } from '../types'
 
 /**
  * String-Protocol blackout feedback.
  */
-export function setupStringBlackoutFeedback(context: FeedbackContext): CompanionAdvancedFeedbackDefinition {
+export function setupBlackoutFeedback(context: FeedbackContext): CompanionAdvancedFeedbackDefinition {
   const ColorWhite = combineRgb(255, 255, 255)
   const ColorBlack = combineRgb(0, 0, 0)
   const ColorBlue = combineRgb(0, 120, 200)
 
   return {
     type: 'advanced',
-    name: 'Screen Blackout Status (String-Protocol)',
+    name: 'Screen Blackout Status',
     description: 'If Blackout status change, change the style of the button',
     options: [
       { type: 'colorpicker', label: 'Foreground (Black)', id: 'fg', default: ColorWhite },
