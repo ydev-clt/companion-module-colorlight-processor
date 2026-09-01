@@ -182,7 +182,7 @@ class Connection {
 
     const cb = this.onProbeResult
     if (result) {
-      logger.info(`UDPProbe: received 0xEA, model=0x${result.model.toString(16)}, deviceType=${result.deviceType}`)
+      logger.info(`UDPProbe: received 0xEA, model=0x${result.model?.toString(16)}, deviceType=${result.deviceType}`)
       try {
         this.context.updateStatus(InstanceStatus.Ok)
       } catch (err) {

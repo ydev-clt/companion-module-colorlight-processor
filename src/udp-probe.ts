@@ -40,7 +40,7 @@ export function buildProbeRequest(): Buffer {
  * ignored (not part of MODEL_TO_PROTOCOL).
  */
 export function parseProbeResponse(buf: Buffer): ProbeResult | null {
-  if (!buf || buf.length < 24) return null
+  if (!buf || buf.length < 23) return null
   if (buf[0] !== 0xea) return null
   return {
     model: buf[23],
