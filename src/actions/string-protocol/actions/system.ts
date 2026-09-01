@@ -1,5 +1,4 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
-import { DeviceProtocolEnum } from '../../../types'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
 import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
@@ -94,33 +93,31 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
   }
 
   // ---- fps_adapt ----
-  host.ctx.config.protocol === DeviceProtocolEnum.B &&
-    (actions[ACTION_ID.FPS_ADAPT] = {
-      name: 'Frame Rate Adaptation',
-      description: 'Enable or disable frame rate adaptation for the specified screen group.',
-      options: [...deviceAndBroadcastFields(), openCloseField(1), gidField()],
-      callback: async (event) => {
-        const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: 0 | 1; gid?: number }
-        const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-        const data: Record<string, unknown> = { en: o.openStatus }
-        if (typeof o.gid === 'number') data.gid = o.gid
-        await conn.sendOnly(CMD.FPS_ADAPT, 'set', sid, data)
-      }
-    })
+  actions[ACTION_ID.FPS_ADAPT] = {
+    name: 'Frame Rate Adaptation',
+    description: 'Enable or disable frame rate adaptation for the specified screen group.',
+    options: [...deviceAndBroadcastFields(), openCloseField(1), gidField()],
+    callback: async (event) => {
+      const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: 0 | 1; gid?: number }
+      const sid = sidFromOptions(o.isSelectAll, o.deviceId)
+      const data: Record<string, unknown> = { en: o.openStatus }
+      if (typeof o.gid === 'number') data.gid = o.gid
+      await conn.sendOnly(CMD.FPS_ADAPT, 'set', sid, data)
+    }
+  }
 
   // ---- low_pwr ----
-  host.ctx.config.protocol === DeviceProtocolEnum.B &&
-    (actions[ACTION_ID.LOW_PWR] = {
-      name: 'Low Power Mode',
-      description: 'Enable or disable the low-power energy saving mode.',
-      options: [...deviceAndBroadcastFields(), openCloseField(0)],
-      callback: async (event) => {
-        const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: 0 | 1; gid?: number }
-        const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-        const data: Record<string, unknown> = { en: o.openStatus }
-        await conn.sendOnly(CMD.LOW_PWR, 'set', sid, data)
-      }
-    })
+  actions[ACTION_ID.LOW_PWR] = {
+    name: 'Low Power Mode',
+    description: 'Enable or disable the low-power energy saving mode.',
+    options: [...deviceAndBroadcastFields(), openCloseField(0)],
+    callback: async (event) => {
+      const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: 0 | 1; gid?: number }
+      const sid = sidFromOptions(o.isSelectAll, o.deviceId)
+      const data: Record<string, unknown> = { en: o.openStatus }
+      await conn.sendOnly(CMD.LOW_PWR, 'set', sid, data)
+    }
+  }
 
   return actions as CompanionActionDefinitions
 }

@@ -1,5 +1,4 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
-import { DeviceProtocolEnum } from '../../../types'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
 import { deviceAndBroadcastFields, gidField, sidFromOptions } from './_shared'
@@ -72,33 +71,32 @@ export function setupAudio3dActions(host: StringActionHost): CompanionActionDefi
   }
 
   // ---- dual_3d ----
-  host.ctx.config.protocol === DeviceProtocolEnum.B &&
-    (actions[ACTION_ID.DUAL_3D] = {
-      name: 'Single/Dual 3D Mode',
-      description:
-        'Set the screen group to single 3D or dual 3D mode. The device typically requires `mode3d` to be enabled before switching single/dual.',
-      options: [
-        ...deviceAndBroadcastFields(),
-        {
-          type: 'dropdown',
-          label: 'Mode',
-          id: 'mode',
-          default: 0,
-          choices: [
-            { id: 0, label: 'Single 3D' },
-            { id: 1, label: 'Dual 3D' }
-          ]
-        },
-        gidField()
-      ],
-      callback: async (event) => {
-        const o = event.options as { deviceId: number; isSelectAll: boolean; mode: 0 | 1; gid?: number }
-        const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-        const data: Record<string, unknown> = { mode: o.mode }
-        if (typeof o.gid === 'number') data.gid = o.gid
-        await conn.sendOnly(CMD.DUAL_3D, 'set', sid, data)
-      }
-    })
+  actions[ACTION_ID.DUAL_3D] = {
+    name: 'Single/Dual 3D Mode',
+    description:
+      'Set the screen group to single 3D or dual 3D mode. The device typically requires `mode3d` to be enabled before switching single/dual.',
+    options: [
+      ...deviceAndBroadcastFields(),
+      {
+        type: 'dropdown',
+        label: 'Mode',
+        id: 'mode',
+        default: 0,
+        choices: [
+          { id: 0, label: 'Single 3D' },
+          { id: 1, label: 'Dual 3D' }
+        ]
+      },
+      gidField()
+    ],
+    callback: async (event) => {
+      const o = event.options as { deviceId: number; isSelectAll: boolean; mode: 0 | 1; gid?: number }
+      const sid = sidFromOptions(o.isSelectAll, o.deviceId)
+      const data: Record<string, unknown> = { mode: o.mode }
+      if (typeof o.gid === 'number') data.gid = o.gid
+      await conn.sendOnly(CMD.DUAL_3D, 'set', sid, data)
+    }
+  }
 
   // ---- stereo_fmt ----
   actions[ACTION_ID.STEREO_FMT] = {

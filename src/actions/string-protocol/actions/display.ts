@@ -1,5 +1,4 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
-import { DeviceProtocolEnum } from '../../../types'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
 import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
@@ -16,7 +15,7 @@ import type { StringActionHost } from './_shared'
  *  - mute           mute     (§5.2.44)
  *  - fade in/out    fade / fadetime (§5.2.29 §5.2.30)
  *  - zero delay     zerodelay (§5.2.32)
- *  - UH5 status     uh5_st   (§5.2.38, Z protocol only)
+ *  - UH5 status     uh5_st   (§5.2.38, A protocol only)
  */
 
 export function setupDisplayActions(host: StringActionHost): CompanionActionDefinitions {
@@ -271,18 +270,17 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
   }
 
   // ---- uh5_st (UH5 status) ----
-  host.ctx.config.protocol === DeviceProtocolEnum.A &&
-    (actions[ACTION_ID.UH5_ST] = {
-      name: 'Set UH5 Status',
-      description: 'Set the UH5 status.',
-      options: [...deviceAndBroadcastFields(), openCloseField(1)],
-      callback: async (event) => {
-        const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: 0 | 1 }
-        const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-        const data: Record<string, unknown> = { en: o.openStatus }
-        await conn.sendOnly(CMD.UH5_ST, 'set', sid, data)
-      }
-    })
+  actions[ACTION_ID.UH5_ST] = {
+    name: 'Set UH5 Status',
+    description: 'Set the UH5 status.',
+    options: [...deviceAndBroadcastFields(), openCloseField(1)],
+    callback: async (event) => {
+      const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: 0 | 1 }
+      const sid = sidFromOptions(o.isSelectAll, o.deviceId)
+      const data: Record<string, unknown> = { en: o.openStatus }
+      await conn.sendOnly(CMD.UH5_ST, 'set', sid, data)
+    }
+  }
 
   return actions as CompanionActionDefinitions
 }

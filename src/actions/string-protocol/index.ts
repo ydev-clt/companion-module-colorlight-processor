@@ -4,6 +4,7 @@ import { SPTransmitter } from './core/transmitter'
 import type { ActionContext } from '../../types'
 import { logger } from '../../log'
 import type { StringActionHost } from './actions/_shared'
+import { filterActionsByProtocol } from './core/protocol-support'
 import { setupDisplayActions } from './actions/display'
 import { setupPictureActions } from './actions/picture'
 import { setupPresetActions } from './actions/presets'
@@ -34,7 +35,7 @@ export function setupStringActions(ctx: ActionContext, conn: SPTransmitter): Com
   logger.info('String-Protocol actions setup start.')
 
   const host: StringActionHost = { ctx, conn }
-  const all: CompanionActionDefinitions = {
+  const merged: CompanionActionDefinitions = {
     ...setupDisplayActions(host),
     ...setupPictureActions(host),
     ...setupPresetActions(host),
@@ -46,6 +47,9 @@ export function setupStringActions(ctx: ActionContext, conn: SPTransmitter): Com
     ...setupSystemActions(host),
     ...setupMfcActions(host)
   }
+
+  // Single filtering point: drop actions not supported by the current protocol
+  const all = filterActionsByProtocol(merged, ctx.config.protocol)
 
   logger.info(`String-Protocol actions setup completed. (${Object.keys(all).length} actions registered)`)
   return all

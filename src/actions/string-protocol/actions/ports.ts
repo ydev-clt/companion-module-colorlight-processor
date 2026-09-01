@@ -1,5 +1,4 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
-import { DeviceProtocolEnum } from '../../../types'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
 import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
@@ -114,19 +113,18 @@ export function setupPortActions(host: StringActionHost): CompanionActionDefinit
   }
 
   // ---- net_brt_en (U-series group network-port brightness switch) ----
-  host.ctx.config.protocol === DeviceProtocolEnum.B &&
-    (actions[ACTION_ID.NET_BRT_EN] = {
-      name: 'Switch Network Port Group Brightness Enable',
-      description: 'Master switch for network-port brightness on U-series screen groups.',
-      options: [...deviceAndBroadcastFields({ allowSelectAll: false }), openCloseField(1), gidField()],
-      callback: async (event) => {
-        const o = event.options as { deviceId: number; openStatus: 0 | 1; gid?: number }
-        const sid = sidFromOptions(false, o.deviceId)
-        const data: Record<string, unknown> = { en: o.openStatus }
-        if (typeof o.gid === 'number') data.gid = o.gid
-        await conn.sendOnly(CMD.NET_BRT_EN, 'set', sid, data)
-      }
-    })
+  actions[ACTION_ID.NET_BRT_EN] = {
+    name: 'Switch Network Port Group Brightness Enable',
+    description: 'Master switch for network-port brightness on U-series screen groups.',
+    options: [...deviceAndBroadcastFields({ allowSelectAll: false }), openCloseField(1), gidField()],
+    callback: async (event) => {
+      const o = event.options as { deviceId: number; openStatus: 0 | 1; gid?: number }
+      const sid = sidFromOptions(false, o.deviceId)
+      const data: Record<string, unknown> = { en: o.openStatus }
+      if (typeof o.gid === 'number') data.gid = o.gid
+      await conn.sendOnly(CMD.NET_BRT_EN, 'set', sid, data)
+    }
+  }
 
   return actions as CompanionActionDefinitions
 }

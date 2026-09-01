@@ -1,5 +1,4 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
-import { DeviceProtocolEnum } from '../../../types'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
 import { deviceAndBroadcastFields, sidFromOptions } from './_shared'
@@ -64,55 +63,53 @@ export function setupMfcActions(host: StringActionHost): CompanionActionDefiniti
   }
 
   // ---- ld_audpreset_id ----
-  host.ctx.config.protocol === DeviceProtocolEnum.B &&
-    (actions[ACTION_ID.LD_AUDPRESET_ID] = {
-      name: 'Load Audio Preset by ID',
-      description: 'Load an audio preset by its ID.',
-      options: [
-        ...deviceAndBroadcastFields(),
-        {
-          type: 'number',
-          label: 'Preset ID',
-          tooltip: 'Audio preset ID.',
-          id: 'id',
-          min: 0,
-          max: Number.MAX_SAFE_INTEGER,
-          default: 0,
-          required: true
-        }
-      ],
-      callback: async (event) => {
-        const o = event.options as { deviceId: number; isSelectAll: boolean; id: number }
-        const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-        // The `id` field may arrive as a string or number; send the user value through unchanged.
-        const idValue = o.id
-        await conn.sendOnly(CMD.LD_AUDPRESET_ID, 'set', sid, { id: idValue })
+  actions[ACTION_ID.LD_AUDPRESET_ID] = {
+    name: 'Load Audio Preset by ID',
+    description: 'Load an audio preset by its ID.',
+    options: [
+      ...deviceAndBroadcastFields(),
+      {
+        type: 'number',
+        label: 'Preset ID',
+        tooltip: 'Audio preset ID.',
+        id: 'id',
+        min: 0,
+        max: Number.MAX_SAFE_INTEGER,
+        default: 0,
+        required: true
       }
-    })
+    ],
+    callback: async (event) => {
+      const o = event.options as { deviceId: number; isSelectAll: boolean; id: number }
+      const sid = sidFromOptions(o.isSelectAll, o.deviceId)
+      // The `id` field may arrive as a string or number; send the user value through unchanged.
+      const idValue = o.id
+      await conn.sendOnly(CMD.LD_AUDPRESET_ID, 'set', sid, { id: idValue })
+    }
+  }
 
   // ---- ld_audpreset_idx ----
-  host.ctx.config.protocol === DeviceProtocolEnum.B &&
-    (actions[ACTION_ID.LD_AUDPRESET_IDX] = {
-      name: 'Load Audio Preset by Index',
-      description: 'Load an audio preset by its index.',
-      options: [
-        ...deviceAndBroadcastFields(),
-        {
-          type: 'number',
-          label: 'Index (1-based)',
-          id: 'idx',
-          min: 1,
-          max: Number.MAX_SAFE_INTEGER,
-          default: 1,
-          required: true
-        }
-      ],
-      callback: async (event) => {
-        const o = event.options as { deviceId: number; isSelectAll: boolean; idx: number }
-        const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-        await conn.sendOnly(CMD.LD_AUDPRESET_IDX, 'set', sid, { idx: o.idx })
+  actions[ACTION_ID.LD_AUDPRESET_IDX] = {
+    name: 'Load Audio Preset by Index',
+    description: 'Load an audio preset by its index.',
+    options: [
+      ...deviceAndBroadcastFields(),
+      {
+        type: 'number',
+        label: 'Index (1-based)',
+        id: 'idx',
+        min: 1,
+        max: Number.MAX_SAFE_INTEGER,
+        default: 1,
+        required: true
       }
-    })
+    ],
+    callback: async (event) => {
+      const o = event.options as { deviceId: number; isSelectAll: boolean; idx: number }
+      const sid = sidFromOptions(o.isSelectAll, o.deviceId)
+      await conn.sendOnly(CMD.LD_AUDPRESET_IDX, 'set', sid, { idx: o.idx })
+    }
+  }
 
   // ---- restorehost ----
   actions[ACTION_ID.RESTOREHOST] = {
@@ -127,17 +124,16 @@ export function setupMfcActions(host: StringActionHost): CompanionActionDefiniti
   }
 
   // ---- reboot (dangerous) ----
-  host.ctx.config.protocol === DeviceProtocolEnum.B &&
-    (actions[ACTION_ID.REBOOT] = {
-      name: '⚠ Reboot Device (dangerous)',
-      description: 'Software restart of the device.',
-      options: [...deviceAndBroadcastFields({ allowSelectAll: false })],
-      callback: async (event) => {
-        const o = event.options as { deviceId: number }
-        const sid = sidFromOptions(false, o.deviceId)
-        await conn.sendOnly(CMD.REBOOT, 'set', sid, { confirm: 1 })
-      }
-    })
+  actions[ACTION_ID.REBOOT] = {
+    name: '⚠ Reboot Device (dangerous)',
+    description: 'Software restart of the device.',
+    options: [...deviceAndBroadcastFields({ allowSelectAll: false })],
+    callback: async (event) => {
+      const o = event.options as { deviceId: number }
+      const sid = sidFromOptions(false, o.deviceId)
+      await conn.sendOnly(CMD.REBOOT, 'set', sid, { confirm: 1 })
+    }
+  }
 
   // ---- shutdown (dangerous) ----
   actions[ACTION_ID.SHUTDOWN] = {
