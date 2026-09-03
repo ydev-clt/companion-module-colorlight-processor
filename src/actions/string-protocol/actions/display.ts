@@ -3,6 +3,7 @@ import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
 import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
 import type { StringActionHost } from './_shared'
+import { DeviceProtocolEnum } from '../../../types'
 
 /**
  * Display / picture actions:
@@ -235,6 +236,12 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
   }
 
   // ---- zerodelay (low latency) ----
+  // A protocol only supports mode=1 (0-frame); B protocol also supports mode=2 (1-frame).
+  const zerodelayModeChoices: Array<{ id: 1 | 2; label: string }> = [{ id: 1, label: '0-frame' }]
+  if (host.ctx.config.protocol === DeviceProtocolEnum.B) {
+    zerodelayModeChoices.push({ id: 2, label: '1-frame' })
+  }
+
   actions[ACTION_ID.ZERODELAY] = {
     name: 'Zero Delay',
     description: 'Zero-delay switch & mode.',
@@ -245,12 +252,12 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
         type: 'dropdown',
         label: 'Delay mode',
         id: 'mode',
-        tooltip: 'Delay mode: 0-frame delay / 1-frame delay',
+        tooltip:
+          host.ctx.config.protocol === DeviceProtocolEnum.A
+            ? 'Delay mode: 0-frame delay (A protocol only supports 0-frame)'
+            : 'Delay mode: 0-frame delay / 1-frame delay',
         default: 1,
-        choices: [
-          { id: 1, label: '0-frame' },
-          { id: 2, label: '1-frame' }
-        ]
+        choices: zerodelayModeChoices
       },
       gidField()
     ],
