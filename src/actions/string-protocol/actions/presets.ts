@@ -3,6 +3,7 @@ import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
 import { deviceAndBroadcastFields, gidField, sidFromOptions } from './_shared'
 import type { StringActionHost } from './_shared'
+import { DeviceProtocolEnum } from '../../../types'
 
 /**
  * Preset actions:
@@ -45,6 +46,18 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
   }
 
   // ---- svpreset ----
+  // A protocol does not support setting the preset name, only B protocol does.
+  const isProtocolA = host.ctx.config.protocol === DeviceProtocolEnum.A
+  const svpresetNameField = isProtocolA
+    ? null
+    : ({
+        type: 'textinput',
+        label: 'Preset name',
+        id: 'name',
+        default: 'preset1',
+        required: false
+      } as const)
+
   actions[ACTION_ID.SAVE_PRESET] = {
     name: 'Save Preset',
     description: 'Save the current parameters as a preset.',
@@ -59,19 +72,14 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
         default: 1,
         required: true
       },
-      {
-        type: 'textinput',
-        label: 'Preset name',
-        id: 'name',
-        default: 'preset1',
-        required: false
-      },
+      ...(svpresetNameField ? [svpresetNameField] : []),
       gidField()
     ],
     callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean; preset: number; name: string; gid?: number }
+      const o = event.options as { deviceId: number; isSelectAll: boolean; preset: number; name?: string; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { preset: o.preset, name: o.name }
+      const data: Record<string, unknown> = { preset: o.preset }
+      if (!isProtocolA && typeof o.name === 'string') data.name = o.name
       if (typeof o.gid === 'number') data.gid = o.gid
       await conn.sendOnly(CMD.SVPRESET, 'set', sid, data)
     }
