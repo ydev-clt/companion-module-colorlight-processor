@@ -1,7 +1,7 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { deviceAndBroadcastFields, gidField, sidFromOptions } from './_shared'
+import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
 import type { StringActionHost } from './_shared'
 
 /**
@@ -143,25 +143,54 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
   // ---- vsync_mul ----
   actions[ACTION_ID.VSYNC_MUL] = {
     name: 'VSYNC Multiplier',
-    description: 'Set the VSYNC multiplier for the sender.',
+    description: 'Set the VSYNC multiplier parameters for the sender (en/method/mul).',
     options: [
       ...deviceAndBroadcastFields(),
+      openCloseField(1),
       {
-        type: 'number',
+        type: 'dropdown',
+        label: 'Method',
+        id: 'method',
+        tooltip:
+          'VSYNC multiplier method: auto / specify multiplier. Note: Multiplier only takes effect when method="specify multiplier".',
+        default: 1,
+        choices: [
+          { id: 1, label: 'Specify multiplier' },
+          { id: 0, label: 'Auto' }
+        ]
+      },
+      {
+        type: 'dropdown',
         label: 'Multiplier',
         id: 'mul',
-        tooltip: 'VSYNC multiplier in the range 0-9 (0 = no multiplier, 1 = 2x, ..., 9 = 10x).',
-        min: 0,
-        max: 9,
+        tooltip: 'VSYNC multiplier. Only takes effect when method="specify multiplier".',
         default: 0,
-        required: true
+        choices: [
+          { id: 0, label: 'None' },
+          { id: 1, label: '2x' },
+          { id: 2, label: '3x' },
+          { id: 3, label: '4x' },
+          { id: 4, label: '5x' },
+          { id: 5, label: '6x' },
+          { id: 6, label: '7x' },
+          { id: 7, label: '8x' },
+          { id: 8, label: '9x' },
+          { id: 9, label: '10x' }
+        ]
       },
       gidField()
     ],
     callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean; mul: number; gid?: number }
+      const o = event.options as {
+        deviceId: number
+        isSelectAll: boolean
+        openStatus: number
+        method: number
+        mul: number
+        gid?: number
+      }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { mul: o.mul }
+      const data: Record<string, unknown> = { en: o.openStatus, method: o.method, mul: o.mul }
       if (typeof o.gid === 'number') data.gid = o.gid
       await conn.sendOnly(CMD.VSYNC_MUL, 'set', sid, data)
     }
