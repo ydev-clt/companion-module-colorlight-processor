@@ -2,7 +2,13 @@ import type { ConnectionContext } from './types'
 import type { UDPHelper } from '@companion-module/base'
 import { UDPHelper as UDPHelperCtor, InstanceStatus } from '@companion-module/base'
 import { logger } from './log'
-import { buildProbeRequest, parseProbeResponse, type ProbeResult } from './udp-probe'
+import {
+  buildProbeRequest,
+  buildSenderModelRequest,
+  parseProbeResponse,
+  parseSenderModelResponse,
+  type ProbeResult
+} from './udp-probe'
 
 // UDP probe timeout (ms). Matches the previous UDPProbe default.
 const UDP_PROBE_TIMEOUT_MS = 1500
@@ -19,9 +25,17 @@ const UDP_PROBE_RETRY_DELAY_MS = 2000
  *   new Connection(ctx) → IDLE
  *     open(host, port) → SENDING (constructs UDPHelper, sends 0xEB, starts
  *                        1500ms timer, updateStatus(Connecting))
- *       valid 0xEA → setOnProbeResult callback fires; updateStatus(Ok)
- *       timer fires → setOnProbeResult callback fires with null; status unchanged;
- *                    schedules a retry 2000ms later (until close() or success)
+ *       valid 0xEA, deviceType 1/2 → setOnProbeResult callback fires
+ *                        (model = 0xEA offset 23); updateStatus(Ok)
+ *       valid 0xEA, deviceType 0 → MODEL_QUERY: sends the 17-byte sender-card
+ *                        model query, restarts the 1500ms timer; valid 0xF1
+ *                        reply → callback fires (model = 0xF1 offset 12);
+ *                        updateStatus(Ok). A model query that times out or
+ *                        fails to send still succeeds with model=0 — the 0xEA
+ *                        already proved the device is alive.
+ *       timer fires (0xEB stage) → setOnProbeResult callback fires with null;
+ *                    status unchanged; schedules a retry 2000ms later
+ *                    (until close() or success)
  *     send(bin)   → writes to UDPHelper; returns false if socket missing/closed
  *     close()     → destroys UDPHelper, rejects in-flight probe as null,
  *                    cancels any pending retry
@@ -54,6 +68,10 @@ class Connection {
   private probeRetryTimer: NodeJS.Timeout | null = null
   private probeInFlight: boolean = false
   private probeClosed: boolean = true
+  // second probe stage (deviceType 0): sender-card model query awaiting its
+  // 0xF1 reply. A non-null pendingProbe marks the stage as in flight.
+  private modelQueryTimer: NodeJS.Timeout | null = null
+  private pendingProbe: ProbeResult | null = null
   // last open() target — reused by the retry path
   private probeHost: string = ''
   private probePort: number = 0
@@ -98,8 +116,10 @@ class Connection {
     const hadSocket = this.socket !== null
     this.probeClosed = true
     this._clearProbeTimer()
+    this._clearModelQueryTimer()
     this._clearProbeRetryTimer()
     this.probeInFlight = false
+    this.pendingProbe = null
     if (this.socket) {
       this.socket.destroy()
       this.socket = null
@@ -141,7 +161,8 @@ class Connection {
   /**
    * Build a 0xEB request, send it on the current socket, and start a
    * 1500ms timer. Resolves via _finishProbe on the first valid 0xEA or
-   * timer expiry.
+   * timer expiry. A deviceType-0 0xEA diverts into the model-query stage
+   * (_startModelQuery) instead of resolving directly.
    */
   private _fireProbe(host: string, port: number): void {
     if (this.probeClosed || !this.socket) {
@@ -153,6 +174,7 @@ class Connection {
       return
     }
     this.probeInFlight = true
+    this.pendingProbe = null
 
     const req = buildProbeRequest()
     logger.info(`UDPProbe: sending 0xEB to ${host}:${port}`)
@@ -169,8 +191,51 @@ class Connection {
   }
 
   /**
-   * Resolve the in-flight probe. Clears the timer, drops the mutex, fires
-   * the registered callback, and (on success) flips status to Ok.
+   * Second probe stage, entered when the 0xEA deviceType byte is 0 (sender
+   * card): sender cards do not carry the model in the 0xEA frame, so a
+   * dedicated 17-byte query is sent and the model is read from the 0xF1
+   * reply (offset 12).
+   *
+   * Re-arms the probe timer for this stage. Any stage failure (send error,
+   * timeout) does NOT fail the probe: `_finishModelQuery(0)` resolves it
+   * with an unknown model, because the 0xEA already confirmed the device —
+   * failing here would loop the retry forever over a cosmetic model byte.
+   */
+  private _startModelQuery(parsed: ProbeResult): void {
+    // offset 23 of the 0xEA is meaningless for sender cards — zero it out
+    // so the intermediate state never carries a bogus model
+    this.pendingProbe = { ...parsed, model: 0 }
+    this._clearProbeTimer()
+
+    const req = buildSenderModelRequest()
+    logger.info('UDPProbe: deviceType=0 (sender card); sending model query')
+
+    this.socket?.send(req).catch((err: Error) => {
+      logger.warn(`UDPProbe: model query send failed: ${err.message}; continuing with model unknown`)
+      this._finishModelQuery(undefined)
+    })
+
+    this.modelQueryTimer = setTimeout(() => {
+      logger.warn(`UDPProbe: model query timeout after ${UDP_PROBE_TIMEOUT_MS}ms; continuing with model unknown`)
+      this._finishModelQuery(undefined)
+    }, UDP_PROBE_TIMEOUT_MS)
+  }
+
+  /**
+   * Resolve the model-query stage with the given model byte and finish the
+   * probe using the pending 0xEA result. No-op when no query is in flight
+   * (already resolved / connection closed).
+   */
+  private _finishModelQuery(model?: number): void {
+    if (!this.pendingProbe) return
+    const pending = this.pendingProbe
+    this._finishProbe(model === undefined ? null : { ...pending, model })
+  }
+
+  /**
+   * Resolve the in-flight probe. Clears both stage timers and the pending
+   * model query, drops the mutex, fires the registered callback, and (on
+   * success) flips status to Ok.
    *
    * On null result (timeout / send failure / re-entry), no updateStatus
    * call is made — status remains where it was.
@@ -179,10 +244,12 @@ class Connection {
     if (!this.probeInFlight) return
     this.probeInFlight = false
     this._clearProbeTimer()
+    this._clearModelQueryTimer()
+    this.pendingProbe = null
 
     const cb = this.onProbeResult
     if (result) {
-      logger.info(`UDPProbe: received 0xEA, model=0x${result.model?.toString(16)}, deviceType=${result.deviceType}`)
+      logger.info(`UDPProbe: probe resolved, model=0x${result.model?.toString(16)}, deviceType=${result.deviceType}`)
       try {
         this.context.updateStatus(InstanceStatus.Ok)
       } catch (err) {
@@ -211,6 +278,13 @@ class Connection {
     if (this.probeTimer) {
       clearTimeout(this.probeTimer)
       this.probeTimer = null
+    }
+  }
+
+  private _clearModelQueryTimer(): void {
+    if (this.modelQueryTimer) {
+      clearTimeout(this.modelQueryTimer)
+      this.modelQueryTimer = null
     }
   }
 
@@ -269,30 +343,57 @@ class Connection {
   }
 
   /**
-   * Route an inbound packet to either the probe state machine (0xEA) or
-   * the String-Protocol business layer (everything else).
+   * Route an inbound packet to the probe state machine (0xEA, and 0xF1 while
+   * the model query is in flight) or the String-Protocol business layer
+   * (everything else).
    *
-   * A malformed 0xEA (correct frame id but < 24 bytes, or any other reason
+   * A malformed 0xEA (correct frame id but < 23 bytes, or any other reason
    * `parseProbeResponse` rejects) is dropped here, not forwarded to the
    * business layer. The String-Protocol parser would otherwise see a
    * non-S-Protocol start byte and either log a warn or throw — neither is
-   * desired for what is plainly a malformed probe response.
+   * desired for what is plainly a malformed probe response. The same rule
+   * applies to a malformed 0xF1 during the model-query stage; outside that
+   * stage 0xF1 packets are business traffic and pass through untouched.
    */
   private _dispatchIncoming(buf: Buffer): void {
     // Defense: drop any inbound packets that arrive after close(). UDPHelper.destroy()
     // should stop the data stream, but the EventEmitter queue may still flush.
     if (this.probeClosed) return
     // A 0xEA first byte claims the probe frame id; parseProbeResponse
-    // either returns a valid ProbeResult (≥24 bytes) or null. In the null
-    // case we must drop the packet (spec: "0xEA but <24 B / wrong frame
+    // either returns a valid ProbeResult (≥23 bytes) or null. In the null
+    // case we must drop the packet (spec: "0xEA but <23 B / wrong frame
     // id: dropped; keep waiting until timer") rather than let it leak
     // into the business layer.
     if (buf.length > 0 && buf[0] === 0xea) {
+      if (this.pendingProbe) {
+        // duplicate 0xEA while the model query is in flight — the probe has
+        // already moved past stage 1, ignore it
+        logger.debug('UDPProbe: duplicate 0xEA during model query; ignoring')
+        return
+      }
       const parsed = parseProbeResponse(buf)
       if (parsed) {
-        this._finishProbe(parsed)
+        if (parsed.deviceType === 0) {
+          // Sender card: model is not in the 0xEA frame — query it (0xF1).
+          this._startModelQuery(parsed)
+        } else {
+          this._finishProbe(parsed)
+        }
       } else {
-        logger.warn(`UDPProbe: dropping malformed 0xEA response (length=${buf.length}, expected ≥24)`)
+        logger.warn(`UDPProbe: dropping malformed 0xEA response (length=${buf.length}, expected ≥23)`)
+      }
+      return
+    }
+    // While the model query is in flight, an 0xF1 first byte claims the
+    // model-query frame id: parse it (model = offset 12) and resolve the
+    // probe. Malformed frames are dropped, not forwarded.
+    if (this.pendingProbe && buf.length > 0 && buf[0] === 0xf1) {
+      const model = parseSenderModelResponse(buf)
+      if (model !== null) {
+        logger.info(`UDPProbe: received 0xF1 model query response, model=0x${model.toString(16)}`)
+        this._finishModelQuery(model)
+      } else {
+        logger.warn(`UDPProbe: dropping malformed 0xF1 response (length=${buf.length}, expected ≥13)`)
       }
       return
     }
