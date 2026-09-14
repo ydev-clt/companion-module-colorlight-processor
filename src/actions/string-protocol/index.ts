@@ -4,7 +4,7 @@ import { SPTransmitter } from './core/transmitter'
 import type { ActionContext } from '../../types'
 import { logger } from '../../log'
 import type { StringActionHost } from './actions/_shared'
-import { filterActionsByProtocol } from './core/protocol-support'
+import { filterActionsForDevice } from './core/action-support'
 import { setupDisplayActions } from './actions/display'
 import { setupPictureActions } from './actions/picture'
 import { setupPresetActions } from './actions/presets'
@@ -48,8 +48,12 @@ export function setupStringActions(ctx: ActionContext, conn: SPTransmitter): Com
     ...setupMfcActions(host)
   }
 
-  // Single filtering point: drop actions not supported by the current protocol
-  const all = filterActionsByProtocol(merged, ctx.config.protocol)
+  // Single filtering point: drop actions not supported by the current device
+  // identity. Global strict: an unresolved model registers nothing.
+  const all = filterActionsForDevice(merged, {
+    protocol: ctx.config.protocol,
+    modelByte: ctx.state.modelByte
+  })
 
   logger.info(`String-Protocol actions setup completed. (${Object.keys(all).length} actions registered)`)
   return all

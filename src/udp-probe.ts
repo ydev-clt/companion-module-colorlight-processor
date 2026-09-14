@@ -10,6 +10,7 @@ export interface ProbeResult {
    *  - deviceType 1/2: 0xEA offset 23
    *  - deviceType 0: 0xF1 secondary response offset 12 (resolved by Connection;
    *    0 = the secondary query timed out / failed and the model is unknown)
+   * Resolved to a registry entry via `resolveDeviceModel` (src/device-models.ts).
    */
   model: number
   /** Device type byte (0xEA offset 22): 0=Sender card / 1=Player box / 2=Processor */

@@ -13,12 +13,15 @@ class StateCache {
   private context: StateContext
   public blackScreen: boolean
   public freezeScreen: boolean
+  /** Probe-resolved device model byte; null = not probed / unidentified (see device-models.ts) */
+  public modelByte: number | null
 
   constructor(context: StateContext) {
     this.context = context
 
     this.blackScreen = false
     this.freezeScreen = false
+    this.modelByte = null
   }
 
   get isBlackScreen(): boolean {

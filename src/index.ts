@@ -11,6 +11,7 @@ import { setupActions } from './actions'
 import { SPTransmitter } from './actions/string-protocol/core/transmitter'
 import { setupFeedbacks } from './feedbacks'
 import { getProtocolForDeviceType, type ProbeResult } from './udp-probe'
+import { resolveDeviceModel } from './device-models'
 
 class CltProcessor extends InstanceBase<DeviceConfig> implements ProcessorBase {
   // device config
@@ -140,9 +141,9 @@ class CltProcessor extends InstanceBase<DeviceConfig> implements ProcessorBase {
 
   /**
    * Fired by Connection when the 0xEB probe resolves (success or null/timeout).
-   * If a known model is detected, applies the mapped protocol to this.config
-   * in-memory. On null (timeout, send failure, re-entry), keeps the current
-   * config.protocol and logs a warn.
+   * On success, applies the detected device identity (protocol + model byte)
+   * to config/state in-memory. On null (timeout, send failure, re-entry),
+   * keeps the current identity and logs a warn.
    *
    * Note: Connection already calls updateStatus(Ok) on success before this
    * callback runs. On null, Connection makes no updateStatus call — the
@@ -150,9 +151,9 @@ class CltProcessor extends InstanceBase<DeviceConfig> implements ProcessorBase {
    */
   private _onProbeResult(result: ProbeResult | null, host: string): void {
     if (result) {
-      this._applyDetectedProtocol(result.deviceType, host)
+      this._applyDetectedIdentity(result, host)
     } else {
-      logger.warn(`UDP probe returned no result (host=${host}); keeping current protocol`)
+      logger.warn(`UDP probe returned no result (host=${host}); keeping current identity`)
     }
 
     // After probe completes (or probe fails), bind SpSession based on current config.protocol
@@ -180,27 +181,41 @@ class CltProcessor extends InstanceBase<DeviceConfig> implements ProcessorBase {
   }
 
   /**
-   * Look up the model byte; if a mapping exists and
-   * differs from the current protocol, update config and re-register
-   * actions and feedbacks (String-Protocol).
+   * Apply the probe-detected device identity (protocol + model byte).
+   *  - protocol → `this.config.protocol` (in-memory, existing behavior)
+   *  - modelByte → `this.state.modelByte` (runtime state, not config:
+   *    config expresses user intent, state expresses measured identity)
+   * Re-registers actions and feedbacks when either component changes.
    *
    * SpSession rebinding is left to the caller (`_onProbeResult`) so that
    * success and timeout paths converge on a single bind site.
    */
-  private _applyDetectedProtocol(deviceType: 0 | 1 | 2, host: string): void {
-    const mapped = getProtocolForDeviceType(deviceType)
+  private _applyDetectedIdentity(result: ProbeResult, host: string): void {
+    const mapped = getProtocolForDeviceType(result.deviceType)
     if (!mapped) {
-      logger.warn(`Unknown device type ${deviceType} (host=${host}); keeping protocol=${this.config.protocol}`)
+      logger.warn(
+        `Unknown device type ${result.deviceType} (host=${host}); keeping identity (protocol=${this.config.protocol})`
+      )
       return
     }
-    if (mapped === this.config.protocol) {
-      logger.info(`Probe confirms current protocol: ${mapped} (host=${host})`)
+
+    const modelByte = result.model
+    const model = resolveDeviceModel(mapped, modelByte)
+    const modelDesc = model
+      ? `${model.label}${model.family !== undefined ? ` (family=${model.family})` : ''}`
+      : `unresolved (modelByte=${modelByte})`
+
+    if (mapped === this.config.protocol && modelByte === this.state.modelByte) {
+      logger.info(`Probe confirms identity: protocol=${mapped}, ${modelDesc}`)
       return
     }
+
     logger.info(
-      `Probe detected protocol change: ${this.config.protocol} → ${mapped} (deviceType=${deviceType}, host=${host})`
+      `Probe detected identity change: protocol ${this.config.protocol} → ${mapped}, ` +
+        `modelByte ${this.state.modelByte} → ${modelByte} (${modelDesc}) (deviceType=${result.deviceType}, host=${host})`
     )
     this.config.protocol = mapped
+    this.state.modelByte = modelByte
     this.initActions()
     // Feedback unified to String-Protocol
     this.initFeedbacks()
