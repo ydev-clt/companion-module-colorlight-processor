@@ -10,6 +10,7 @@ import { setupLogger, logger } from './log'
 import { setupActions } from './actions'
 import { SPTransmitter } from './actions/string-protocol/core/transmitter'
 import { setupFeedbacks } from './feedbacks'
+import { setupVariables } from './variables'
 import { getProtocolForDeviceType, type ProbeResult } from './udp-probe'
 import { resolveDeviceModel } from './device-models'
 
@@ -22,6 +23,20 @@ class CltProcessor extends InstanceBase<DeviceConfig> implements ProcessorBase {
   public spTransmitter: SPTransmitter
   // state cache
   public state: StateCache
+
+  /**
+   * Variable writeback hook installed by initVariables().
+   * Get-actions call this to update variables after a successful response.
+   * Stable across identity changes; only the definition list is rebuilt.
+   *
+   * Named `writebackVariableValues` to avoid colliding with the public
+   * `setVariableValues` method inherited from InstanceBase.
+   */
+  private writebackVariableValues: (values: Record<string, number | string | object>) => void = () => {
+    // Default no-op until initVariables wires the real callback.
+  }
+  /** Refresh hook installed by initVariables(); rebuilt on identity change. */
+  private refreshVariableDefinitions: () => void = () => {}
 
   constructor(internal: unknown) {
     super(internal)
@@ -74,7 +89,7 @@ class CltProcessor extends InstanceBase<DeviceConfig> implements ProcessorBase {
   private initActions(): void {
     logger.info('Init actions.')
     // After refactoring: actions unified to String-Protocol
-    this.setActionDefinitions(setupActions(this, this.spTransmitter))
+    this.setActionDefinitions(setupActions(this, this.spTransmitter, this.writebackVariableValues))
   }
 
   /**
@@ -84,6 +99,19 @@ class CltProcessor extends InstanceBase<DeviceConfig> implements ProcessorBase {
     logger.info('Init feedbacks.')
     // After refactoring: feedbacks unified to String-Protocol
     this.setFeedbackDefinitions(setupFeedbacks(this))
+  }
+
+  /**
+   * init variables
+   *
+   * Registers Companion variables for all supported cmds and installs the
+   * writeback hook that get-actions use. Re-called on identity change.
+   */
+  private initVariables(): void {
+    logger.info('Init variables.')
+    const { setVariableValues, refresh } = setupVariables(this)
+    this.writebackVariableValues = setVariableValues
+    this.refreshVariableDefinitions = refresh
   }
 
   /**
@@ -121,6 +149,11 @@ class CltProcessor extends InstanceBase<DeviceConfig> implements ProcessorBase {
       logger.error('Host config is empty.')
     }
 
+    // Variables first so the writeback hook is wired before any get-action
+    // can possibly fire (the probe callback may run synchronously before the
+    // user can press a button, but a defensive ordering avoids a window where
+    // get-actions would no-op silently).
+    this.initVariables()
     this.initActions()
     this.initFeedbacks()
   }
@@ -216,6 +249,9 @@ class CltProcessor extends InstanceBase<DeviceConfig> implements ProcessorBase {
     )
     this.config.protocol = mapped
     this.state.modelByte = modelByte
+    // Variables must refresh *before* actions so any user-triggered get on
+    // the new identity doesn't reference stale definitions.
+    this.refreshVariableDefinitions()
     this.initActions()
     // Feedback unified to String-Protocol
     this.initFeedbacks()

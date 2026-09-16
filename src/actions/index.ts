@@ -10,8 +10,16 @@ import { setupStringActions, type SPTransmitter } from './string-protocol'
  * template actions (src/actions/zv-protocol/) are kept as source but are no
  * longer registered. `config.protocol` only decides which proto (1=Z, 2=V)
  * the SpSession uses; it no longer affects the action-registration branch.
+ *
+ * `setVariableValues` is the variable writeback hook installed by
+ * CltProcessor. Get-actions invoke it on every successful response so the
+ * latest device state is reflected in Companion variables.
  */
-export function setupActions(context: ActionContext, spTransmitter: SPTransmitter): CompanionActionDefinitions {
+export function setupActions(
+  context: ActionContext,
+  spTransmitter: SPTransmitter,
+  setVariableValues: (values: Record<string, number | string | object>) => void
+): CompanionActionDefinitions {
   logger.info('Actions setup start')
-  return context.config.protocol === 'None' ? {} : setupStringActions(context, spTransmitter)
+  return context.config.protocol === 'None' ? {} : setupStringActions(context, spTransmitter, setVariableValues)
 }

@@ -1,7 +1,7 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
+import { buildGetAction, deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
 import type { StringActionHost } from './_shared'
 
 /**
@@ -18,7 +18,7 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
   const actions: Record<string, CompanionActionDefinition> = {}
 
   // ---- colorspace ----
-  actions[ACTION_ID.COLORSPACE] = {
+  actions[ACTION_ID.COLORSPACE_SET] = {
     name: 'Set Output Color Space',
     description: 'Set the output color space.',
     options: [
@@ -50,10 +50,16 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
       await conn.sendOnly(CMD.COLORSPACE, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.COLORSPACE_GET] = buildGetAction(host, {
+    name: 'Get Output Color Space',
+    description: 'Query the current output color space and write to the `colorspace` variable.',
+    cmd: CMD.COLORSPACE,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
   // ---- prec_mgr ----
-  actions[ACTION_ID.PREC_MGR] = {
-    name: 'Precise Color Manager',
+  actions[ACTION_ID.PREC_MGR_SET] = {
+    name: 'Set Precise Color Manager',
     description: 'Enable or disable precise color management.',
     options: [...deviceAndBroadcastFields(), openCloseField(1), gidField()],
     callback: async (event) => {
@@ -64,10 +70,16 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
       await conn.sendOnly(CMD.PREC_MGR, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.PREC_MGR_GET] = buildGetAction(host, {
+    name: 'Get Precise Color Manager',
+    description: 'Query the precise color manager state and write to the `precise_color_management_enable` variable.',
+    cmd: CMD.PREC_MGR,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
   // ---- ct_r ----
-  actions[ACTION_ID.CT_R] = {
-    name: 'Color Temp Red Gain',
+  actions[ACTION_ID.CT_R_SET] = {
+    name: 'Set Color Temp Red Gain',
     description: 'Set the red component of the screen group color temperature.',
     options: [
       ...deviceAndBroadcastFields(),
@@ -82,10 +94,16 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
       await conn.sendOnly(CMD.CT_R, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.CT_R_GET] = buildGetAction(host, {
+    name: 'Get Color Temp Red Gain',
+    description: 'Query the red gain of the screen group color temperature and write to `screen_color_temperature_r`.',
+    cmd: CMD.CT_R,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
   // ---- ct_g ----
-  actions[ACTION_ID.CT_G] = {
-    name: 'Color Temp Green Gain',
+  actions[ACTION_ID.CT_G_SET] = {
+    name: 'Set Color Temp Green Gain',
     description: 'Set the green component of the screen group color temperature.',
     options: [
       ...deviceAndBroadcastFields(),
@@ -100,10 +118,16 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
       await conn.sendOnly(CMD.CT_G, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.CT_G_GET] = buildGetAction(host, {
+    name: 'Get Color Temp Green Gain',
+    description: 'Query the green gain of the screen group color temperature and write to `screen_color_temperature_g`.',
+    cmd: CMD.CT_G,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
   // ---- ct_b ----
-  actions[ACTION_ID.CT_B] = {
-    name: 'Color Temp Blue Gain',
+  actions[ACTION_ID.CT_B_SET] = {
+    name: 'Set Color Temp Blue Gain',
     description: 'Set the blue component of the screen group color temperature.',
     options: [
       ...deviceAndBroadcastFields(),
@@ -118,10 +142,16 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
       await conn.sendOnly(CMD.CT_B, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.CT_B_GET] = buildGetAction(host, {
+    name: 'Get Color Temp Blue Gain',
+    description: 'Query the blue gain of the screen group color temperature and write to `screen_color_temperature_b`.',
+    cmd: CMD.CT_B,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
   // ---- grp_gain ----
-  actions[ACTION_ID.GRP_GAIN] = {
-    name: 'Screen Group Intensity Gain',
+  actions[ACTION_ID.GRP_GAIN_SET] = {
+    name: 'Set Screen Group Intensity Gain',
     description: 'Set the screen group intensity gain.',
     options: [
       ...deviceAndBroadcastFields(),
@@ -136,10 +166,16 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
       await conn.sendOnly(CMD.GRP_GAIN, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.GRP_GAIN_GET] = buildGetAction(host, {
+    name: 'Get Screen Group Intensity Gain',
+    description: 'Query the screen group intensity gain and write to the `screen_intensity_gain` variable.',
+    cmd: CMD.GRP_GAIN,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
   // ---- virtual_pixel ----
-  actions[ACTION_ID.VIRTUAL_PIXEL] = {
-    name: 'Virtual Pixel Switch',
+  actions[ACTION_ID.VIRTUAL_PIXEL_SET] = {
+    name: 'Set Virtual Pixel',
     description: 'Enable or disable virtual pixel.',
     options: [
       ...deviceAndBroadcastFields(),
@@ -150,18 +186,9 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
         id: 'rate',
         default: 1,
         choices: [
-          {
-            id: 1,
-            label: '4x virtual'
-          },
-          {
-            id: 2,
-            label: '3x virtual'
-          },
-          {
-            id: 3,
-            label: '0.75 virtual'
-          }
+          { id: 1, label: '4x virtual' },
+          { id: 2, label: '3x virtual' },
+          { id: 3, label: '0.75 virtual' }
         ],
         isVisible: (options) => options.openStatus === 1
       },
@@ -171,14 +198,8 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
         id: 'direction',
         default: 0,
         choices: [
-          {
-            id: 0,
-            label: 'Left to right'
-          },
-          {
-            id: 1,
-            label: 'Top to bottom'
-          }
+          { id: 0, label: 'Left to right' },
+          { id: 1, label: 'Top to bottom' }
         ],
         isVisible: (options) => options.openStatus === 1
       },
@@ -224,6 +245,13 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
       await conn.sendOnly(CMD.VIRTUAL_PIXEL, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.VIRTUAL_PIXEL_GET] = buildGetAction(host, {
+    name: 'Get Virtual Pixel',
+    description:
+      'Query the virtual pixel state. Writes the result to the `virtual_pixel` variable as a single object: `{ enable, rate, direction, row_offset, col_offset }`.',
+    cmd: CMD.VIRTUAL_PIXEL,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
   return actions as CompanionActionDefinitions
 }

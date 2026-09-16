@@ -1,7 +1,7 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { deviceAndBroadcastFields, gidField, sidFromOptions } from './_shared'
+import { buildGetAction, deviceAndBroadcastFields, gidField, sidFromOptions } from './_shared'
 import type { StringActionHost } from './_shared'
 
 /**
@@ -17,8 +17,8 @@ export function setupAudio3dActions(host: StringActionHost): CompanionActionDefi
   const actions: Record<string, CompanionActionDefinition> = {}
 
   // ---- eye_switch ----
-  actions[ACTION_ID.EYE_SWITCH] = {
-    name: 'Eye Switch (Left/Right)',
+  actions[ACTION_ID.EYE_SWITCH_SET] = {
+    name: 'Set Eye Switch',
     description: 'Set left/right eye output.',
     options: [
       ...deviceAndBroadcastFields(),
@@ -42,10 +42,16 @@ export function setupAudio3dActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.EYE_SWITCH, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.EYE_SWITCH_GET] = buildGetAction(host, {
+    name: 'Get Eye Switch',
+    description: 'Query the active eye (left/right) and write to the `3d_eye_priority` variable.',
+    cmd: CMD.EYE_SWITCH,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
   // ---- mode3d ----
-  actions[ACTION_ID.MODE3D] = {
-    name: '3D Switch',
+  actions[ACTION_ID.MODE3D_SET] = {
+    name: 'Set 3D Mode',
     description: 'Enable or disable the sender 3D output.',
     options: [
       ...deviceAndBroadcastFields(),
@@ -69,10 +75,16 @@ export function setupAudio3dActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.MODE3D, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.MODE3D_GET] = buildGetAction(host, {
+    name: 'Get 3D Mode',
+    description: 'Query the 3D enable state and write to the `3d_enable` variable.',
+    cmd: CMD.MODE3D,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
   // ---- dual_3d ----
-  actions[ACTION_ID.DUAL_3D] = {
-    name: 'Single/Dual 3D Mode',
+  actions[ACTION_ID.DUAL_3D_SET] = {
+    name: 'Set Dual 3D Mode',
     description:
       'Set the screen group to single 3D or dual 3D mode. The device typically requires `mode3d` to be enabled before switching single/dual.',
     options: [
@@ -97,10 +109,16 @@ export function setupAudio3dActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.DUAL_3D, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.DUAL_3D_GET] = buildGetAction(host, {
+    name: 'Get Dual 3D Mode',
+    description: 'Query the dual-3D mode and write to the `dual_3d_mode` variable.',
+    cmd: CMD.DUAL_3D,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
   // ---- stereo_fmt ----
-  actions[ACTION_ID.STEREO_FMT] = {
-    name: 'Stereo 3D Source Format',
+  actions[ACTION_ID.STEREO_FMT_SET] = {
+    name: 'Set Stereo 3D Source Format',
     description: 'Set the 3D source format.',
     options: [
       ...deviceAndBroadcastFields(),
@@ -124,6 +142,12 @@ export function setupAudio3dActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.STEREO_FMT, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.STEREO_FMT_GET] = buildGetAction(host, {
+    name: 'Get Stereo 3D Source Format',
+    description: 'Query the 3D source format and write to the `3d_signal_format` variable.',
+    cmd: CMD.STEREO_FMT,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
   return actions as CompanionActionDefinitions
 }

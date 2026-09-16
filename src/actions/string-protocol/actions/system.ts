@@ -1,7 +1,7 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
+import { buildGetAction, deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
 import type { StringActionHost } from './_shared'
 
 /**
@@ -17,8 +17,8 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
   const actions: Record<string, CompanionActionDefinition> = {}
 
   // ---- osd ----
-  actions[ACTION_ID.OSD] = {
-    name: 'OSD Switch',
+  actions[ACTION_ID.OSD_SET] = {
+    name: 'Set OSD',
     description: 'Set the OSD state.',
     options: [
       ...deviceAndBroadcastFields(),
@@ -61,10 +61,16 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
       await conn.sendOnly(CMD.OSD, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.OSD_GET] = buildGetAction(host, {
+    name: 'Get OSD State',
+    description: 'Query the OSD state and write to the `osd_enable` variable.',
+    cmd: CMD.OSD,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
   // ---- framerate ----
-  actions[ACTION_ID.FRAMERATE] = {
-    name: 'Screen Group Frame Rate Multiplicaion',
+  actions[ACTION_ID.FRAMERATE_SET] = {
+    name: 'Set Screen Group Frame Rate',
     description: 'Set the screen group frame rate multiplication mode.',
     options: [
       ...deviceAndBroadcastFields(),
@@ -91,10 +97,16 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
       await conn.sendOnly(CMD.FRAMERATE, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.FRAMERATE_GET] = buildGetAction(host, {
+    name: 'Get Screen Group Frame Rate',
+    description: 'Query the frame rate mode and write to the `framerate_mode` variable.',
+    cmd: CMD.FRAMERATE,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
   // ---- fps_adapt ----
   actions[ACTION_ID.FPS_ADAPT] = {
-    name: 'Frame Rate Adaptation',
+    name: 'Set Frame Rate Adaptation',
     description: 'Enable or disable frame rate adaptation for the specified screen group.',
     options: [...deviceAndBroadcastFields(), openCloseField(1), gidField()],
     callback: async (event) => {
@@ -107,17 +119,23 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
   }
 
   // ---- low_pwr ----
-  actions[ACTION_ID.LOW_PWR] = {
-    name: 'Low Power Mode',
-    description: 'Enable or disable the low-power energy saving mode.',
+  actions[ACTION_ID.LOW_PWR_SET] = {
+    name: 'Set Low Power Mode',
+    description: 'Enable or disable the low-power energy saving mode (B protocol only).',
     options: [...deviceAndBroadcastFields(), openCloseField(0)],
     callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: 0 | 1; gid?: number }
+      const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: 0 | 1 }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { en: o.openStatus }
       await conn.sendOnly(CMD.LOW_PWR, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.LOW_PWR_GET] = buildGetAction(host, {
+    name: 'Get Low Power Mode',
+    description: 'Query the low-power enable state and write to the `low_pwr_enable` variable.',
+    cmd: CMD.LOW_PWR,
+    skipGid: true
+  })
 
   return actions as CompanionActionDefinitions
 }

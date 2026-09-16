@@ -1,7 +1,7 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { deviceAndBroadcastFields, gidField, sidFromOptions } from './_shared'
+import { buildGetAction, deviceAndBroadcastFields, gidField, sidFromOptions } from './_shared'
 import type { StringActionHost } from './_shared'
 
 /**
@@ -19,7 +19,7 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
   const actions: Record<string, CompanionActionDefinition> = {}
 
   // ---- layer ----
-  actions[ACTION_ID.LAYER] = {
+  actions[ACTION_ID.LAYER_SET] = {
     name: 'Set Layer Position/Size',
     description: 'Set the layer position and size.',
     options: [
@@ -56,11 +56,38 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
       await conn.sendOnly(CMD.LAYER, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.LAYER_GET] = buildGetAction<{
+    deviceId: number
+    isSelectAll: boolean
+    layer: number
+    gid?: number
+  }>(host, {
+    name: 'Get Layer Position/Size',
+    description:
+      'Query a layer position/size. Writes the geometry to the `layer` variable as a single object: `{ layer, x, y, width, height }`.',
+    cmd: CMD.LAYER,
+    extraFields: [
+      {
+        type: 'number',
+        label: 'Layer index (1-based)',
+        id: 'layer',
+        min: 1,
+        max: 16,
+        default: 1,
+        required: true
+      }
+    ],
+    dataBuilder: ({ layer, gid }) => {
+      const data: Record<string, unknown> = { layer }
+      if (typeof gid === 'number') data.gid = gid
+      return data
+    }
+  })
 
   // ---- layer_border ----
-  actions[ACTION_ID.LAYER_BORDER] = {
-    name: 'Toggle Layer Border',
-    description: 'Configure the layer border.',
+  actions[ACTION_ID.LAYER_BORDER_SET] = {
+    name: 'Set Layer Border',
+    description: 'Configure the layer border (B protocol only).',
     options: [
       ...deviceAndBroadcastFields(),
       {
@@ -140,9 +167,36 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
       await conn.sendOnly(CMD.LAYER_BORDER, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.LAYER_BORDER_GET] = buildGetAction<{
+    deviceId: number
+    isSelectAll: boolean
+    layer: number
+    gid?: number
+  }>(host, {
+    name: 'Get Layer Border',
+    description:
+      'Query the layer border state. Writes the full configuration to the `layer_border` variable as a single object: `{ layer, enable, opacity, width, r, g, b }`.',
+    cmd: CMD.LAYER_BORDER,
+    extraFields: [
+      {
+        type: 'number',
+        label: 'Layer index (1-based)',
+        id: 'layer',
+        min: 1,
+        max: 16,
+        default: 1,
+        required: true
+      }
+    ],
+    dataBuilder: ({ layer, gid }) => {
+      const data: Record<string, unknown> = { layer }
+      if (typeof gid === 'number') data.gid = gid
+      return data
+    }
+  })
 
   // ---- bg_box ----
-  actions[ACTION_ID.BG_BOX] = {
+  actions[ACTION_ID.BG_BOX_SET] = {
     name: 'Set Background Box Size',
     description: 'Set the background box size.',
     options: [
@@ -159,8 +213,15 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
       await conn.sendOnly(CMD.BG_BOX, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.BG_BOX_GET] = buildGetAction(host, {
+    name: 'Get Background Box Size',
+    description:
+      'Query the background box size. Writes the dimensions to the `background_box` variable as a single object: `{ width, height }`.',
+    cmd: CMD.BG_BOX,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
-  // ---- layerorder ---- (§5.2.25.1 set)
+  // ---- layerorder ---- (§5.2.25.1 set; set-only)
   actions[ACTION_ID.LAYER_ORDER] = {
     name: 'Set Layer Order',
     description:
@@ -213,7 +274,7 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
     }
   }
 
-  // ---- dellayer ----
+  // ---- dellayer ---- (set-only)
   actions[ACTION_ID.DEL_LAYER] = {
     name: 'Delete Layer',
     description: 'Delete a layer.',
@@ -231,7 +292,7 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
     }
   }
 
-  // ---- clear_layer ----
+  // ---- clear_layer ---- (set-only)
   actions[ACTION_ID.CLEAR_LAYER] = {
     name: 'Clear All Layers',
     description: 'Clear all layers in the specified screen group.',

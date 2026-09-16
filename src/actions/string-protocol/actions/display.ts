@@ -1,7 +1,7 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
+import { buildGetAction, deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
 import type { StringActionHost } from './_shared'
 import { DeviceProtocolEnum } from '../../../types'
 
@@ -17,6 +17,10 @@ import { DeviceProtocolEnum } from '../../../types'
  *  - fade in/out    fade / fadetime (§5.2.29 §5.2.30)
  *  - zero delay     zerodelay (§5.2.32)
  *  - UH5 status     uh5_st   (§5.2.38, A protocol only)
+ *
+ * Each set+get cmd has two actions: `<cmd>_set` (write) and `<cmd>_get`
+ * (read & update variables). The split keeps set latency predictable
+ * and lets users poll/refresh independently.
  */
 
 export function setupDisplayActions(host: StringActionHost): CompanionActionDefinitions {
@@ -24,7 +28,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
   const actions: Record<string, CompanionActionDefinition> = {}
 
   // ---- bright (brightness) ----
-  actions[ACTION_ID.BRIGHT] = {
+  actions[ACTION_ID.BRIGHT_SET] = {
     name: 'Set Brightness',
     description: 'Set the sender brightness.',
     options: [
@@ -42,12 +46,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       gidField()
     ],
     callback: async (event) => {
-      const o = event.options as {
-        deviceId: number
-        isSelectAll: boolean
-        brightness: number
-        gid?: number
-      }
+      const o = event.options as { deviceId: number; isSelectAll: boolean; brightness: number; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const brt = Math.round(Math.max(0, Math.min(10000, o.brightness)))
       const data: Record<string, unknown> = { brt }
@@ -55,9 +54,15 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.BRIGHT, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.BRIGHT_GET] = buildGetAction(host, {
+    name: 'Get Brightness',
+    description: 'Query the sender brightness and write to the `brightness` variable.',
+    cmd: CMD.BRIGHT,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
-  // ---- colortemp (color temperature) ----
-  actions[ACTION_ID.COLORTEMP] = {
+  // ---- colortemp ----
+  actions[ACTION_ID.COLORTEMP_SET] = {
     name: 'Set Color Temperature',
     description: 'Set the sender color temperature.',
     options: [
@@ -82,30 +87,43 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.COLORTEMP, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.COLORTEMP_GET] = buildGetAction(host, {
+    name: 'Get Color Temperature',
+    description: 'Query the sender color temperature and write to the `color_temperature` variable.',
+    cmd: CMD.COLORTEMP,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
   // ---- freeze ----
-  actions[ACTION_ID.FREEZE_SCREEN] = {
-    name: 'Open/Close Freeze Screen',
-    description: 'Freeze the output (set en=1) or unfreeze (en=0).',
+  actions[ACTION_ID.FREEZE_SCREEN_SET] = {
+    name: 'Set Freeze Screen',
+    description: 'Freeze the output (en=1) or unfreeze (en=0).',
     options: [...deviceAndBroadcastFields(), openCloseField(1), gidField()],
     callback: async (event) => {
       const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: 0 | 1; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { en: o.openStatus }
       if (typeof o.gid === 'number') data.gid = o.gid
-
-      await conn.sendAndAwait(CMD.FREEZE, 'set', sid, data)
-      // After the set, wait for the get response (used to write back state)
-      const resp = await conn.sendAndAwait<{ gid?: number }, { en: number }>(CMD.FREEZE, 'get', sid, { gid: o.gid })
-      if (resp && resp.code === 0 && resp.data) {
-        host.ctx.state.isFreezeScreen = resp.data.en === 1
-      }
+      await conn.sendOnly(CMD.FREEZE, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.FREEZE_SCREEN_GET] = buildGetAction<{ deviceId: number; isSelectAll: boolean; gid?: number }>(host, {
+    name: 'Get Freeze Screen Status',
+    description:
+      'Query the freeze status and update the `freeze_enable` variable. Also updates the freeze feedback via state.',
+    cmd: CMD.FREEZE,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined),
+    afterResponse: (resp) => {
+      const data = resp.data as { en?: number } | undefined
+      if (data && typeof data.en === 'number') {
+        host.ctx.state.isFreezeScreen = data.en === 1
+      }
+    }
+  })
 
   // ---- blackout ----
-  actions[ACTION_ID.BLACKOUT] = {
-    name: 'Open/Close Black Screen',
+  actions[ACTION_ID.BLACKOUT_SET] = {
+    name: 'Set Black Screen',
     description: 'Blackout (en=1) or restore (en=0).',
     options: [...deviceAndBroadcastFields(), openCloseField(1), gidField()],
     callback: async (event) => {
@@ -113,18 +131,25 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { en: o.openStatus }
       if (typeof o.gid === 'number') data.gid = o.gid
-      await conn.sendAndAwait(CMD.BLACKOUT, 'set', sid, data)
-
-      // After the set, wait for the get response (used to write back state)
-      const resp = await conn.sendAndAwait<{ gid?: number }, { en: number }>(CMD.BLACKOUT, 'get', sid, { gid: o.gid })
-      if (resp && resp.code === 0 && resp.data) {
-        host.ctx.state.isBlackScreen = resp.data.en === 1
-      }
+      await conn.sendOnly(CMD.BLACKOUT, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.BLACKOUT_GET] = buildGetAction<{ deviceId: number; isSelectAll: boolean; gid?: number }>(host, {
+    name: 'Get Black Screen Status',
+    description:
+      'Query the blackout status and update the `blackout_enable` variable. Also updates the blackout feedback via state.',
+    cmd: CMD.BLACKOUT,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined),
+    afterResponse: (resp) => {
+      const data = resp.data as { en?: number } | undefined
+      if (data && typeof data.en === 'number') {
+        host.ctx.state.isBlackScreen = data.en === 1
+      }
+    }
+  })
 
-  // ---- testmode (test mode) ----
-  actions[ACTION_ID.TESTMODE] = {
+  // ---- testmode ----
+  actions[ACTION_ID.TESTMODE_SET] = {
     name: 'Set Test Pattern',
     description: 'Set the test Pattern.',
     options: [
@@ -148,9 +173,15 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.TESTMODE, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.TESTMODE_GET] = buildGetAction(host, {
+    name: 'Get Test Pattern',
+    description: 'Query the active test pattern and write to the `testmode_pattern` variable.',
+    cmd: CMD.TESTMODE,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
-  // ---- hdrmode (HDR) ----
-  actions[ACTION_ID.HDRMODE] = {
+  // ---- hdrmode ----
+  actions[ACTION_ID.HDRMODE_SET] = {
     name: 'Set HDR Mode',
     description: 'Set the HDR mode.',
     options: [
@@ -181,10 +212,16 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.HDRMODE, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.HDRMODE_GET] = buildGetAction(host, {
+    name: 'Get HDR Mode',
+    description: 'Query the current HDR mode and write to the `hdrmode` variable.',
+    cmd: CMD.HDRMODE,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
   // ---- mute ----
-  actions[ACTION_ID.MUTE] = {
-    name: 'Mute',
+  actions[ACTION_ID.MUTE_SET] = {
+    name: 'Set Mute',
     description: 'Set mute on or off.',
     options: [...deviceAndBroadcastFields(), openCloseField(1), gidField()],
     callback: async (event) => {
@@ -195,10 +232,16 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.MUTE, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.MUTE_GET] = buildGetAction(host, {
+    name: 'Get Mute Status',
+    description: 'Query the mute state and write to the `mute_enable` variable.',
+    cmd: CMD.MUTE,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
-  // ---- fade (fade in/out) ----
-  actions[ACTION_ID.FADE] = {
-    name: 'Fade In/Out (en)',
+  // ---- fade ----
+  actions[ACTION_ID.FADE_SET] = {
+    name: 'Set Fade In/Out',
     description: 'Enable or disable fade in/out.',
     options: [...deviceAndBroadcastFields(), openCloseField(1), gidField()],
     callback: async (event) => {
@@ -209,10 +252,16 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.FADE, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.FADE_GET] = buildGetAction(host, {
+    name: 'Get Fade In/Out Status',
+    description: 'Query the fade in/out state and write to the `fade_enable` variable.',
+    cmd: CMD.FADE,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
-  // ---- fadetime (fade duration) ----
-  actions[ACTION_ID.FADETIME] = {
-    name: 'Fade Time (ms)',
+  // ---- fadetime ----
+  actions[ACTION_ID.FADETIME_SET] = {
+    name: 'Set Fade Time',
     options: [
       ...deviceAndBroadcastFields(),
       {
@@ -234,16 +283,22 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.FADETIME, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.FADETIME_GET] = buildGetAction(host, {
+    name: 'Get Fade Time',
+    description: 'Query the fade time and write to the `fadetime_ms` variable.',
+    cmd: CMD.FADETIME,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
-  // ---- zerodelay (low latency) ----
+  // ---- zerodelay ----
   // A protocol only supports mode=1 (0-frame); B protocol also supports mode=2 (1-frame).
   const zerodelayModeChoices: Array<{ id: 1 | 2; label: string }> = [{ id: 1, label: '0-frame' }]
   if (host.ctx.config.protocol === DeviceProtocolEnum.B) {
     zerodelayModeChoices.push({ id: 2, label: '1-frame' })
   }
 
-  actions[ACTION_ID.ZERODELAY] = {
-    name: 'Zero Delay',
+  actions[ACTION_ID.ZERODELAY_SET] = {
+    name: 'Set Zero Delay',
     description: 'Zero-delay switch & mode.',
     options: [
       ...deviceAndBroadcastFields(),
@@ -275,11 +330,18 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.ZERODELAY, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.ZERODELAY_GET] = buildGetAction(host, {
+    name: 'Get Zero Delay',
+    description:
+      'Query the zero-delay state and mode. Writes the result to the `zerodelay` variable as a single object: `{ enable, mode }`.',
+    cmd: CMD.ZERODELAY,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
-  // ---- uh5_st (UH5 status) ----
-  actions[ACTION_ID.UH5_ST] = {
+  // ---- uh5_st ----
+  actions[ACTION_ID.UH5_ST_SET] = {
     name: 'Set UH5 Status',
-    description: 'Set the UH5 status.',
+    description: 'Set the UH5 status (A protocol only).',
     options: [...deviceAndBroadcastFields(), openCloseField(1)],
     callback: async (event) => {
       const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: 0 | 1 }
@@ -288,6 +350,12 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.UH5_ST, 'set', sid, data)
     }
   }
+  actions[ACTION_ID.UH5_ST_GET] = buildGetAction(host, {
+    name: 'Get UH5 Status',
+    description: 'Query the UH5 status and write to the `uh5_status_enable` variable (A protocol only).',
+    cmd: CMD.UH5_ST,
+    skipGid: true
+  })
 
   return actions as CompanionActionDefinitions
 }

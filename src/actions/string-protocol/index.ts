@@ -15,6 +15,7 @@ import { setupColorActions } from './actions/color'
 import { setupDeviceActions } from './actions/device'
 import { setupSystemActions } from './actions/system'
 import { setupMfcActions } from './actions/mfc'
+import { setupProbeActions } from './actions/probe'
 
 /**
  * String-Protocol entry point.
@@ -31,10 +32,14 @@ export { SPTransmitter } from './core/transmitter'
  *  Note: `conn` is usually injected by the module entry point; here we just
  *  combine ctx and conn into one host.
  */
-export function setupStringActions(ctx: ActionContext, conn: SPTransmitter): CompanionActionDefinitions {
+export function setupStringActions(
+  ctx: ActionContext,
+  conn: SPTransmitter,
+  setVariableValues: (values: Record<string, number | string | object>) => void
+): CompanionActionDefinitions {
   logger.info('String-Protocol actions setup start.')
 
-  const host: StringActionHost = { ctx, conn }
+  const host: StringActionHost = { ctx, conn, setVariableValues }
   const merged: CompanionActionDefinitions = {
     ...setupDisplayActions(host),
     ...setupPictureActions(host),
@@ -45,7 +50,8 @@ export function setupStringActions(ctx: ActionContext, conn: SPTransmitter): Com
     ...setupColorActions(host),
     ...setupDeviceActions(host),
     ...setupSystemActions(host),
-    ...setupMfcActions(host)
+    ...setupMfcActions(host),
+    ...setupProbeActions(host)
   }
 
   // Single filtering point: drop actions not supported by the current device

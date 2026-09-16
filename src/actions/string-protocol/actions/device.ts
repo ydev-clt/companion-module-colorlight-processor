@@ -1,7 +1,7 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
+import { buildGetAction, deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
 import type { StringActionHost } from './_shared'
 
 /**
@@ -19,7 +19,7 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
   const actions: Record<string, CompanionActionDefinition> = {}
 
   // ---- sn ----
-  actions[ACTION_ID.SN] = {
+  actions[ACTION_ID.SN_SET] = {
     name: 'Set Serial Number',
     description: 'Set the device serial number.',
     options: [
@@ -32,6 +32,12 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
       await conn.sendOnly(CMD.SN, 'set', sid, { serial: o.serial })
     }
   }
+  actions[ACTION_ID.SN_GET] = buildGetAction<{ deviceId: number }>(host, {
+    name: 'Get Serial Number',
+    description: 'Query the device serial number and write to the `serial_number` variable.',
+    cmd: CMD.SN,
+    skipGid: true
+  })
 
   // ---- edid_set ----
   actions[ACTION_ID.EDID_SET] = {
@@ -141,8 +147,8 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
   }
 
   // ---- vsync_mul ----
-  actions[ACTION_ID.VSYNC_MUL] = {
-    name: 'VSYNC Multiplier',
+  actions[ACTION_ID.VSYNC_MUL_SET] = {
+    name: 'Set VSYNC Multiplier',
     description: 'Set the VSYNC multiplier parameters for the sender (en/method/mul).',
     options: [
       ...deviceAndBroadcastFields(),
@@ -190,11 +196,21 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
         gid?: number
       }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { en: o.openStatus, method: o.method, mul: o.mul }
+      const data: Record<string, unknown> = {}
       if (typeof o.gid === 'number') data.gid = o.gid
-      await conn.sendOnly(CMD.VSYNC_MUL, 'set', sid, data)
+      // Divided into 3 API calls to set each parameter individually
+      await conn.sendOnly(CMD.VSYNC_MUL, 'set', sid, { ...data, en: o.openStatus })
+      await conn.sendOnly(CMD.VSYNC_MUL, 'set', sid, { ...data, method: o.method })
+      await conn.sendOnly(CMD.VSYNC_MUL, 'set', sid, { ...data, mul: o.mul })
     }
   }
+  actions[ACTION_ID.VSYNC_MUL_GET] = buildGetAction(host, {
+    name: 'Get VSYNC Multiplier',
+    description:
+      'Query the VSYNC multiplier. Writes the result to the `vsync_multiplier` variable as a single object: `{ enable, method, multiplier }`.',
+    cmd: CMD.VSYNC_MUL,
+    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
+  })
 
   return actions as CompanionActionDefinitions
 }
