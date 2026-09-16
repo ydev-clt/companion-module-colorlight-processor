@@ -110,7 +110,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
   actions[ACTION_ID.FREEZE_SCREEN_GET] = buildGetAction<{ deviceId: number; isSelectAll: boolean; gid?: number }>(host, {
     name: 'Get Freeze Screen Status',
     description:
-      'Query the freeze status and update the `freeze_enable` variable. Also updates the freeze feedback via state.',
+      'Query the freeze status and update the `freeze_enable` variable (0: off, 1: freeze). Also updates the freeze feedback via state.',
     cmd: CMD.FREEZE,
     dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined),
     afterResponse: (resp) => {
@@ -137,7 +137,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
   actions[ACTION_ID.BLACKOUT_GET] = buildGetAction<{ deviceId: number; isSelectAll: boolean; gid?: number }>(host, {
     name: 'Get Black Screen Status',
     description:
-      'Query the blackout status and update the `blackout_enable` variable. Also updates the blackout feedback via state.',
+      'Query the blackout status and update the `blackout_enable` variable (0: off, 1: blackout). Also updates the blackout feedback via state.',
     cmd: CMD.BLACKOUT,
     dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined),
     afterResponse: (resp) => {
@@ -175,7 +175,8 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
   }
   actions[ACTION_ID.TESTMODE_GET] = buildGetAction(host, {
     name: 'Get Test Pattern',
-    description: 'Query the active test pattern and write to the `testmode_pattern` variable.',
+    description:
+      'Query the active test pattern and write to the `testmode_pattern` variable (0: off, other: built-in test pattern index).',
     cmd: CMD.TESTMODE,
     dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
   })
@@ -214,7 +215,8 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
   }
   actions[ACTION_ID.HDRMODE_GET] = buildGetAction(host, {
     name: 'Get HDR Mode',
-    description: 'Query the current HDR mode and write to the `hdrmode` variable.',
+    description:
+      'Query the current HDR mode and write to the `hdrmode` variable (0: off, 1: auto, 2: HDR10 Rec.2020, 3: HDR10 DCI-P3, 4: HDR10 Rec.709, 5: HLG Rec.2020, 6: HLG DCI-P3, 7: HLG Rec.709).',
     cmd: CMD.HDRMODE,
     dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
   })
@@ -234,7 +236,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
   }
   actions[ACTION_ID.MUTE_GET] = buildGetAction(host, {
     name: 'Get Mute Status',
-    description: 'Query the mute state and write to the `mute_enable` variable.',
+    description: 'Query the mute state and write to the `mute_enable` variable (0: off, 1: muted).',
     cmd: CMD.MUTE,
     dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
   })
@@ -254,7 +256,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
   }
   actions[ACTION_ID.FADE_GET] = buildGetAction(host, {
     name: 'Get Fade In/Out Status',
-    description: 'Query the fade in/out state and write to the `fade_enable` variable.',
+    description: 'Query the fade in/out state and write to the `fade_enable` variable (0: off, 1: on).',
     cmd: CMD.FADE,
     dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
   })
@@ -333,7 +335,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
   actions[ACTION_ID.ZERODELAY_GET] = buildGetAction(host, {
     name: 'Get Zero Delay',
     description:
-      'Query the zero-delay state and mode. Writes the result to the `zerodelay` variable as a single object: `{ enable, mode }`.',
+      'Query the zero-delay state and mode. Writes the result to the `zerodelay` variable as a single object: `{ enable, mode }` — enable (0: off, 1: on); mode (1: 0-frame, 2: 1-frame).',
     cmd: CMD.ZERODELAY,
     dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
   })
@@ -352,7 +354,8 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
   }
   actions[ACTION_ID.UH5_ST_GET] = buildGetAction(host, {
     name: 'Get UH5 Status',
-    description: 'Query the UH5 status and write to the `uh5_status_enable` variable (A protocol only).',
+    description:
+      'Query the UH5 status and write to the `uh5_status_enable` variable (0: off, 1: on) (A protocol only).',
     cmd: CMD.UH5_ST,
     skipGid: true
   })

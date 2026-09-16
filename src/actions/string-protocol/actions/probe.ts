@@ -55,7 +55,7 @@ export function setupProbeActions(host: StringActionHost): CompanionActionDefini
   actions[ACTION_ID.SNDINFO_GET] = buildGetAction(host, {
     name: 'Get Sender Info',
     description:
-      'Query sender card information. Writes the full snapshot to the `sender_info` variable as a single object: `{ model, version, brightness, color_temp, temperature, blackout, freeze, test_pattern, ports }`.',
+      'Query sender card information. Writes the full snapshot to the `sender_info` variable as a single object: `{ model, version, brightness, color_temp, temperature, blackout, freeze, test_pattern, ports }` — blackout (0: off, 1: blackout); freeze (0: off, 1: freeze); test_pattern (0: off, other: built-in test pattern index).',
     cmd: CMD.SNDINFO,
     skipGid: true
   })

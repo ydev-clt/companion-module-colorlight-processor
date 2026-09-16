@@ -52,7 +52,8 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
   }
   actions[ACTION_ID.COLORSPACE_GET] = buildGetAction(host, {
     name: 'Get Output Color Space',
-    description: 'Query the current output color space and write to the `colorspace` variable.',
+    description:
+      'Query the current output color space and write to the `colorspace` variable (0: native, 1: sRGB, 2: Adobe RGB, 3: PAL, 4: NTSC, 5: Rec.601, 6: Rec.709, 7: Rec.2020, 8: DCI-P3).',
     cmd: CMD.COLORSPACE,
     dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
   })
@@ -72,7 +73,8 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
   }
   actions[ACTION_ID.PREC_MGR_GET] = buildGetAction(host, {
     name: 'Get Precise Color Manager',
-    description: 'Query the precise color manager state and write to the `precise_color_management_enable` variable.',
+    description:
+      'Query the precise color manager state and write to the `precise_color_management_enable` variable (0: off, 1: on).',
     cmd: CMD.PREC_MGR,
     dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
   })
@@ -248,7 +250,7 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
   actions[ACTION_ID.VIRTUAL_PIXEL_GET] = buildGetAction(host, {
     name: 'Get Virtual Pixel',
     description:
-      'Query the virtual pixel state. Writes the result to the `virtual_pixel` variable as a single object: `{ enable, rate, direction, row_offset, col_offset }`.',
+      'Query the virtual pixel state. Writes the result to the `virtual_pixel` variable as a single object: `{ enable, rate, direction, row_offset, col_offset }` — enable (0: off, 1: on); rate (1: 4x virtual, 2: 3x virtual, 3: 0.75 virtual); direction (0: left to right, 1: top to bottom); row_offset (0: off, 1: on); col_offset (0: off, 1: on).',
     cmd: CMD.VIRTUAL_PIXEL,
     dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
   })

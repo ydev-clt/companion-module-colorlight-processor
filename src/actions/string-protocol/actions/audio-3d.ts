@@ -44,7 +44,8 @@ export function setupAudio3dActions(host: StringActionHost): CompanionActionDefi
   }
   actions[ACTION_ID.EYE_SWITCH_GET] = buildGetAction(host, {
     name: 'Get Eye Switch',
-    description: 'Query the active eye (left/right) and write to the `3d_eye_priority` variable.',
+    description:
+      'Query the active eye (left/right) and write to the `3d_eye_priority` variable (0: left eye, 1: right eye).',
     cmd: CMD.EYE_SWITCH,
     dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
   })
@@ -77,7 +78,7 @@ export function setupAudio3dActions(host: StringActionHost): CompanionActionDefi
   }
   actions[ACTION_ID.MODE3D_GET] = buildGetAction(host, {
     name: 'Get 3D Mode',
-    description: 'Query the 3D enable state and write to the `3d_enable` variable.',
+    description: 'Query the 3D enable state and write to the `3d_enable` variable (0: off, 1: on).',
     cmd: CMD.MODE3D,
     dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
   })
@@ -111,7 +112,7 @@ export function setupAudio3dActions(host: StringActionHost): CompanionActionDefi
   }
   actions[ACTION_ID.DUAL_3D_GET] = buildGetAction(host, {
     name: 'Get Dual 3D Mode',
-    description: 'Query the dual-3D mode and write to the `dual_3d_mode` variable.',
+    description: 'Query the dual-3D mode and write to the `dual_3d_mode` variable (0: single 3D, 1: dual 3D).',
     cmd: CMD.DUAL_3D,
     dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
   })
@@ -144,7 +145,8 @@ export function setupAudio3dActions(host: StringActionHost): CompanionActionDefi
   }
   actions[ACTION_ID.STEREO_FMT_GET] = buildGetAction(host, {
     name: 'Get Stereo 3D Source Format',
-    description: 'Query the 3D source format and write to the `3d_signal_format` variable.',
+    description:
+      'Query the 3D source format and write to the `3d_signal_format` variable (0: side-by-side / top-and-bottom, 1: frame sequential).',
     cmd: CMD.STEREO_FMT,
     dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
   })

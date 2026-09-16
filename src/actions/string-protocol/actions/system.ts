@@ -63,7 +63,7 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
   }
   actions[ACTION_ID.OSD_GET] = buildGetAction(host, {
     name: 'Get OSD State',
-    description: 'Query the OSD state and write to the `osd_enable` variable.',
+    description: 'Query the OSD state and write to the `osd_enable` variable (0: off, 1: on).',
     cmd: CMD.OSD,
     dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
   })
@@ -99,7 +99,8 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
   }
   actions[ACTION_ID.FRAMERATE_GET] = buildGetAction(host, {
     name: 'Get Screen Group Frame Rate',
-    description: 'Query the frame rate mode and write to the `framerate_mode` variable.',
+    description:
+      'Query the frame rate mode and write to the `framerate_mode` variable (0: off, 1: auto, 2: fixed, 3: scene fusion, 4: 3D).',
     cmd: CMD.FRAMERATE,
     dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
   })
@@ -132,7 +133,7 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
   }
   actions[ACTION_ID.LOW_PWR_GET] = buildGetAction(host, {
     name: 'Get Low Power Mode',
-    description: 'Query the low-power enable state and write to the `low_pwr_enable` variable.',
+    description: 'Query the low-power enable state and write to the `low_pwr_enable` variable (0: off, 1: on).',
     cmd: CMD.LOW_PWR,
     skipGid: true
   })

@@ -175,7 +175,7 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
   }>(host, {
     name: 'Get Layer Border',
     description:
-      'Query the layer border state. Writes the full configuration to the `layer_border` variable as a single object: `{ layer, enable, opacity, width, r, g, b }`.',
+      'Query the layer border state. Writes the full configuration to the `layer_border` variable as a single object: `{ layer, enable, opacity, width, r, g, b }` — enable (0: off, 1: on).',
     cmd: CMD.LAYER_BORDER,
     extraFields: [
       {

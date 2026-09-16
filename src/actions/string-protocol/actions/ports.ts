@@ -48,7 +48,7 @@ export function setupPortActions(host: StringActionHost): CompanionActionDefinit
   }>(host, {
     name: 'Get Network Port Output',
     description:
-      'Query the specified port output state. Writes the result to the `port_output` variable as a single object: `{ port, enable }`.',
+      'Query the specified port output state. Writes the result to the `port_output` variable as a single object: `{ port, enable }` — enable (0: off, 1: on).',
     cmd: CMD.PORTOUT,
     extraFields: [
       {
@@ -93,7 +93,8 @@ export function setupPortActions(host: StringActionHost): CompanionActionDefinit
   }
   actions[ACTION_ID.ALLPORTS_GET] = buildGetAction(host, {
     name: 'Get All Network Ports Output',
-    description: 'Query the global output enable state and write to the `allports_enable` variable.',
+    description:
+      'Query the global output enable state and write to the `allports_enable` variable (0: off, 1: on).',
     cmd: CMD.ALLPORTS,
     skipGid: true
   })
@@ -181,7 +182,8 @@ export function setupPortActions(host: StringActionHost): CompanionActionDefinit
   }
   actions[ACTION_ID.C_DEPTH_GET] = buildGetAction(host, {
     name: 'Get Screen Group Color Depth',
-    description: 'Query the color depth of the screen group and write to the `screen_color_depth` variable.',
+    description:
+      'Query the color depth of the screen group and write to the `screen_color_depth` variable (8: 8-bit, 10: 10-bit, 12: 12-bit).',
     cmd: CMD.C_DEPTH,
     dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
   })

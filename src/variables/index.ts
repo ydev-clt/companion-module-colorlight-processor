@@ -89,23 +89,23 @@ const CMD_ACTION_IDS: Record<string, readonly ACTION_ID[]> = {
   // === Frame rate / system / OSD ===
   framerate: [ACTION_ID.FRAMERATE_SET, ACTION_ID.FRAMERATE_GET],
   osd: [ACTION_ID.OSD_SET, ACTION_ID.OSD_GET],
-  low_pwr: [ACTION_ID.LOW_PWR_SET, ACTION_ID.LOW_PWR_GET],
+  low_pwr: [ACTION_ID.LOW_PWR_SET, ACTION_ID.LOW_PWR_GET]
 
   // === Probe (query-only) ===
-  sndinfo: [ACTION_ID.SNDINFO_GET],
-  snd_eth: [ACTION_ID.SND_ETH_GET],
-  pr_layer: [ACTION_ID.PR_LAYER_GET],
-  pr_group: [ACTION_ID.PR_GROUP_GET],
-  pr_video: [ACTION_ID.PR_VIDEO_GET],
-  pr_vsync: [ACTION_ID.PR_VSYNC_GET],
-  port_area: [ACTION_ID.PORT_AREA_GET],
-  pr_video_count: [ACTION_ID.PR_VIDEO_COUNT_GET],
+  // sndinfo: [ACTION_ID.SNDINFO_GET],
+  // snd_eth: [ACTION_ID.SND_ETH_GET],
+  // pr_layer: [ACTION_ID.PR_LAYER_GET],
+  // pr_group: [ACTION_ID.PR_GROUP_GET],
+  // pr_video: [ACTION_ID.PR_VIDEO_GET],
+  // pr_vsync: [ACTION_ID.PR_VSYNC_GET],
+  // port_area: [ACTION_ID.PORT_AREA_GET],
+  // pr_video_count: [ACTION_ID.PR_VIDEO_COUNT_GET],
 
   // === Multi-function card ===
-  mfc_probe: [ACTION_ID.MFC_PROBE_GET],
-  rcv_probe: [ACTION_ID.RCV_PROBE_GET],
-  mod_probe: [ACTION_ID.MOD_PROBE_GET],
-  pr_rcv_state: [ACTION_ID.PR_RCV_STATE_GET]
+  // mfc_probe: [ACTION_ID.MFC_PROBE_GET],
+  // rcv_probe: [ACTION_ID.RCV_PROBE_GET],
+  // mod_probe: [ACTION_ID.MOD_PROBE_GET],
+  // pr_rcv_state: [ACTION_ID.PR_RCV_STATE_GET]
 }
 
 /**

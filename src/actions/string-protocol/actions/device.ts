@@ -207,7 +207,7 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
   actions[ACTION_ID.VSYNC_MUL_GET] = buildGetAction(host, {
     name: 'Get VSYNC Multiplier',
     description:
-      'Query the VSYNC multiplier. Writes the result to the `vsync_multiplier` variable as a single object: `{ enable, method, multiplier }`.',
+      'Query the VSYNC multiplier. Writes the result to the `vsync_multiplier` variable as a single object: `{ enable, method, multiplier }` — enable (0: off, 1: on); method (0: auto, 1: specify multiplier); multiplier (0: off, 1: 2x, 2: 3x, 3: 4x, 4: 5x, 5: 6x, 6: 7x, 7: 8x, 8: 9x, 9: 10x).',
     cmd: CMD.VSYNC_MUL,
     dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
   })

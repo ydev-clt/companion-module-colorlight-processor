@@ -433,68 +433,114 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
   }
 ]
 
-/** Per-cmd display-name overrides (the user-visible noun for the cmd). */
-const CMD_DISPLAY: Record<string, string> = {
-  bright: 'Brightness',
-  colortemp: 'Color Temperature',
-  freeze: 'Freeze',
-  blackout: 'Blackout',
-  testmode: 'Test Pattern',
-  hdrmode: 'HDR Mode',
-  mute: 'Mute',
-  fade: 'Fade',
-  fadetime: 'Fade Time',
-  zerodelay: 'Zero Delay',
-  uh5_st: 'UH5 Status',
-  pic_adj: 'Picture Adjust',
-  grp_hue: 'Hue',
-  grp_saturation: 'Saturation',
-  grp_contrast: 'Contrast',
-  grp_brtcomp: 'Brightness Compensation',
-  sn: 'Serial Number',
-  eye_switch: 'Eye Switch',
-  mode3d: '3D Mode',
-  dual_3d: 'Dual 3D',
-  stereo_fmt: 'Stereo Format',
-  portout: 'Network Port Output',
-  allports: 'All Network Ports',
-  brt_port: 'Network Port Brightness',
-  c_depth: 'Screen Group Output Color Depth',
-  layer: 'Layer Position/Size',
-  layer_border: 'Layer Border',
-  bg_box: 'Background Box',
-  colorspace: 'Color Space',
-  prec_mgr: 'Precise Color Manager',
-  ct_r: 'Color Temp Red Gain',
-  ct_g: 'Color Temp Green Gain',
-  ct_b: 'Color Temp Blue Gain',
-  grp_gain: 'Group Intensity Gain',
-  virtual_pixel: 'Virtual Pixel',
-  vsync_mul: 'VSYNC Multiplier',
-  framerate: 'Frame Rate',
-  osd: 'OSD',
-  low_pwr: 'Low Power',
-  sndinfo: 'Sender Info',
-  snd_eth: 'Sender Ethernet Ports',
-  pr_layer: 'Screen Layer Count',
-  pr_group: 'Screen Group Count',
-  pr_video: 'Video Input Signals',
-  pr_vsync: 'VSYNC Info',
-  port_area: 'Port Control Area',
-  pr_video_count: 'Video Input Count',
-  mfc_probe: 'Multi-Function Card',
-  rcv_probe: 'Receiver Card',
-  mod_probe: 'Module',
-  pr_rcv_state: 'Recv Module State'
+/**
+ * Per-cmd display override. `name` is the user-visible noun for the cmd;
+ * `description` describes what each value of the variable means
+ * (e.g. `enable (0: off, 1: on)`). Pure numeric-range fields are intentionally
+ * omitted per project convention.
+ */
+export interface CmdDisplay {
+  /** The user-visible label shown in the Companion UI. */
+  name: string
+  /** Field-value semantics; concatenated after the variable name in the UI. */
+  description?: string
+}
+
+const CMD_DISPLAY: Record<string, CmdDisplay> = {
+  bright: { name: 'Brightness' },
+  colortemp: { name: 'Color Temperature' },
+  freeze: { name: 'Freeze', description: 'freeze_enable (0: off, 1: freeze)' },
+  blackout: { name: 'Blackout', description: 'blackout_enable (0: off, 1: blackout)' },
+  testmode: {
+    name: 'Test Pattern',
+    description: 'testmode_pattern (0: off, other: built-in test pattern index)'
+  },
+  hdrmode: {
+    name: 'HDR Mode',
+    description:
+      'hdrmode (0: off, 1: auto, 2: HDR10 Rec.2020, 3: HDR10 DCI-P3, 4: HDR10 Rec.709, 5: HLG Rec.2020, 6: HLG DCI-P3, 7: HLG Rec.709)'
+  },
+  mute: { name: 'Mute', description: 'mute_enable (0: off, 1: muted)' },
+  fade: { name: 'Fade', description: 'fade_enable (0: off, 1: on)' },
+  fadetime: { name: 'Fade Time' },
+  zerodelay: { name: 'Zero Delay', description: 'zerodelay.enable (0: off, 1: on), zerodelay.mode (1: 0-frame, 2: 1-frame)' },
+  uh5_st: { name: 'UH5 Status', description: 'uh5_status_enable (0: off, 1: on)' },
+  pic_adj: { name: 'Picture Adjust' },
+  grp_hue: { name: 'Hue' },
+  grp_saturation: { name: 'Saturation' },
+  grp_contrast: { name: 'Contrast' },
+  grp_brtcomp: { name: 'Brightness Compensation' },
+  sn: { name: 'Serial Number' },
+  eye_switch: { name: 'Eye Switch', description: '3d_eye_priority (0: left eye, 1: right eye)' },
+  mode3d: { name: '3D Mode', description: '3d_enable (0: off, 1: on)' },
+  dual_3d: { name: 'Dual 3D', description: 'dual_3d_mode (0: single 3D, 1: dual 3D)' },
+  stereo_fmt: {
+    name: 'Stereo Format',
+    description: '3d_signal_format (0: side-by-side / top-and-bottom, 1: frame sequential)'
+  },
+  portout: { name: 'Network Port Output', description: 'port_output.enable (0: off, 1: on)' },
+  allports: { name: 'All Network Ports', description: 'allports_enable (0: off, 1: on)' },
+  brt_port: { name: 'Network Port Brightness' },
+  c_depth: { name: 'Screen Group Output Color Depth', description: 'screen_color_depth (8: 8-bit, 10: 10-bit, 12: 12-bit)' },
+  layer: { name: 'Layer Position/Size' },
+  layer_border: {
+    name: 'Layer Border',
+    description: 'layer_border.enable (0: off, 1: on); layer_border.layer (1-based index)'
+  },
+  bg_box: { name: 'Background Box' },
+  colorspace: {
+    name: 'Color Space',
+    description:
+      'colorspace (0: native, 1: sRGB, 2: Adobe RGB, 3: PAL, 4: NTSC, 5: Rec.601, 6: Rec.709, 7: Rec.2020, 8: DCI-P3)'
+  },
+  prec_mgr: { name: 'Precise Color Manager', description: 'precise_color_management_enable (0: off, 1: on)' },
+  ct_r: { name: 'Color Temp Red Gain' },
+  ct_g: { name: 'Color Temp Green Gain' },
+  ct_b: { name: 'Color Temp Blue Gain' },
+  grp_gain: { name: 'Group Intensity Gain' },
+  virtual_pixel: {
+    name: 'Virtual Pixel',
+    description:
+      'virtual_pixel.enable (0: off, 1: on), virtual_pixel.rate (1: 4x virtual, 2: 3x virtual, 3: 0.75 virtual), virtual_pixel.direction (0: left to right, 1: top to bottom), virtual_pixel.row_offset (0: off, 1: on), virtual_pixel.col_offset (0: off, 1: on)'
+  },
+  vsync_mul: {
+    name: 'VSYNC Multiplier',
+    description:
+      'vsync_multiplier.enable (0: off, 1: on), vsync_multiplier.method (0: auto, 1: specify multiplier), vsync_multiplier.multiplier (0: off, 1: 2x, ..., 9: 10x)'
+  },
+  framerate: {
+    name: 'Frame Rate',
+    description: 'framerate_mode (0: off, 1: auto, 2: fixed, 3: scene fusion, 4: 3D)'
+  },
+  osd: { name: 'OSD', description: 'osd_enable (0: off, 1: on)' },
+  low_pwr: { name: 'Low Power', description: 'low_pwr_enable (0: off, 1: on)' },
+  sndinfo: {
+    name: 'Sender Info',
+    description:
+      'sender_info.blackout (0: off, 1: blackout), sender_info.freeze (0: off, 1: freeze), sender_info.test_pattern (0: off, other: built-in test pattern index)'
+  },
+  snd_eth: { name: 'Sender Ethernet Ports' },
+  pr_layer: { name: 'Screen Layer Count' },
+  pr_group: { name: 'Screen Group Count' },
+  pr_video: { name: 'Video Input Signals' },
+  pr_vsync: { name: 'VSYNC Info' },
+  port_area: { name: 'Port Control Area' },
+  pr_video_count: { name: 'Video Input Count' },
+  mfc_probe: { name: 'Multi-Function Card' },
+  rcv_probe: { name: 'Receiver Card' },
+  mod_probe: { name: 'Module' },
+  pr_rcv_state: { name: 'Recv Module State' }
 }
 
 /**
  * Compute the user-facing display name for a registry entry. Multi-field
  * entries (`key` defined) use the per-entry suffix; single-field entries
- * inherit the cmd-level display name.
+ * inherit the cmd-level display name. The optional `description` is appended
+ * in parentheses so the UI shows both the label and what each value means.
  */
-function buildDisplayName(cmdDisplay: string, suffix?: string): string {
-  return suffix ? `${cmdDisplay} (${suffix})` : cmdDisplay
+function buildDisplayName(cmdDisplay: CmdDisplay, suffix?: string): string {
+  const label = cmdDisplay.name + (cmdDisplay.description ? ` (${cmdDisplay.description})` : '')
+  return suffix ? `${label} (${suffix})` : label
 }
 
 /** Build a flat registry: list of specs grouped by cmd. */
@@ -506,7 +552,8 @@ export interface CmdVariableGroup {
 function buildGroups(): CmdVariableGroup[] {
   const out: CmdVariableGroup[] = []
   for (const g of REGISTRY_GROUPS) {
-    const displayName = CMD_DISPLAY[g.cmd] ?? g.cmd
+    const cmdDisplay: CmdDisplay = CMD_DISPLAY[g.cmd] ?? { name: g.cmd }
+    const displayName = cmdDisplay.name + (cmdDisplay.description ? ` (${cmdDisplay.description})` : '')
     const specs: VariableSpec[] = g.entries.map((e): VariableSpec => {
       if ('composite' in e) {
         return {
@@ -520,7 +567,7 @@ function buildGroups(): CmdVariableGroup[] {
         cmd: g.cmd,
         field: e.field,
         variableId: e.variableId,
-        displayName: buildDisplayName(displayName, e.suffix),
+        displayName: buildDisplayName(cmdDisplay, e.suffix),
         key: e.key
       }
     })
