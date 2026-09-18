@@ -28,7 +28,7 @@ export enum VARIABLE_ID {
   MUTE_ENABLE = 'mute_enable',
   FADE_ENABLE = 'fade_enable',
   FADETIME_MS = 'fadetime_ms',
-  UH5_STATUS_ENABLE = 'uh5_status_enable',
+  UH5_STATUS_ENABLE = 'uh5_enable',
 
   // === Display / picture (composite) ===
   // `zerodelay: { enable, mode }`

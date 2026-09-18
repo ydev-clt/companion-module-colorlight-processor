@@ -107,19 +107,22 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.FREEZE, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.FREEZE_SCREEN_GET] = buildGetAction<{ deviceId: number; isSelectAll: boolean; gid?: number }>(host, {
-    name: 'Get Freeze Screen Status',
-    description:
-      'Query the freeze status and update the `freeze_enable` variable (0: off, 1: freeze). Also updates the freeze feedback via state.',
-    cmd: CMD.FREEZE,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined),
-    afterResponse: (resp) => {
-      const data = resp.data as { en?: number } | undefined
-      if (data && typeof data.en === 'number') {
-        host.ctx.state.isFreezeScreen = data.en === 1
+  actions[ACTION_ID.FREEZE_SCREEN_GET] = buildGetAction<{ deviceId: number; isSelectAll: boolean; gid?: number }>(
+    host,
+    {
+      name: 'Get Freeze Screen Status',
+      description:
+        'Query the freeze status and update the `freeze_enable` variable (0: off, 1: freeze). Also updates the freeze feedback via state.',
+      cmd: CMD.FREEZE,
+      dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined),
+      afterResponse: (resp) => {
+        const data = resp.data as { en?: number } | undefined
+        if (data && typeof data.en === 'number') {
+          host.ctx.state.isFreezeScreen = data.en === 1
+        }
       }
     }
-  })
+  )
 
   // ---- blackout ----
   actions[ACTION_ID.BLACKOUT_SET] = {
@@ -354,8 +357,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
   }
   actions[ACTION_ID.UH5_ST_GET] = buildGetAction(host, {
     name: 'Get UH5 Status',
-    description:
-      'Query the UH5 status and write to the `uh5_status_enable` variable (0: off, 1: on) (A protocol only).',
+    description: 'Query the UH5 status and write to the `uh5_enable` variable (0: off, 1: on) (A protocol only).',
     cmd: CMD.UH5_ST,
     skipGid: true
   })

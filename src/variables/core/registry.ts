@@ -463,8 +463,11 @@ const CMD_DISPLAY: Record<string, CmdDisplay> = {
   mute: { name: 'Mute', description: 'mute_enable (0: off, 1: muted)' },
   fade: { name: 'Fade', description: 'fade_enable (0: off, 1: on)' },
   fadetime: { name: 'Fade Time' },
-  zerodelay: { name: 'Zero Delay', description: 'zerodelay.enable (0: off, 1: on), zerodelay.mode (1: 0-frame, 2: 1-frame)' },
-  uh5_st: { name: 'UH5 Status', description: 'uh5_status_enable (0: off, 1: on)' },
+  zerodelay: {
+    name: 'Zero Delay',
+    description: 'zerodelay.enable (0: off, 1: on), zerodelay.mode (1: 0-frame, 2: 1-frame)'
+  },
+  uh5_st: { name: 'UH5 Status', description: 'uh5_enable (0: off, 1: on)' },
   pic_adj: { name: 'Picture Adjust' },
   grp_hue: { name: 'Hue' },
   grp_saturation: { name: 'Saturation' },
@@ -481,7 +484,10 @@ const CMD_DISPLAY: Record<string, CmdDisplay> = {
   portout: { name: 'Network Port Output', description: 'port_output.enable (0: off, 1: on)' },
   allports: { name: 'All Network Ports', description: 'allports_enable (0: off, 1: on)' },
   brt_port: { name: 'Network Port Brightness' },
-  c_depth: { name: 'Screen Group Output Color Depth', description: 'screen_color_depth (8: 8-bit, 10: 10-bit, 12: 12-bit)' },
+  c_depth: {
+    name: 'Screen Group Output Color Depth',
+    description: 'screen_color_depth (8: 8-bit, 10: 10-bit, 12: 12-bit)'
+  },
   layer: { name: 'Layer Position/Size' },
   layer_border: {
     name: 'Layer Border',
