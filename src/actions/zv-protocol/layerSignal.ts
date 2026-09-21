@@ -1,5 +1,5 @@
 import type { CompanionActionDefinition } from '@companion-module/base'
-import type { ActionContext } from '../../types'
+import type { CltProcessorType } from '../../types'
 import { logger } from '../../log'
 import { DeviceProtocolEnum } from '../../types'
 
@@ -998,7 +998,7 @@ const Z_PROTOCOL_DEVICE_SIGNAL_MAP: Record<string, Record<string, number>> = {
   }
 }
 
-export function setupLayerSignalAction(context: ActionContext) {
+export function setupLayerSignalAction(context: CltProcessorType) {
   // preset action for the V protocol
   const vProtocolAction: CompanionActionDefinition = {
     name: `Layer's Signal`,

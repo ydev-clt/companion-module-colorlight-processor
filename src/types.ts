@@ -25,15 +25,7 @@ export interface ProcessorBase {
   send(data: Buffer): Promise<boolean>
 }
 
-/**
- * action context
- */
-export type ActionContext = ProcessorBase
-
-/**
- * feedback context
- */
-export type FeedbackContext = ProcessorBase
+export type CltProcessorType = ProcessorBase & InstanceBase<DeviceConfig>
 
 /**
  * state context

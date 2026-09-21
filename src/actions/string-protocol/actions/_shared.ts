@@ -1,5 +1,5 @@
 import type { SomeCompanionActionInputField } from '@companion-module/base'
-import type { ActionContext } from '../../../types'
+import type { CltProcessorType } from '../../../types'
 import type { SPTransmitter } from '../core/transmitter'
 import type { StringResponse } from '../core/types'
 import { GID_DEFAULT, SID_BROADCAST } from '../core/constants'
@@ -16,7 +16,7 @@ import { logger } from '../../../log'
  *    imports for writeback.
  */
 export interface StringActionHost {
-  ctx: ActionContext
+  ctx: CltProcessorType
   conn: SPTransmitter
   /**
    * Write variable values back. Allows object values for composite
@@ -107,8 +107,6 @@ export function deviceAndBroadcastFields(
  *     cmd's variable specs and writes them back via the host's
  *     `setVariableValues`.
  *  4. Runs `afterResponse(resp)` if provided — used by freeze/blackout
- *     to also update state.isFreezeScreen / state.isBlackScreen so the
- *     existing feedbacks keep working.
  *
  * Common addressing fields (`deviceAndBroadcastFields` + optional `gid`)
  * are prepended automatically; callers add only the cmd-specific params.

@@ -1,7 +1,7 @@
 import type { CompanionActionDefinitions } from '@companion-module/base'
 /** Make the SPTransmitter type also available for consumers */
 import { SPTransmitter } from './core/transmitter'
-import type { ActionContext } from '../../types'
+import type { CltProcessorType } from '../../types'
 import { logger } from '../../log'
 import type { StringActionHost } from './actions/_shared'
 import { filterActionsForDevice } from './core/action-support'
@@ -33,7 +33,7 @@ export { SPTransmitter } from './core/transmitter'
  *  combine ctx and conn into one host.
  */
 export function setupStringActions(
-  ctx: ActionContext,
+  ctx: CltProcessorType,
   conn: SPTransmitter,
   setVariableValues: (values: Record<string, number | string | object>) => void
 ): CompanionActionDefinitions {

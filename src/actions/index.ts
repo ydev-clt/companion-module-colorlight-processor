@@ -1,5 +1,5 @@
 import type { CompanionActionDefinitions } from '@companion-module/base'
-import type { ActionContext } from '../types'
+import type { CltProcessorType } from '../types'
 import { logger } from '../log'
 import { setupStringActions, type SPTransmitter } from './string-protocol'
 
@@ -16,7 +16,7 @@ import { setupStringActions, type SPTransmitter } from './string-protocol'
  * latest device state is reflected in Companion variables.
  */
 export function setupActions(
-  context: ActionContext,
+  context: CltProcessorType,
   spTransmitter: SPTransmitter,
   setVariableValues: (values: Record<string, number | string | object>) => void
 ): CompanionActionDefinitions {

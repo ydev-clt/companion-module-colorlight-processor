@@ -1,5 +1,5 @@
 import type { CompanionVariableDefinition } from '@companion-module/base'
-import type { ProcessorBase } from '../types'
+import type { CltProcessorType } from '../types'
 import { logger } from '../log'
 import { VARIABLE_GROUPS } from './core/registry'
 import { ACTION_ID } from '../actions/string-protocol/core/ids'
@@ -162,7 +162,7 @@ function buildDefinitionsForDevice(device: DeviceIdentity): CompanionVariableDef
  * Re-call this whenever the device identity changes (probe confirms a new
  * model, or the user re-configures the host) to refresh the definition set.
  */
-export function setupVariables(context: ProcessorBase): {
+export function setupVariables(context: CltProcessorType): {
   setVariableValues: (values: Record<string, number | string | boolean | object>) => void
   refresh: () => void
 } {
