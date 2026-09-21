@@ -1,4 +1,5 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
+import { logger } from '../../../log'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
 import { buildGetAction, deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
@@ -116,10 +117,9 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       cmd: CMD.FREEZE,
       dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined),
       afterResponse: (resp) => {
+        // host.ctx.checkFeedbacks(FEEDBACK_ID.FREEZE_SCREEN)
         const data = resp.data as { en?: number } | undefined
-        if (data && typeof data.en === 'number') {
-          host.ctx.state.isFreezeScreen = data.en === 1
-        }
+        logger.info(`Freeze screen state changed: ${data?.en}`)
       }
     }
   )
@@ -144,10 +144,9 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
     cmd: CMD.BLACKOUT,
     dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined),
     afterResponse: (resp) => {
+      // host.ctx.checkFeedbacks(FEEDBACK_ID.BLACKOUT)
       const data = resp.data as { en?: number } | undefined
-      if (data && typeof data.en === 'number') {
-        host.ctx.state.isBlackScreen = data.en === 1
-      }
+      logger.info(`Black screen state changed: ${data?.en}`)
     }
   })
 

@@ -1,11 +1,12 @@
 import type { CompanionAdvancedFeedbackDefinition } from '@companion-module/base'
 import { combineRgb } from '@companion-module/base'
-import type { FeedbackContext } from '../types'
+import type { CltProcessorType } from '../types'
+import { VARIABLE_ID } from '../variables/core/ids'
 
 /**
  * String-Protocol blackout feedback.
  */
-export function setupBlackoutFeedback(context: FeedbackContext): CompanionAdvancedFeedbackDefinition {
+export function setupBlackoutFeedback(context: CltProcessorType): CompanionAdvancedFeedbackDefinition {
   const ColorWhite = combineRgb(255, 255, 255)
   const ColorBlack = combineRgb(0, 0, 0)
   const ColorBlue = combineRgb(0, 120, 200)
@@ -20,8 +21,10 @@ export function setupBlackoutFeedback(context: FeedbackContext): CompanionAdvanc
       { type: 'colorpicker', label: 'Foreground (Normal)', id: 'fg_', default: ColorWhite },
       { type: 'colorpicker', label: 'Background (Normal)', id: 'bg_', default: ColorBlue }
     ],
-    callback: (feedback) => {
-      if (context.state.isBlackScreen) {
+    callback: async (feedback, ctx) => {
+      // const blackoutStatus = context.getVariableValue(VARIABLE_ID.BLACKOUT_ENABLE)
+      const blackout = await ctx.parseVariablesInString(`$(colorlight:${VARIABLE_ID.BLACKOUT_ENABLE})`)
+      if (blackout === '1') {
         return {
           bgcolor: feedback.options.bg as number,
           color: feedback.options.fg as number

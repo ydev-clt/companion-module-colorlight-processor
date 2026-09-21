@@ -1,6 +1,4 @@
 import type { StateContext } from '../types'
-import { FEEDBACK_ID as STRING_FEEDBACK_ID } from '../actions/string-protocol/core/ids'
-import { logger } from '../log'
 
 /**
  * state cache
@@ -11,41 +9,12 @@ import { logger } from '../log'
  */
 class StateCache {
   private context: StateContext
-  public blackScreen: boolean
-  public freezeScreen: boolean
   /** Probe-resolved device model byte; null = not probed / unidentified (see device-models.ts) */
   public modelByte: number | null
 
   constructor(context: StateContext) {
     this.context = context
-
-    this.blackScreen = false
-    this.freezeScreen = false
     this.modelByte = null
-  }
-
-  get isBlackScreen(): boolean {
-    return this.blackScreen
-  }
-
-  set isBlackScreen(value: boolean) {
-    this.blackScreen = value
-
-    logger.info(`Black screen state changed: ${value}`)
-
-    this.context.triggerFeedbacks(STRING_FEEDBACK_ID.BLACKOUT)
-  }
-
-  get isFreezeScreen(): boolean {
-    return this.freezeScreen
-  }
-
-  set isFreezeScreen(value: boolean) {
-    this.freezeScreen = value
-
-    logger.info(`Freeze screen state changed: ${value}`)
-
-    this.context.triggerFeedbacks(STRING_FEEDBACK_ID.FREEZE_SCREEN)
   }
 }
 
