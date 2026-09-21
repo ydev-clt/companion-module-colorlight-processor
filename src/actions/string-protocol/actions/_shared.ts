@@ -8,7 +8,7 @@ import { logger } from '../../../log'
 
 /**
  * Minimal context shared across Action modules:
- *  - ctx: original ActionContext (holds config/state/send())
+ *  - ctx: original CltProcessorType (holds config/state/send())
  *  - conn: SPTransmitter (handles the protocol layer)
  *  - setVariableValues: writeback hook (registered by CltProcessor) that
  *    dispatches `setVariableValues` on the InstanceBase. Provided as a

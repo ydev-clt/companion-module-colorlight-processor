@@ -1,5 +1,5 @@
 import type { CompanionActionDefinition } from '@companion-module/base'
-import type { ActionContext } from '../../types'
+import type { CltProcessorType } from '../../types'
 import { logger } from '../../log'
 import { DeviceProtocolEnum } from '../../types'
 
@@ -78,7 +78,7 @@ const TEST_MODES_CHOICES = [
 /**
  * test mode action
  */
-export function setupTestModeAction(context: ActionContext) {
+export function setupTestModeAction(context: CltProcessorType) {
   const action: CompanionActionDefinition = {
     name: 'Switch test mode',
     options: [

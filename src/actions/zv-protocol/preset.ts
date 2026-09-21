@@ -1,5 +1,5 @@
 import type { CompanionActionDefinition } from '@companion-module/base'
-import type { ActionContext } from '../../types'
+import type { CltProcessorType } from '../../types'
 import { logger } from '../../log'
 import { DeviceProtocolEnum } from '../../types'
 
@@ -12,7 +12,7 @@ type OptionValues = {
 /**
  * switch preset action
  */
-export function setupSwitchPresetAction(context: ActionContext) {
+export function setupSwitchPresetAction(context: CltProcessorType) {
   const action: CompanionActionDefinition = {
     name: 'Switch preset',
     options: [

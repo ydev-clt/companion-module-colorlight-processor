@@ -1,4 +1,4 @@
-import type { StateContext } from '../types'
+// import type { StateContext } from '../types'
 
 /**
  * state cache
@@ -8,12 +8,10 @@ import type { StateContext } from '../types'
  * unregistered from Companion and the directory has been removed.
  */
 class StateCache {
-  private context: StateContext
   /** Probe-resolved device model byte; null = not probed / unidentified (see device-models.ts) */
   public modelByte: number | null
 
-  constructor(context: StateContext) {
-    this.context = context
+  constructor() {
     this.modelByte = null
   }
 }

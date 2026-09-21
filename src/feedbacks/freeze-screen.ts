@@ -1,12 +1,11 @@
 import type { CompanionAdvancedFeedbackDefinition } from '@companion-module/base'
 import { combineRgb } from '@companion-module/base'
-import type { CltProcessorType } from '../types'
 import { VARIABLE_ID } from '../variables/core/ids'
 
 /**
  * Freeze screen feedback.
  */
-export function setupFreezeScreenFeedback(context: CltProcessorType): CompanionAdvancedFeedbackDefinition {
+export function setupFreezeScreenFeedback(): CompanionAdvancedFeedbackDefinition {
   const ColorWhite = combineRgb(255, 255, 255)
   const ColorRed = combineRgb(200, 0, 0)
   const ColorGreen = combineRgb(0, 200, 0)

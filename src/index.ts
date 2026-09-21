@@ -45,10 +45,7 @@ class CltProcessor extends InstanceBase<DeviceConfig> implements ProcessorBase {
 
     this.connection = new Connection(this)
 
-    const stateContext = {
-      triggerFeedbacks: this.checkFeedbacks.bind(this)
-    }
-    this.state = new StateCache(stateContext)
+    this.state = new StateCache()
 
     // string-protocol layer
     this.spTransmitter = new SPTransmitter({})
@@ -98,7 +95,7 @@ class CltProcessor extends InstanceBase<DeviceConfig> implements ProcessorBase {
   private initFeedbacks(): void {
     logger.info('Init feedbacks.')
     // After refactoring: feedbacks unified to String-Protocol
-    this.setFeedbackDefinitions(setupFeedbacks(this))
+    this.setFeedbackDefinitions(setupFeedbacks())
   }
 
   /**

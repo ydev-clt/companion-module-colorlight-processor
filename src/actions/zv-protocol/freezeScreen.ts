@@ -1,5 +1,5 @@
 import type { CompanionActionDefinition } from '@companion-module/base'
-import type { ActionContext } from '../../types'
+import type { CltProcessorType } from '../../types'
 import { logger } from '../../log'
 import { DeviceProtocolEnum } from '../../types'
 
@@ -12,7 +12,7 @@ type OptionValues = {
 /**
  * freeze screen action
  */
-export function setupFreezeScreenAction(context: ActionContext) {
+export function setupFreezeScreenAction(context: CltProcessorType) {
   const action: CompanionActionDefinition = {
     name: 'Open/Close freeze screen',
     options: [

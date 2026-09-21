@@ -1,12 +1,11 @@
 import type { CompanionAdvancedFeedbackDefinition } from '@companion-module/base'
 import { combineRgb } from '@companion-module/base'
-import type { CltProcessorType } from '../types'
 import { VARIABLE_ID } from '../variables/core/ids'
 
 /**
  * String-Protocol blackout feedback.
  */
-export function setupBlackoutFeedback(context: CltProcessorType): CompanionAdvancedFeedbackDefinition {
+export function setupBlackoutFeedback(): CompanionAdvancedFeedbackDefinition {
   const ColorWhite = combineRgb(255, 255, 255)
   const ColorBlack = combineRgb(0, 0, 0)
   const ColorBlue = combineRgb(0, 120, 200)

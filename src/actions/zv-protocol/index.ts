@@ -1,5 +1,5 @@
 import type { CompanionActionDefinitions } from '@companion-module/base'
-import type { ActionContext } from '../../types'
+import type { CltProcessorType } from '../../types'
 import { logger } from '../../log'
 import { setupBlackScreenAction } from './blackScreen'
 import { setupFreezeScreenAction } from './freezeScreen'
@@ -25,7 +25,7 @@ export enum ACTION_ID {
 /**
  * init actions
  */
-export function setupZVActions(context: ActionContext): CompanionActionDefinitions {
+export function setupZVActions(context: CltProcessorType): CompanionActionDefinitions {
   // setup actions
   const actions: CompanionActionDefinitions = {
     [ACTION_ID.BLACK_SCREEN]: setupBlackScreenAction(context),

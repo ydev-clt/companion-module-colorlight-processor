@@ -1,5 +1,5 @@
 import type { CompanionActionDefinition } from '@companion-module/base'
-import type { ActionContext } from '../../types'
+import type { CltProcessorType } from '../../types'
 import { logger } from '../../log'
 
 type OptionValues = {
@@ -9,7 +9,7 @@ type OptionValues = {
 /**
  * Custom command action
  */
-export function setCustomCommandAction(context: ActionContext) {
+export function setCustomCommandAction(context: CltProcessorType) {
   const action: CompanionActionDefinition = {
     name: 'Custom command',
     options: [

@@ -1,6 +1,6 @@
 import type { CompanionActionDefinition } from '@companion-module/base'
 import { DeviceProtocolEnum } from '../../types'
-import type { ActionContext } from '../../types'
+import type { CltProcessorType } from '../../types'
 import { logger } from '../../log'
 
 type OptionValues = {
@@ -12,7 +12,7 @@ type OptionValues = {
 /**
  * black screen action
  */
-export function setupBlackScreenAction(context: ActionContext) {
+export function setupBlackScreenAction(context: CltProcessorType) {
   const action: CompanionActionDefinition = {
     name: 'Open/Close black screen',
     options: [

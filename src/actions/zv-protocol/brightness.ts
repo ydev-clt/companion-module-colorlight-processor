@@ -1,5 +1,5 @@
 import type { CompanionActionDefinition } from '@companion-module/base'
-import type { ActionContext } from '../../types'
+import type { CltProcessorType } from '../../types'
 import { logger } from '../../log'
 import { DeviceProtocolEnum } from '../../types'
 
@@ -12,7 +12,7 @@ type OptionValues = {
 /**
  * Set brightness action
  */
-export function setupSetBrightnessAction(context: ActionContext) {
+export function setupSetBrightnessAction(context: CltProcessorType) {
   const action: CompanionActionDefinition = {
     name: 'Adjust brightness',
     options: [
