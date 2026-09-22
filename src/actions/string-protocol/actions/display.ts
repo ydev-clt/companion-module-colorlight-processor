@@ -2,7 +2,7 @@ import type { CompanionActionDefinition, CompanionActionDefinitions } from '@com
 import { logger } from '../../../log'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { buildGetAction, deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
+import { buildGetAction, deviceAndBroadcastFields, gidField, openCloseField, openCloseToggleField, sidFromOptions } from './_shared'
 import type { StringActionHost } from './_shared'
 import { DeviceProtocolEnum } from '../../../types'
 
@@ -23,6 +23,35 @@ import { DeviceProtocolEnum } from '../../../types'
  * (read & update variables). The split keeps set latency predictable
  * and lets users poll/refresh independently.
  */
+
+async function sendOpenCloseOrToggle(
+  conn: StringActionHost['conn'],
+  cmd: string,
+  featureName: 'Freeze' | 'Blackout',
+  options: { deviceId: number; isSelectAll: boolean; openStatus: number; gid?: number }
+): Promise<void> {
+  const sid = sidFromOptions(options.isSelectAll, options.deviceId)
+  const data: Record<string, unknown> = {}
+  if (typeof options.gid === 'number') data.gid = options.gid
+
+  if (options.openStatus !== 2) {
+    data.en = options.openStatus
+    await conn.sendOnly(cmd, 'set', sid, data)
+    return
+  }
+
+  const requestData = typeof options.gid === 'number' ? { gid: options.gid } : undefined
+  const resp = await conn.sendAndAwait<unknown, { en?: unknown }>(cmd, 'get', sid, requestData)
+  const rawEn = resp?.data?.en
+  const current = Number(rawEn)
+  if (!resp || resp.code !== 0 || rawEn === undefined || rawEn === null || (current !== 0 && current !== 1)) {
+    logger.warn(`${featureName} toggle skipped: GET ${cmd} did not return a valid en value.`)
+    return
+  }
+
+  data.en = current === 1 ? 0 : 1
+  await conn.sendOnly(cmd, 'set', sid, data)
+}
 
 export function setupDisplayActions(host: StringActionHost): CompanionActionDefinitions {
   const { conn } = host
@@ -198,14 +227,11 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
   // ---- freeze ----
   actions[ACTION_ID.FREEZE_SCREEN_SET] = {
     name: 'Set Freeze Screen',
-    description: 'Freeze the output (en=1) or unfreeze (en=0).',
-    options: [...deviceAndBroadcastFields(), openCloseField(1), gidField()],
+    description: 'Freeze the output (en=1), unfreeze (en=0), or toggle the current state.',
+    options: [...deviceAndBroadcastFields(), openCloseToggleField(1), gidField()],
     callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: 0 | 1; gid?: number }
-      const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { en: o.openStatus }
-      if (typeof o.gid === 'number') data.gid = o.gid
-      await conn.sendOnly(CMD.FREEZE, 'set', sid, data)
+      const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: number; gid?: number }
+      await sendOpenCloseOrToggle(conn, CMD.FREEZE, 'Freeze', o)
     }
   }
   actions[ACTION_ID.FREEZE_SCREEN_GET] = buildGetAction<{ deviceId: number; isSelectAll: boolean; gid?: number }>(
@@ -227,14 +253,11 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
   // ---- blackout ----
   actions[ACTION_ID.BLACKOUT_SET] = {
     name: 'Set Black Screen',
-    description: 'Blackout (en=1) or restore (en=0).',
-    options: [...deviceAndBroadcastFields(), openCloseField(1), gidField()],
+    description: 'Blackout (en=1), restore (en=0), or toggle the current state.',
+    options: [...deviceAndBroadcastFields(), openCloseToggleField(1), gidField()],
     callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: 0 | 1; gid?: number }
-      const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { en: o.openStatus }
-      if (typeof o.gid === 'number') data.gid = o.gid
-      await conn.sendOnly(CMD.BLACKOUT, 'set', sid, data)
+      const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: number; gid?: number }
+      await sendOpenCloseOrToggle(conn, CMD.BLACKOUT, 'Blackout', o)
     }
   }
   actions[ACTION_ID.BLACKOUT_GET] = buildGetAction<{ deviceId: number; isSelectAll: boolean; gid?: number }>(host, {
