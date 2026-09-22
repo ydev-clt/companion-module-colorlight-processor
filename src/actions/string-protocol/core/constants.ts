@@ -138,8 +138,6 @@ export const CMD = {
   RCV_PROBE: 'rcv_probe',
   MOD_PROBE: 'mod_probe',
   MFC_MANUAL: 'mfc_manual',
-  MFC_AUTO: 'mfc_auto',
-  B_CURVE: 'b_curve',
   LOW_PWR: 'low_pwr',
   PR_RCV_STATE: 'pr_rcv_state',
   RESTOREHOST: 'restorehost',

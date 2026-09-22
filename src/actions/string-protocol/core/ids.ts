@@ -145,8 +145,6 @@ export enum ACTION_ID {
   RCV_PROBE_GET = 'string_receiver_probe_get',
   MOD_PROBE_GET = 'string_module_probe_get',
   MFC_MANUAL = 'string_mfc_relay_manual',
-  MFC_AUTO = 'string_mfc_relay_auto',
-  B_CURVE = 'string_brightness_curve',
   PR_RCV_STATE_GET = 'string_probe_recv_state_get',
 
   // === Audio preset ===

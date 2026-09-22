@@ -17,7 +17,7 @@ import { logger } from './log'
  */
 
 /** Model families currently participating in action-support judgment. */
-export const DEVICE_FAMILIES = ['U'] as const
+export const DEVICE_FAMILIES = ['U', 'V'] as const
 export type DeviceFamilyId = (typeof DEVICE_FAMILIES)[number]
 
 export interface DeviceModelInfo {
@@ -79,7 +79,9 @@ export const B_DEVICE_MODELS: Record<string, DeviceModelInfo> = {
   // CA20: { modelByte: 46, label: 'CA20' },
   U3_MAX: { modelByte: 47, label: 'U3 Max', family: 'U' },
   // CA_AGGREGATE: { modelByte: 48, label: 'CA6_CA20-5G_CA10_CA20 (4-product aggregate, ledupgrade)' },
-  U20_MAX: { modelByte: 49, label: 'U20 Max', family: 'U' }
+  U20_MAX: { modelByte: 49, label: 'U20 Max', family: 'U' },
+  V10: { modelByte: 50, label: 'V10', family: 'V' },
+  V20: { modelByte: 51, label: 'V20', family: 'V' }
   // MVC_5G_11: { modelByte: 200, label: 'MVC-5G-11' },
   // LUOPU_CINEMA_SCREEN: { modelByte: 201, label: '洛普电影屏' },
   // CL14_4KP60: { modelByte: 202, label: 'CL14-4KP60' },
