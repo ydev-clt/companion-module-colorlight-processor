@@ -1,4 +1,5 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
+import { logger } from '../../../log'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
 import { buildGetAction, deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
@@ -85,13 +86,72 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
     description: 'Set the red component of the screen group color temperature.',
     options: [
       ...deviceAndBroadcastFields(),
-      { type: 'number', label: 'R gain (0-10000)', id: 'r', min: 0, max: 10000, default: 0, required: true },
+      {
+        type: 'dropdown',
+        label: 'Operation',
+        id: 'operation',
+        default: 'set',
+        choices: [
+          { id: 'set', label: 'Set percentage' },
+          { id: 'step', label: 'Adjust by signed step' }
+        ]
+      },
+      {
+        type: 'number',
+        label: 'R gain (%)',
+        id: 'r',
+        min: 0,
+        max: 100,
+        default: 0,
+        required: true,
+        isVisible: (options) => options.operation !== 'step'
+      },
+      {
+        type: 'number',
+        label: 'R gain step (%)',
+        tooltip: 'Positive values increase gain; negative values decrease it.',
+        id: 'rStep',
+        min: -100,
+        max: 100,
+        default: 0,
+        required: true,
+        isVisible: (options) => options.operation === 'step'
+      },
       gidField()
     ],
     callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean; r: number; gid?: number }
+      const o = event.options as {
+        deviceId: number
+        isSelectAll: boolean
+        operation?: 'set' | 'step'
+        r: number
+        rStep: number
+        gid?: number
+      }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { r: o.r }
+      const requestData = typeof o.gid === 'number' ? { gid: o.gid } : undefined
+
+      let r: number
+      if (o.operation === 'step') {
+        const resp = await conn.sendAndAwait<unknown, { r?: unknown }>(CMD.CT_R, 'get', sid, requestData)
+        const rawCurrent = resp?.data?.r
+        const current = Number(rawCurrent)
+        if (!resp || resp.code !== 0 || rawCurrent === undefined || rawCurrent === null || !Number.isFinite(current)) {
+          logger.warn('Red-gain step skipped: GET ct_r did not return a valid r value.')
+          return
+        }
+        const step = Math.round(Math.max(-100, Math.min(100, Number(o.rStep)))) * 100
+        r = Math.round(Math.max(0, Math.min(10000, current + step)))
+      } else {
+        const rawR = Number(o.r)
+        if (!Number.isFinite(rawR)) {
+          logger.warn('Set ct_r skipped: field r must be a finite number.')
+          return
+        }
+        r = Math.round(Math.max(0, Math.min(100, rawR))) * 100
+      }
+
+      const data: Record<string, unknown> = { r }
       if (typeof o.gid === 'number') data.gid = o.gid
       await conn.sendOnly(CMD.CT_R, 'set', sid, data)
     }
@@ -109,13 +169,72 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
     description: 'Set the green component of the screen group color temperature.',
     options: [
       ...deviceAndBroadcastFields(),
-      { type: 'number', label: 'G gain (0-10000)', id: 'g', min: 0, max: 10000, default: 0, required: true },
+      {
+        type: 'dropdown',
+        label: 'Operation',
+        id: 'operation',
+        default: 'set',
+        choices: [
+          { id: 'set', label: 'Set percentage' },
+          { id: 'step', label: 'Adjust by signed step' }
+        ]
+      },
+      {
+        type: 'number',
+        label: 'G gain (%)',
+        id: 'g',
+        min: 0,
+        max: 100,
+        default: 0,
+        required: true,
+        isVisible: (options) => options.operation !== 'step'
+      },
+      {
+        type: 'number',
+        label: 'G gain step (%)',
+        tooltip: 'Positive values increase gain; negative values decrease it.',
+        id: 'gStep',
+        min: -100,
+        max: 100,
+        default: 0,
+        required: true,
+        isVisible: (options) => options.operation === 'step'
+      },
       gidField()
     ],
     callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean; g: number; gid?: number }
+      const o = event.options as {
+        deviceId: number
+        isSelectAll: boolean
+        operation?: 'set' | 'step'
+        g: number
+        gStep: number
+        gid?: number
+      }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { g: o.g }
+      const requestData = typeof o.gid === 'number' ? { gid: o.gid } : undefined
+
+      let g: number
+      if (o.operation === 'step') {
+        const resp = await conn.sendAndAwait<unknown, { g?: unknown }>(CMD.CT_G, 'get', sid, requestData)
+        const rawCurrent = resp?.data?.g
+        const current = Number(rawCurrent)
+        if (!resp || resp.code !== 0 || rawCurrent === undefined || rawCurrent === null || !Number.isFinite(current)) {
+          logger.warn('Green-gain step skipped: GET ct_g did not return a valid g value.')
+          return
+        }
+        const step = Math.round(Math.max(-100, Math.min(100, Number(o.gStep)))) * 100
+        g = Math.round(Math.max(0, Math.min(10000, current + step)))
+      } else {
+        const rawG = Number(o.g)
+        if (!Number.isFinite(rawG)) {
+          logger.warn('Set ct_g skipped: field g must be a finite number.')
+          return
+        }
+        g = Math.round(Math.max(0, Math.min(100, rawG))) * 100
+      }
+
+      const data: Record<string, unknown> = { g }
       if (typeof o.gid === 'number') data.gid = o.gid
       await conn.sendOnly(CMD.CT_G, 'set', sid, data)
     }
@@ -133,13 +252,72 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
     description: 'Set the blue component of the screen group color temperature.',
     options: [
       ...deviceAndBroadcastFields(),
-      { type: 'number', label: 'B gain (0-10000)', id: 'b', min: 0, max: 10000, default: 0, required: true },
+      {
+        type: 'dropdown',
+        label: 'Operation',
+        id: 'operation',
+        default: 'set',
+        choices: [
+          { id: 'set', label: 'Set percentage' },
+          { id: 'step', label: 'Adjust by signed step' }
+        ]
+      },
+      {
+        type: 'number',
+        label: 'B gain (%)',
+        id: 'b',
+        min: 0,
+        max: 100,
+        default: 0,
+        required: true,
+        isVisible: (options) => options.operation !== 'step'
+      },
+      {
+        type: 'number',
+        label: 'B gain step (%)',
+        tooltip: 'Positive values increase gain; negative values decrease it.',
+        id: 'bStep',
+        min: -100,
+        max: 100,
+        default: 0,
+        required: true,
+        isVisible: (options) => options.operation === 'step'
+      },
       gidField()
     ],
     callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean; b: number; gid?: number }
+      const o = event.options as {
+        deviceId: number
+        isSelectAll: boolean
+        operation?: 'set' | 'step'
+        b: number
+        bStep: number
+        gid?: number
+      }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { b: o.b }
+      const requestData = typeof o.gid === 'number' ? { gid: o.gid } : undefined
+
+      let b: number
+      if (o.operation === 'step') {
+        const resp = await conn.sendAndAwait<unknown, { b?: unknown }>(CMD.CT_B, 'get', sid, requestData)
+        const rawCurrent = resp?.data?.b
+        const current = Number(rawCurrent)
+        if (!resp || resp.code !== 0 || rawCurrent === undefined || rawCurrent === null || !Number.isFinite(current)) {
+          logger.warn('Blue-gain step skipped: GET ct_b did not return a valid b value.')
+          return
+        }
+        const step = Math.round(Math.max(-100, Math.min(100, Number(o.bStep)))) * 100
+        b = Math.round(Math.max(0, Math.min(10000, current + step)))
+      } else {
+        const rawB = Number(o.b)
+        if (!Number.isFinite(rawB)) {
+          logger.warn('Set ct_b skipped: field b must be a finite number.')
+          return
+        }
+        b = Math.round(Math.max(0, Math.min(100, rawB))) * 100
+      }
+
+      const data: Record<string, unknown> = { b }
       if (typeof o.gid === 'number') data.gid = o.gid
       await conn.sendOnly(CMD.CT_B, 'set', sid, data)
     }

@@ -35,21 +35,71 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
     options: [
       ...deviceAndBroadcastFields(),
       {
+        type: 'dropdown',
+        label: 'Operation',
+        id: 'operation',
+        default: 'set',
+        choices: [
+          { id: 'set', label: 'Set percentage' },
+          { id: 'step', label: 'Adjust by signed step' }
+        ]
+      },
+      {
         type: 'number',
-        label: 'Brightness',
+        label: 'Brightness (%)',
         id: 'brightness',
         min: 0,
-        max: 10000,
-        tooltip: 'Brightness level, range 0-10000.',
-        default: 10000,
-        required: true
+        max: 100,
+        default: 100,
+        required: true,
+        isVisible: (options) => options.operation !== 'step'
+      },
+      {
+        type: 'number',
+        label: 'Brightness step (%)',
+        tooltip: 'Positive values increase brightness; negative values decrease it.',
+        id: 'brightnessStep',
+        min: -100,
+        max: 100,
+        default: 0,
+        required: true,
+        isVisible: (options) => options.operation === 'step'
       },
       gidField()
     ],
     callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean; brightness: number; gid?: number }
+      const o = event.options as {
+        deviceId: number
+        isSelectAll: boolean
+        operation?: 'set' | 'step'
+        brightness: number
+        brightnessStep: number
+        gid?: number
+      }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const brt = Math.round(Math.max(0, Math.min(10000, o.brightness)))
+      const requestData = typeof o.gid === 'number' ? { gid: o.gid } : undefined
+
+      let brt: number
+      if (o.operation === 'step') {
+        const resp = await conn.sendAndAwait<unknown, { brt?: unknown }>(CMD.BRIGHT, 'get', sid, requestData)
+        const rawCurrent = resp?.data?.brt
+        const current = Number(rawCurrent)
+        if (!resp || resp.code !== 0 || rawCurrent === undefined || rawCurrent === null || !Number.isFinite(current)) {
+          logger.warn('Brightness step skipped: GET bright did not return a valid brt value.')
+          return
+        }
+        const stepPercent = Math.round(Math.max(-100, Math.min(100, Number(o.brightnessStep))))
+        brt = Math.round(Math.max(0, Math.min(10000, current + stepPercent * 100)))
+      } else {
+        const rawPercentage = Number(o.brightness)
+        if (!Number.isFinite(rawPercentage)) {
+          logger.warn('Set bright skipped: field brightness must be a finite number.')
+          return
+        }
+        const percentage = Math.round(Math.max(0, Math.min(100, rawPercentage)))
+        brt = percentage * 100
+      }
+
       const data: Record<string, unknown> = { brt }
       if (typeof o.gid === 'number') data.gid = o.gid
       await conn.sendOnly(CMD.BRIGHT, 'set', sid, data)
@@ -69,21 +119,71 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
     options: [
       ...deviceAndBroadcastFields(),
       {
+        type: 'dropdown',
+        label: 'Operation',
+        id: 'operation',
+        default: 'set',
+        choices: [
+          { id: 'set', label: 'Set value' },
+          { id: 'step', label: 'Adjust by signed step' }
+        ]
+      },
+      {
         type: 'number',
-        label: 'Color Temperature',
-        tooltip: 'Color temperature in Kelvin, range 2000-10000.',
+        label: 'Color Temperature (K)',
         id: 'ct',
         min: 2000,
         max: 10000,
         default: 6500,
-        required: true
+        required: true,
+        isVisible: (options) => options.operation !== 'step'
+      },
+      {
+        type: 'number',
+        label: 'Color Temperature step (K)',
+        tooltip: 'Positive values increase color temperature; negative values decrease it.',
+        id: 'ctStep',
+        min: -8000,
+        max: 8000,
+        default: 0,
+        required: true,
+        isVisible: (options) => options.operation === 'step'
       },
       gidField()
     ],
     callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean; ct: number; gid?: number }
+      const o = event.options as {
+        deviceId: number
+        isSelectAll: boolean
+        operation?: 'set' | 'step'
+        ct: number
+        ctStep: number
+        gid?: number
+      }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { ct: o.ct }
+      const requestData = typeof o.gid === 'number' ? { gid: o.gid } : undefined
+
+      let ct: number
+      if (o.operation === 'step') {
+        const resp = await conn.sendAndAwait<unknown, { ct?: unknown }>(CMD.COLORTEMP, 'get', sid, requestData)
+        const rawCurrent = resp?.data?.ct
+        const current = Number(rawCurrent)
+        if (!resp || resp.code !== 0 || rawCurrent === undefined || rawCurrent === null || !Number.isFinite(current)) {
+          logger.warn('Color-temperature step skipped: GET colortemp did not return a valid ct value.')
+          return
+        }
+        const step = Math.round(Math.max(-8000, Math.min(8000, Number(o.ctStep))))
+        ct = Math.round(Math.max(2000, Math.min(10000, current + step)))
+      } else {
+        const rawCt = Number(o.ct)
+        if (!Number.isFinite(rawCt)) {
+          logger.warn('Set colortemp skipped: field ct must be a finite number.')
+          return
+        }
+        ct = Math.round(Math.max(2000, Math.min(10000, rawCt)))
+      }
+
+      const data: Record<string, unknown> = { ct }
       if (typeof o.gid === 'number') data.gid = o.gid
       await conn.sendOnly(CMD.COLORTEMP, 'set', sid, data)
     }
