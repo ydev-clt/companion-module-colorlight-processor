@@ -68,6 +68,22 @@ export function openCloseField(defaultValue: 0 | 1 = 1): SomeCompanionActionInpu
   }
 }
 
+/** Open/Close/Toggle dropdown. Toggle id is numeric 2. */
+export function openCloseToggleField(defaultValue: 0 | 1 | 2 = 1): SomeCompanionActionInputField {
+  return {
+    type: 'dropdown',
+    label: 'Open/Close/Toggle',
+    id: 'openStatus',
+    tooltip: 'Open, close, or toggle the current state',
+    default: defaultValue,
+    choices: [
+      { id: 1, label: 'Open' },
+      { id: 0, label: 'Close' },
+      { id: 2, label: 'Toggle' }
+    ]
+  }
+}
+
 /** Common device addressing fields: deviceId + isSelectAll */
 export function deviceAndBroadcastFields(
   opts: { allowSelectAll?: boolean; deviceMax?: number } = {}
