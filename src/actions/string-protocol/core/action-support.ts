@@ -18,11 +18,13 @@ export type SupportTarget = DeviceFamilyId
  *    rows stay exactly as compact as before)
  *  - `{ only }` — whitelist: only these families support the action
  *  - `{ protocols, except? }` — protocol baseline minus excluded families
+ *  - `'always'` — no device restriction, including an unresolved model
  */
 export type SupportRule =
   | readonly DeviceProtocolEnum[]
   | { only: readonly SupportTarget[] }
   | { protocols: readonly DeviceProtocolEnum[]; except?: readonly SupportTarget[] }
+  | 'always'
 
 /** Device identity used for support judgment (both parts probe-derived). */
 export interface DeviceIdentity {
@@ -183,7 +185,6 @@ export const ACTION_SUPPORT: Record<ACTION_ID, SupportRule> = {
   [ACTION_ID.PR_RCV_STATE_GET]: [],
 
   // === Audio preset ===
-  [ACTION_ID.LD_AUDPRESET_ID]: { protocols: [B], except: ['V'] },
   [ACTION_ID.LD_AUDPRESET_IDX]: { protocols: [B], except: ['V'] },
 
   // === Dangerous operations ===
@@ -191,24 +192,27 @@ export const ACTION_SUPPORT: Record<ACTION_ID, SupportRule> = {
   [ACTION_ID.REBOOT]: { protocols: [B], except: ['V'] },
   [ACTION_ID.SHUTDOWN]: { protocols: [A, B], except: ['V'] },
 
-  // === Custom ===
-  [ACTION_ID.RAW_COMMAND]: AB
+  // === Custom (no device restriction) ===
+  [ACTION_ID.RAW_COMMAND]: 'always'
 }
 
 /**
- * Single judgment entry (global strict): an unresolved model supports
- * nothing on any protocol; a known model then evaluates its rule —
+ * Single judgment entry (global strict): an `'always'` rule is supported
+ * on every device, including an unresolved model. Otherwise an unresolved
+ * model supports nothing; a known model then evaluates its rule —
  * protocol baseline with optional family except, or a family-only
  * whitelist. Record-only models (no family) never match only/except,
  * i.e. they keep the plain protocol baseline.
  */
 export function isActionSupported(actionId: ACTION_ID, device: DeviceIdentity): boolean {
-  const model = resolveDeviceModel(device.protocol, device.modelByte)
-  if (!model) return false
-
   // `?? []`: runtime defense for keys outside ACTION_ID (misspelled string
   // keys bypass the compile-time check) — degrades to "unsupported".
   const rule: SupportRule = ACTION_SUPPORT[actionId] ?? []
+  if (rule === 'always') return true
+
+  const model = resolveDeviceModel(device.protocol, device.modelByte)
+  if (!model) return false
+
   if (isProtocolBaseline(rule)) return rule.includes(device.protocol)
   if ('only' in rule) {
     return model.family !== undefined && rule.only.includes(model.family)
@@ -221,19 +225,14 @@ export function isActionSupported(actionId: ACTION_ID, device: DeviceIdentity): 
 /**
  * Filter a definitions object down to the actions supported by the device
  * identity. Logs removed ids at debug level ("why is my action missing
- * from the UI?"); warns when the model is unresolved — global strict
- * means zero actions, so the reason must be observable.
+ * from the UI?"); warns when the model is unresolved. Global strict still
+ * drops every restricted action, but `'always'` actions stay registered.
  */
 export function filterActionsForDevice(
   actions: CompanionActionDefinitions,
   device: DeviceIdentity
 ): CompanionActionDefinitions {
-  if (!resolveDeviceModel(device.protocol, device.modelByte)) {
-    logger.warn(
-      `filterActionsForDevice: device model unresolved (protocol=${device.protocol}, modelByte=${device.modelByte}) — no actions registered`
-    )
-    return {}
-  }
+  const modelResolved = resolveDeviceModel(device.protocol, device.modelByte) !== undefined
 
   const filtered: CompanionActionDefinitions = {}
   const removed: string[] = []
@@ -244,6 +243,16 @@ export function filterActionsForDevice(
       removed.push(id)
     }
   }
+
+  if (!modelResolved) {
+    const kept = Object.keys(filtered)
+    logger.warn(
+      kept.length > 0
+        ? `filterActionsForDevice: device model unresolved (protocol=${device.protocol}, modelByte=${device.modelByte}) — registered unrestricted action(s): ${kept.join(', ')}`
+        : `filterActionsForDevice: device model unresolved (protocol=${device.protocol}, modelByte=${device.modelByte}) — no actions registered`
+    )
+  }
+
   if (removed.length > 0) {
     logger.debug(
       `filterActionsForDevice: removed ${removed.length} action(s) unsupported by protocol=${device.protocol} modelByte=${device.modelByte}: ${removed.join(', ')}`

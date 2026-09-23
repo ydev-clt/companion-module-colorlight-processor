@@ -16,6 +16,7 @@ import { setupDeviceActions } from './actions/device'
 import { setupSystemActions } from './actions/system'
 import { setupMfcActions } from './actions/mfc'
 import { setupProbeActions } from './actions/probe'
+import { setupCustomActions } from './actions/custom'
 
 /**
  * String-Protocol entry point.
@@ -51,7 +52,8 @@ export function setupStringActions(
     ...setupDeviceActions(host),
     ...setupSystemActions(host),
     ...setupMfcActions(host),
-    ...setupProbeActions(host)
+    ...setupProbeActions(host),
+    ...setupCustomActions(host)
   }
 
   // Single filtering point: drop actions not supported by the current device
