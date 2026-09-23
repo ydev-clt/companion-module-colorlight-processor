@@ -1,6 +1,7 @@
 import { PROTOCOL_CODE } from './constants'
 import { logger } from '../../../log'
 import { encodeRequest, TransactionIdAllocator } from './frames'
+import { GetGate } from './get-gate'
 import type { StringRequest, StringResponse } from './types'
 import { SpSession as SpSessionCtor } from '../../../str2bin'
 import type { SpSession } from '../../../str2bin'
@@ -44,6 +45,7 @@ export interface SPTransmitterHost {
 export class SPTransmitter {
   private _allocator: TransactionIdAllocator
   private _handlers: Map<number, PendingRequest> = new Map()
+  private _gate = new GetGate()
   private _options: Required<SPTransmitterOptions>
 
   private _host: SPTransmitterHost | null = null
@@ -99,6 +101,7 @@ export class SPTransmitter {
    *  - Sets _spSession to null
    */
   public releaseSpSession(): void {
+    this._gate.rejectAll(new Error('SpSession released'))
     const sess = this._spSession
     const proto = this._spProto
     if (!sess) return
@@ -278,6 +281,11 @@ export class SPTransmitter {
       logger.warn('SPTransmitter.sendOnly before bindSpSession()')
       return false
     }
+    if (op === 'get') {
+      // A get holds the GetGate until its response arrives, so it must wait
+      const resp = await this.sendAndAwait(cmd, op, sid, data)
+      return resp !== undefined
+    }
     const id = this._allocator.next()
     const request: StringRequest<TData> = { id, cmd, op, sid, data }
     const frame = encodeRequest(request)
@@ -315,24 +323,51 @@ export class SPTransmitter {
 
   private async _sendAndAwait(req: StringRequest, timeoutMs: number): Promise<StringResponse> {
     logger.debug(`sendAndAwait req: ${JSON.stringify(req)}`)
+    if (req.op !== 'get') {
+      return this._dispatch(req, timeoutMs, null)
+    }
+    if (this._gate.busy) {
+      logger.debug(`get ${req.cmd}#${req.id} queued (waiting=${this._gate.waiting + 1})`)
+    }
+    const release = await this._gate.acquire()
+    return this._dispatch(req, timeoutMs, release)
+  }
+
+  /**
+   * Register handler, inbound, send. `release` is the GetGate slot for a get
+   * (null for set): freed on response; dropped + freed on timeout / encode
+   * failure / send failure.
+   */
+  private _dispatch(req: StringRequest, timeoutMs: number, release: (() => void) | null): Promise<StringResponse> {
     return new Promise<StringResponse>((resolve, reject) => {
       if (!this._host) {
+        release?.()
         reject(new Error('SPTransmitter not initialized'))
         return
       }
-      if (!this._spSession) {
+      const session = this._spSession
+      if (!session) {
+        release?.()
         reject(new Error('SPTransmitter: SpSession not bound'))
         return
       }
 
+      const abortGet = (): void => {
+        if (!release) return
+        this._dropIfCurrent(session)
+        release()
+      }
+
       const timer = setTimeout(() => {
         this._handlers.delete(req.id)
+        abortGet()
         reject(new Error(`Timeout after ${timeoutMs}ms`))
       }, timeoutMs)
 
       this._handlers.set(req.id, {
         resolve: (resp) => {
           clearTimeout(timer)
+          release?.()
           resolve(resp)
         },
         reject: (err) => {
@@ -363,6 +398,7 @@ export class SPTransmitter {
       } catch (err) {
         this._handlers.delete(req.id)
         clearTimeout(timer)
+        abortGet()
         reject(err instanceof Error ? err : new Error(String(err)))
         return
       }
@@ -374,6 +410,7 @@ export class SPTransmitter {
             clearTimeout(timer)
             // UDP send failed: reject immediately to avoid waiting forever
             this._handlers.delete(req.id)
+            abortGet()
             reject(new Error('host send returned false'))
             return
           }
@@ -385,9 +422,20 @@ export class SPTransmitter {
         .catch((err) => {
           clearTimeout(timer)
           this._handlers.delete(req.id)
+          abortGet()
           reject(err instanceof Error ? err : new Error(String(err)))
         })
     })
+  }
+
+  /** Clear libsp's pending get, unless the session has since been replaced. */
+  private _dropIfCurrent(session: SpSession): void {
+    if (this._spSession !== session) return
+    try {
+      session.drop(this._token)
+    } catch (err) {
+      logger.warn(`SpSession.drop error: ${(err as Error).message ?? String(err)}`)
+    }
   }
 
   /**
