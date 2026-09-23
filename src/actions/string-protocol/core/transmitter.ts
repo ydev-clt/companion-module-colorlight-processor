@@ -268,6 +268,8 @@ export class SPTransmitter {
 
   /**
    * Synchronous style: send only, no response waited (set-type main flow)
+   *  - A `get` still waits for its response (it holds the GetGate) and
+   *    returns whether one arrived
    *  - Converts JSON frame to Z/V binary via SpSession.inbound
    *  - Library errors (8002-8999) throw Error; protocol errors (9001-9011)
    *    are logged and not sent
@@ -352,8 +354,11 @@ export class SPTransmitter {
         return
       }
 
+      // A get finishes once: a late send failure must not drop the next get's pending
+      let settled = false
       const abortGet = (): void => {
-        if (!release) return
+        if (!release || settled) return
+        settled = true
         this._dropIfCurrent(session)
         release()
       }
@@ -367,6 +372,7 @@ export class SPTransmitter {
       this._handlers.set(req.id, {
         resolve: (resp) => {
           clearTimeout(timer)
+          settled = true
           release?.()
           resolve(resp)
         },
@@ -441,7 +447,7 @@ export class SPTransmitter {
   /**
    * Encode a JSON frame into device binary via SpSession.inbound.
    *
-   * Shared by sendOnly and _sendAndAwait. Returns:
+   * Shared by sendOnly and _dispatch. Returns:
    *  - { ok: true, bin, json } — bin is null on a "silent ok" (nothing to
    *    send); json is the raw synthesized set-response string when present
    *  - { ok: false, code } — recoverable errors (protocol 9001-9011,
