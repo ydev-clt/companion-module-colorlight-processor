@@ -148,7 +148,6 @@ export enum ACTION_ID {
   PR_RCV_STATE_GET = 'string_probe_recv_state_get',
 
   // === Audio preset ===
-  LD_AUDPRESET_ID = 'string_load_audio_preset_id',
   LD_AUDPRESET_IDX = 'string_load_audio_preset_index',
 
   // === Dangerous operations ===

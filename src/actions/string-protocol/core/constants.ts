@@ -146,7 +146,6 @@ export const CMD = {
   OSD: 'osd',
   FRAMERATE: 'framerate',
   FPS_ADAPT: 'fps_adapt',
-  LD_AUDPRESET_ID: 'ld_audpreset_id',
   LD_AUDPRESET_IDX: 'ld_audpreset_idx'
 } as const
 

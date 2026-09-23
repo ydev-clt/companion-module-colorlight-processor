@@ -7,7 +7,6 @@ import type { StringActionHost } from './_shared'
 /**
  * Multi-function card / receiving card / module / audio preset actions:
  *  - mfc_manual       (§5.4.4)
- *  - ld_audpreset_id  (§5.4.12) (B protocol only)
  *  - ld_audpreset_idx (§5.4.13) (B protocol only)
  *  - restorehost      (§5.4.9)
  *  - reboot           (§5.4.14) (B protocol only)
@@ -59,32 +58,6 @@ export function setupMfcActions(host: StringActionHost): CompanionActionDefiniti
       const o = event.options as { deviceId: number; port: number; relayMask: number; delaySec: number }
       const sid = sidFromOptions(false, o.deviceId)
       await conn.sendOnly(CMD.MFC_MANUAL, 'set', sid, { port: o.port, relayMask: o.relayMask, delaySec: o.delaySec })
-    }
-  }
-
-  // ---- ld_audpreset_id ----
-  actions[ACTION_ID.LD_AUDPRESET_ID] = {
-    name: 'Load Audio Preset by ID',
-    description: 'Load an audio preset by its ID.',
-    options: [
-      ...deviceAndBroadcastFields(),
-      {
-        type: 'number',
-        label: 'Preset ID',
-        tooltip: 'Audio preset ID.',
-        id: 'id',
-        min: 0,
-        max: Number.MAX_SAFE_INTEGER,
-        default: 0,
-        required: true
-      }
-    ],
-    callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean; id: number }
-      const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      // The `id` field may arrive as a string or number; send the user value through unchanged.
-      const idValue = o.id
-      await conn.sendOnly(CMD.LD_AUDPRESET_ID, 'set', sid, { id: idValue })
     }
   }
 
