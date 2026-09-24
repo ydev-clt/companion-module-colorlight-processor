@@ -36,6 +36,11 @@ export interface VariableSpec {
    * serialization. Mutually exclusive with `field`.
    */
   composite?: Record<string, string>
+  /**
+   * When set, a finite numeric `field` is stored as `transform(value)`.
+   * Composite specs ignore this.
+   */
+  transform?: (value: number) => number
 }
 
 /**
@@ -44,7 +49,13 @@ export interface VariableSpec {
  *  - Composite: many protocol fields → one object variable.
  */
 type RegistryEntry =
-  | { field: string; variableId: VARIABLE_ID; suffix?: string; key?: string }
+  | {
+      field: string
+      variableId: VARIABLE_ID
+      suffix?: string
+      key?: string
+      transform?: (value: number) => number
+    }
   | { variableId: VARIABLE_ID; composite: Record<string, string> }
 
 /** Group multiple variables under a single cmd by sharing the same `cmd` value. */
@@ -53,11 +64,16 @@ type RegistryGroup = {
   entries: RegistryEntry[]
 }
 
+/** Protocol raw units (0–10000) to a percentage number with two decimal places. */
+function percentFromRaw(value: number): number {
+  return Number((value / 100).toFixed(2))
+}
+
 const REGISTRY_GROUPS: RegistryGroup[] = [
   // === Display / picture ===
   {
     cmd: 'bright',
-    entries: [{ field: 'brt', variableId: VARIABLE_ID.BRIGHTNESS }]
+    entries: [{ field: 'brt', variableId: VARIABLE_ID.BRIGHTNESS, transform: percentFromRaw }]
   },
   {
     cmd: 'colortemp',
@@ -235,15 +251,15 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
   },
   {
     cmd: 'ct_r',
-    entries: [{ field: 'r', variableId: VARIABLE_ID.CT_R_VALUE }]
+    entries: [{ field: 'r', variableId: VARIABLE_ID.CT_R_VALUE, transform: percentFromRaw }]
   },
   {
     cmd: 'ct_g',
-    entries: [{ field: 'g', variableId: VARIABLE_ID.CT_G_VALUE }]
+    entries: [{ field: 'g', variableId: VARIABLE_ID.CT_G_VALUE, transform: percentFromRaw }]
   },
   {
     cmd: 'ct_b',
-    entries: [{ field: 'b', variableId: VARIABLE_ID.CT_B_VALUE }]
+    entries: [{ field: 'b', variableId: VARIABLE_ID.CT_B_VALUE, transform: percentFromRaw }]
   },
   {
     cmd: 'grp_gain',
@@ -574,7 +590,8 @@ function buildGroups(): CmdVariableGroup[] {
         field: e.field,
         variableId: e.variableId,
         displayName: buildDisplayName(cmdDisplay, e.suffix),
-        key: e.key
+        key: e.key,
+        transform: e.transform
       }
     })
     out.push({ cmd: g.cmd, specs })
@@ -613,8 +630,10 @@ export function getSpecsByCmd(cmd: string): VariableSpec[] {
  *    The object is written verbatim — Companion preserves nested values
  *    at runtime, even though the public API types list only
  *    `string | number | boolean`.
- *  - Flat specs: number/string/bool → as-is; arrays/objects →
- *    JSON-serialized for the text-only fallback path.
+ *  - Flat specs: a finite number with `transform` is stored as
+ *    `transform(value)`; `NaN` and `Infinity` on a transformed field are
+ *    skipped; untransformed numbers, strings, and booleans stay as they
+ *    are; arrays/objects → JSON-serialized for the text-only fallback path.
  *  - Missing fields are skipped (no entry in the returned map).
  */
 export function extractValuesForCmd(cmd: string, data: unknown): Record<string, number | string | object> {
@@ -644,7 +663,12 @@ export function extractValuesForCmd(cmd: string, data: unknown): Record<string, 
     const v = obj[spec.field]
     if (v === undefined || v === null) continue
     if (typeof v === 'number') {
-      out[spec.variableId] = v
+      if (spec.transform) {
+        if (!Number.isFinite(v)) continue
+        out[spec.variableId] = spec.transform(v)
+      } else {
+        out[spec.variableId] = v
+      }
     } else if (typeof v === 'string') {
       out[spec.variableId] = v
     } else if (typeof v === 'boolean') {
