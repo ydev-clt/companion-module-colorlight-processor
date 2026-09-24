@@ -1,10 +1,10 @@
 /**
- * GetGate — allows only one String-Protocol `get` in flight at a time.
+ * GetGate — serializes SpSession.inbound while a `get` is outstanding.
  *
- * libsp rejects a second `get` inbound until the previous `get` response has
- * gone through outbound (or the token was dropped). Callers `await acquire()`
- * before inbound and call the returned release function exactly when the
- * request finishes. Waiters are served in FIFO order.
+ * libsp forbids any further inbound (get or set) after a `get` inbound until
+ * that get's response has gone through outbound (or the token was dropped).
+ * Callers `await acquire()` before inbound. A get holds the slot until it
+ * finishes; a set releases right after its own inbound. Waiters are FIFO.
  *
  * A release function only affects the holder it was issued to: calling it
  * twice, or after `rejectAll()`, is a no-op. This keeps a late-finishing

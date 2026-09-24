@@ -288,6 +288,12 @@ export class SPTransmitter {
       const resp = await this.sendAndAwait(cmd, op, sid, data)
       return resp !== undefined
     }
+
+    // set: must not inbound while a get is outstanding
+    if (this._gate.busy) {
+      logger.debug(`set ${cmd} queued (waiting=${this._gate.waiting + 1})`)
+    }
+    const release = await this._gate.acquire()
     const id = this._allocator.next()
     const request: StringRequest<TData> = { id, cmd, op, sid, data }
     const frame = encodeRequest(request)
@@ -296,6 +302,8 @@ export class SPTransmitter {
     let bin: Buffer
     try {
       const enc = this._encodeFrame(frame)
+      // set releases right after inbound; it does not leave a pending get
+      release()
       if (!enc.ok) {
         if (enc.code === 8001) {
           // PARTIAL: kept internally by SpSession, should not occur in inbound
@@ -312,6 +320,7 @@ export class SPTransmitter {
       }
       bin = enc.bin
     } catch (err) {
+      release()
       logger.warn(
         `StringProtocol send ${cmd}#${id} (sid=${sid}, op=${op}) failed: ${(err as Error).message ?? String(err)}`
       )
@@ -325,39 +334,44 @@ export class SPTransmitter {
 
   private async _sendAndAwait(req: StringRequest, timeoutMs: number): Promise<StringResponse> {
     logger.debug(`sendAndAwait req: ${JSON.stringify(req)}`)
-    if (req.op !== 'get') {
-      return this._dispatch(req, timeoutMs, null)
-    }
+    // Any inbound while a get is outstanding is forbidden by libsp
     if (this._gate.busy) {
-      logger.debug(`get ${req.cmd}#${req.id} queued (waiting=${this._gate.waiting + 1})`)
+      logger.debug(`${req.op} ${req.cmd}#${req.id} queued (waiting=${this._gate.waiting + 1})`)
     }
     const release = await this._gate.acquire()
     return this._dispatch(req, timeoutMs, release)
   }
 
   /**
-   * Register handler, inbound, send. `release` is the GetGate slot for a get
-   * (null for set): freed on response; dropped + freed on timeout / encode
-   * failure / send failure.
+   * Register handler, inbound, send. `release` is the GetGate slot:
+   *  - get: held until response / timeout / encode-or-send failure (with drop)
+   *  - set: released right after inbound (no pending get to drop)
    */
-  private _dispatch(req: StringRequest, timeoutMs: number, release: (() => void) | null): Promise<StringResponse> {
+  private _dispatch(req: StringRequest, timeoutMs: number, release: () => void): Promise<StringResponse> {
     return new Promise<StringResponse>((resolve, reject) => {
       if (!this._host) {
-        release?.()
+        release()
         reject(new Error('SPTransmitter not initialized'))
         return
       }
       const session = this._spSession
       if (!session) {
-        release?.()
+        release()
         reject(new Error('SPTransmitter: SpSession not bound'))
         return
       }
 
-      // A get finishes once: a late send failure must not drop the next get's pending
+      const isSetOpt = req.op === 'set'
+      // Slot finishes once: a late send failure must not drop the next holder's pending
       let settled = false
+      const releaseSlot = (): void => {
+        if (settled) return
+        settled = true
+        release()
+      }
+      /** Abort an in-flight get: drop libsp pending, then free the gate. */
       const abortGet = (): void => {
-        if (!release || settled) return
+        if (settled) return
         settled = true
         this._dropIfCurrent(session)
         release()
@@ -365,15 +379,18 @@ export class SPTransmitter {
 
       const timer = setTimeout(() => {
         this._handlers.delete(req.id)
-        abortGet()
+        if (isSetOpt) {
+          releaseSlot()
+        } else {
+          abortGet()
+        }
         reject(new Error(`Timeout after ${timeoutMs}ms`))
       }, timeoutMs)
 
       this._handlers.set(req.id, {
         resolve: (resp) => {
           clearTimeout(timer)
-          settled = true
-          release?.()
+          releaseSlot()
           resolve(resp)
         },
         reject: (err) => {
@@ -384,7 +401,6 @@ export class SPTransmitter {
         startedAt: Date.now()
       })
 
-      const isSetOpt = req.op === 'set'
       let resJson: StringResponse
       let bin: Buffer
       try {
@@ -404,9 +420,18 @@ export class SPTransmitter {
       } catch (err) {
         this._handlers.delete(req.id)
         clearTimeout(timer)
-        abortGet()
+        if (isSetOpt) {
+          releaseSlot()
+        } else {
+          abortGet()
+        }
         reject(err instanceof Error ? err : new Error(String(err)))
         return
+      }
+
+      // set does not leave a pending get; free the gate so others may inbound
+      if (isSetOpt) {
+        releaseSlot()
       }
 
       this._host
@@ -416,7 +441,9 @@ export class SPTransmitter {
             clearTimeout(timer)
             // UDP send failed: reject immediately to avoid waiting forever
             this._handlers.delete(req.id)
-            abortGet()
+            if (!isSetOpt) {
+              abortGet()
+            }
             reject(new Error('host send returned false'))
             return
           }
@@ -428,7 +455,9 @@ export class SPTransmitter {
         .catch((err) => {
           clearTimeout(timer)
           this._handlers.delete(req.id)
-          abortGet()
+          if (!isSetOpt) {
+            abortGet()
+          }
           reject(err instanceof Error ? err : new Error(String(err)))
         })
     })
