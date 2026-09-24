@@ -5,6 +5,7 @@ import type { CltProcessorType } from '../../types'
 import { logger } from '../../log'
 import type { StringActionHost } from './actions/_shared'
 import { filterActionsForDevice } from './core/action-support'
+import { ActionMutex } from './core/action-mutex'
 import { setupDisplayActions } from './actions/display'
 import { setupPictureActions } from './actions/picture'
 import { setupPresetActions } from './actions/presets'
@@ -62,6 +63,16 @@ export function setupStringActions(
     protocol: ctx.config.protocol,
     modelByte: ctx.state.modelByte
   })
+
+  // Companion may fire action callbacks in parallel; serialize every String
+  // action (including heartbeat / CMDLIST) so multi-step set→get stays atomic.
+  const mutex = new ActionMutex()
+  for (const def of Object.values(all)) {
+    if (!def?.callback) continue
+    const original = def.callback
+    def.callback = async (...args: Parameters<typeof original>) =>
+      mutex.run(() => Promise.resolve(original(...args)))
+  }
 
   logger.info(`String-Protocol actions setup completed. (${Object.keys(all).length} actions registered)`)
   return all
