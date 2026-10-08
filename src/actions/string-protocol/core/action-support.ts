@@ -69,8 +69,8 @@ export const ACTION_SUPPORT: Record<ACTION_ID, SupportRule> = {
   [ACTION_ID.TESTMODE_GET]: AB,
   [ACTION_ID.HDRMODE_SET]: AB,
   [ACTION_ID.HDRMODE_GET]: AB,
-  [ACTION_ID.MUTE_SET]: { protocols: AB, except: ['V'] },
-  [ACTION_ID.MUTE_GET]: { protocols: AB, except: ['V'] },
+  [ACTION_ID.MUTE_SET]: { protocols: AB, except: ['V', 'VX'] },
+  [ACTION_ID.MUTE_GET]: { protocols: AB, except: ['V', 'VX'] },
   [ACTION_ID.FADE_SET]: AB,
   [ACTION_ID.FADE_GET]: AB,
   [ACTION_ID.FADETIME_SET]: AB,
@@ -93,32 +93,32 @@ export const ACTION_SUPPORT: Record<ACTION_ID, SupportRule> = {
   [ACTION_ID.BRTCOMP_GET]: { protocols: AB, except: ['U'] },
 
   // === Preset (ldpreset unsupported on U-series) ===
-  [ACTION_ID.QUICK_PRESET]: { protocols: AB, except: ['V'] },
-  [ACTION_ID.SAVE_PRESET]: { protocols: AB, except: ['V'] },
-  [ACTION_ID.LOAD_PRESET]: { protocols: AB, except: ['U', 'V'] },
+  [ACTION_ID.QUICK_PRESET]: { protocols: AB, except: ['V', 'VX'] },
+  [ACTION_ID.SAVE_PRESET]: { protocols: AB, except: ['V', 'VX'] },
+  [ACTION_ID.LOAD_PRESET]: { protocols: AB, except: ['U', 'V', 'VX'] },
   [ACTION_ID.RENAME_PRESET]: AB,
 
   // === Layer ===
-  [ACTION_ID.LAYER_SET]: { protocols: AB, except: ['V'] },
+  [ACTION_ID.LAYER_SET]: { protocols: AB, except: ['V', 'VX'] },
   [ACTION_ID.LAYER_GET]: AB,
-  [ACTION_ID.LAYER_BORDER_SET]: { protocols: [B], except: ['V'] },
+  [ACTION_ID.LAYER_BORDER_SET]: { protocols: [B], except: ['V', 'VX'] },
   [ACTION_ID.LAYER_BORDER_GET]: [B],
   [ACTION_ID.BG_BOX_SET]: AB,
   [ACTION_ID.BG_BOX_GET]: AB,
-  [ACTION_ID.LAYER_ORDER]: { protocols: [B], except: ['V'] },
-  [ACTION_ID.DEL_LAYER]: { protocols: [B], except: ['V'] },
-  [ACTION_ID.CLEAR_LAYER]: { protocols: [B], except: ['V'] },
+  [ACTION_ID.LAYER_ORDER]: { protocols: [B], except: ['V', 'VX'] },
+  [ACTION_ID.DEL_LAYER]: { protocols: [B], except: ['V', 'VX'] },
+  [ACTION_ID.CLEAR_LAYER]: { protocols: [B], except: ['V', 'VX'] },
 
   // === Network port (brt_port unsupported on U-series) ===
   [ACTION_ID.PORTOUT_SET]: AB,
   [ACTION_ID.PORTOUT_GET]: AB,
   [ACTION_ID.ALLPORTS_SET]: AB,
   [ACTION_ID.ALLPORTS_GET]: AB,
-  [ACTION_ID.BRT_PORT_SET]: { protocols: AB, except: ['U', 'V'] },
+  [ACTION_ID.BRT_PORT_SET]: { protocols: AB, except: ['U', 'V', 'VX'] },
   [ACTION_ID.BRT_PORT_GET]: { protocols: AB, except: ['U'] },
   [ACTION_ID.C_DEPTH_SET]: AB,
   [ACTION_ID.C_DEPTH_GET]: AB,
-  [ACTION_ID.NET_BRT_EN]: { protocols: [B], except: ['V'] },
+  [ACTION_ID.NET_BRT_EN]: { protocols: [B], except: ['V', 'VX'] },
 
   // === Color / gain (grp_gain unsupported on U-series) ===
   [ACTION_ID.COLORSPACE_SET]: AB,
@@ -131,39 +131,39 @@ export const ACTION_SUPPORT: Record<ACTION_ID, SupportRule> = {
   [ACTION_ID.CT_G_GET]: AB,
   [ACTION_ID.CT_B_SET]: AB,
   [ACTION_ID.CT_B_GET]: AB,
-  [ACTION_ID.GRP_GAIN_SET]: { protocols: AB, except: ['U', 'V'] },
-  [ACTION_ID.GRP_GAIN_GET]: { protocols: AB, except: ['U', 'V'] },
-  [ACTION_ID.VIRTUAL_PIXEL_SET]: { protocols: AB, except: ['V'] },
-  [ACTION_ID.VIRTUAL_PIXEL_GET]: { protocols: AB, except: ['V'] },
+  [ACTION_ID.GRP_GAIN_SET]: { protocols: AB, except: ['U', 'V', 'VX'] },
+  [ACTION_ID.GRP_GAIN_GET]: { protocols: AB, except: ['U', 'V', 'VX'] },
+  [ACTION_ID.VIRTUAL_PIXEL_SET]: { protocols: AB, except: ['V', 'VX'] },
+  [ACTION_ID.VIRTUAL_PIXEL_GET]: { protocols: AB, except: ['V', 'VX'] },
 
   // === Audio / 3D ===
-  [ACTION_ID.EYE_SWITCH_SET]: { protocols: AB, except: ['V'] },
-  [ACTION_ID.EYE_SWITCH_GET]: { protocols: AB, except: ['V'] },
-  [ACTION_ID.MODE3D_SET]: { protocols: AB, except: ['V'] },
-  [ACTION_ID.MODE3D_GET]: { protocols: AB, except: ['V'] },
-  [ACTION_ID.DUAL_3D_SET]: { protocols: [B], except: ['V'] },
-  [ACTION_ID.DUAL_3D_GET]: { protocols: [B], except: ['V'] },
-  [ACTION_ID.STEREO_FMT_SET]: { protocols: AB, except: ['V'] },
-  [ACTION_ID.STEREO_FMT_GET]: { protocols: AB, except: ['V'] },
+  [ACTION_ID.EYE_SWITCH_SET]: { protocols: AB, except: ['V', 'VX'] },
+  [ACTION_ID.EYE_SWITCH_GET]: { protocols: AB, except: ['V', 'VX'] },
+  [ACTION_ID.MODE3D_SET]: { protocols: AB, except: ['V', 'VX'] },
+  [ACTION_ID.MODE3D_GET]: { protocols: AB, except: ['V', 'VX'] },
+  [ACTION_ID.DUAL_3D_SET]: { protocols: [B], except: ['V', 'VX'] },
+  [ACTION_ID.DUAL_3D_GET]: { protocols: [B], except: ['V', 'VX'] },
+  [ACTION_ID.STEREO_FMT_SET]: { protocols: AB, except: ['V', 'VX'] },
+  [ACTION_ID.STEREO_FMT_GET]: { protocols: AB, except: ['V', 'VX'] },
 
   // === Device (edid_set / brt_rela / ct_rela / brt_step unsupported on U-series) ===
   [ACTION_ID.SN_SET]: AB,
   [ACTION_ID.SN_GET]: AB,
-  [ACTION_ID.EDID_SET]: { protocols: AB, except: ['U', 'V'] },
-  [ACTION_ID.BRT_RELA]: { protocols: AB, except: ['U', 'V'] },
-  [ACTION_ID.CT_RELA]: { protocols: AB, except: ['U', 'V'] },
-  [ACTION_ID.BRT_STEP]: { protocols: AB, except: ['U', 'V'] },
+  [ACTION_ID.EDID_SET]: { protocols: AB, except: ['U', 'V', 'VX'] },
+  [ACTION_ID.BRT_RELA]: { protocols: AB, except: ['U', 'V', 'VX'] },
+  [ACTION_ID.CT_RELA]: { protocols: AB, except: ['U', 'V', 'VX'] },
+  [ACTION_ID.BRT_STEP]: { protocols: AB, except: ['U', 'V', 'VX'] },
   [ACTION_ID.VSYNC_MUL_SET]: AB,
   [ACTION_ID.VSYNC_MUL_GET]: AB,
 
   // === Frame rate / system (framerate & low_pwr unsupported on U-series) ===
-  [ACTION_ID.FRAMERATE_SET]: { protocols: AB, except: ['U', 'V'] },
+  [ACTION_ID.FRAMERATE_SET]: { protocols: AB, except: ['U', 'V', 'VX'] },
   [ACTION_ID.FRAMERATE_GET]: { protocols: AB, except: ['U'] },
-  [ACTION_ID.FPS_ADAPT]: { protocols: [B], except: ['V'] },
-  [ACTION_ID.OSD_SET]: { protocols: AB, except: ['V'] },
+  [ACTION_ID.FPS_ADAPT]: { protocols: [B], except: ['V', 'VX'] },
+  [ACTION_ID.OSD_SET]: { protocols: AB, except: ['V', 'VX'] },
   [ACTION_ID.OSD_GET]: AB,
-  [ACTION_ID.LOW_PWR_SET]: { protocols: [B], except: ['U', 'V'] },
-  [ACTION_ID.LOW_PWR_GET]: { protocols: [B], except: ['U', 'V'] },
+  [ACTION_ID.LOW_PWR_SET]: { protocols: [B], except: ['U', 'V', 'VX'] },
+  [ACTION_ID.LOW_PWR_GET]: { protocols: [B], except: ['U', 'V', 'VX'] },
 
   // === Probe (query-only; pr_video_count unsupported on U-series) ===
   [ACTION_ID.SNDINFO_GET]: [],
@@ -180,17 +180,17 @@ export const ACTION_SUPPORT: Record<ACTION_ID, SupportRule> = {
   [ACTION_ID.MFC_PROBE_GET]: [],
   [ACTION_ID.RCV_PROBE_GET]: [],
   [ACTION_ID.MOD_PROBE_GET]: [],
-  [ACTION_ID.MFC_MANUAL]: { protocols: AB, except: ['V'] },
+  [ACTION_ID.MFC_MANUAL]: { protocols: AB, except: ['V', 'VX'] },
   // [ACTION_ID.PR_RCV_STATE_GET]: { protocols: AB, except: ['U'] },
   [ACTION_ID.PR_RCV_STATE_GET]: [],
 
   // === Audio preset ===
-  [ACTION_ID.LD_AUDPRESET_IDX]: { protocols: [B], except: ['V'] },
+  [ACTION_ID.LD_AUDPRESET_IDX]: { protocols: [B], except: ['V', 'VX'] },
 
   // === Dangerous operations ===
   [ACTION_ID.RESTOREHOST]: AB,
-  [ACTION_ID.REBOOT]: { protocols: [B], except: ['V'] },
-  [ACTION_ID.SHUTDOWN]: { protocols: [A, B], except: ['V'] },
+  [ACTION_ID.REBOOT]: { protocols: [B], except: ['V', 'VX'] },
+  [ACTION_ID.SHUTDOWN]: { protocols: [A, B], except: ['V', 'VX'] },
 
   // === Custom (no device restriction) ===
   [ACTION_ID.RAW_COMMAND]: 'always'

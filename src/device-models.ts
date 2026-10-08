@@ -17,7 +17,7 @@ import { logger } from './log'
  */
 
 /** Model families currently participating in action-support judgment. */
-export const DEVICE_FAMILIES = ['U', 'V'] as const
+export const DEVICE_FAMILIES = ['U', 'V', 'VX'] as const
 export type DeviceFamilyId = (typeof DEVICE_FAMILIES)[number]
 
 export interface DeviceModelInfo {
@@ -64,7 +64,7 @@ export const B_DEVICE_MODELS: Record<string, DeviceModelInfo> = {
   // X26M: { modelByte: 31, label: 'X26m' },
   // VX6: { modelByte: 32, label: 'VX6' },
   // VX4: { modelByte: 33, label: 'VX4' },
-  // VX20: { modelByte: 34, label: 'VX20' },
+  VX20: { modelByte: 34, label: 'VX20', family: 'VX' },
   U9_MAX: { modelByte: 35, label: 'U9 Max', family: 'U' },
   // X100_PRO_2U: { modelByte: 36, label: 'X100 Pro-2U' },
   // DS420: { modelByte: 37, label: 'DS420' },
