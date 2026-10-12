@@ -78,15 +78,18 @@ export class SPTransmitter {
    * (`WebAssembly.instantiate`). Callers must `await` this method, otherwise
    * a race condition causes other synchronous methods to throw "session destroyed".
    */
-  public async bindSpSession(proto: 1 | 2): Promise<void> {
+  public async bindSpSession(proto: 1 | 2, options?: { downlinkChecksum?: boolean }): Promise<void> {
     // Release the old one first if called multiple times on the same SPTransmitter
     this.releaseSpSession()
 
+    const downlinkChecksum = options?.downlinkChecksum
     try {
       // Debug mode: do not pass devCmds, allow all commands through
-      this._spSession = await SpSessionCtor.create(proto, {})
+      this._spSession = await SpSessionCtor.create(proto, { downlinkChecksum })
       this._spProto = proto
-      logger.info(`SpSession bound: proto=${proto} token=${this._token}`)
+      logger.info(
+        `SpSession bound: proto=${proto} token=${this._token} downlinkChecksum=${downlinkChecksum === true}`
+      )
     } catch (err) {
       logger.error(`SpSession.create failed: ${(err as Error).message ?? String(err)}`)
       this._spSession = null

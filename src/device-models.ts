@@ -132,3 +132,8 @@ export function resolveDeviceModel(
     protocol === DeviceProtocolEnum.B ? B_MODEL_INDEX : protocol === DeviceProtocolEnum.A ? A_MODEL_INDEX : undefined
   return index?.get(modelByte)
 }
+
+/** True only for families whose session must enable downlink checksum after create. */
+export function downlinkChecksumForFamily(family: DeviceFamilyId | undefined): boolean {
+  return family === 'V' || family === 'VX'
+}

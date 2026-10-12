@@ -12,7 +12,7 @@ import { SPTransmitter } from './actions/string-protocol/core/transmitter'
 import { setupFeedbacks } from './feedbacks'
 import { setupVariables } from './variables'
 import { getProtocolForDeviceType, type ProbeResult } from './udp-probe'
-import { resolveDeviceModel } from './device-models'
+import { downlinkChecksumForFamily, resolveDeviceModel } from './device-models'
 
 class CltProcessor extends InstanceBase<DeviceConfig> implements ProcessorBase {
   // device config
@@ -204,7 +204,9 @@ class CltProcessor extends InstanceBase<DeviceConfig> implements ProcessorBase {
   private _bindSpSessionFromConfig(): void {
     if (this.config.protocol === DeviceProtocolEnum.None) return
     const proto = this.config.protocol === DeviceProtocolEnum.A ? 1 : 2
-    const inflight = this.spTransmitter.bindSpSession(proto)
+    const model = resolveDeviceModel(this.config.protocol, this.state.modelByte)
+    const downlinkChecksum = downlinkChecksumForFamily(model?.family)
+    const inflight = this.spTransmitter.bindSpSession(proto, { downlinkChecksum })
     inflight.catch((err: Error) => {
       logger.error(`bindSpSession failed: ${err.message ?? String(err)}`)
     })

@@ -28,6 +28,7 @@
  */
 
 import { loadWasmModule, type EmscriptenModule, type SpSessionCApi } from './platform'
+import { logger } from '../log'
 
 // ---------------------------------------------------------------------------
 // 1. Constants and error semantics (aligned with lib/sp/sp_error.h sp_err_t)
@@ -90,6 +91,11 @@ export interface SpSessionOptions {
   binCap?: number
   /** Inbound/outbound JSON scratch capacity, default 64 KiB. */
   jsonCap?: number
+  /**
+   * When true, call sp_session_set_downlink_checksum(handle, 1) after a
+   * successful sp_session_create. Failure is logged and does not fail create.
+   */
+  downlinkChecksum?: boolean
 }
 
 export interface SpIoResult {
@@ -320,6 +326,31 @@ function _requireApi(): SpSessionCApi {
   return _api
 }
 
+function reportDownlinkChecksumFailure(handle: number, code: unknown, api: SpSessionCApi): void {
+  let detail = `code=${String(code)}`
+  if (typeof code === 'number' && Number.isInteger(code) && code !== 0) {
+    try {
+      detail += ` msg=${api.sp_err_str(code)}`
+    } catch {
+      // sp_err_str failed; keep the numeric code only.
+    }
+  }
+  logger.error(`sp_session_set_downlink_checksum failed: handle=${handle} ${detail}`)
+}
+
+function enableDownlinkChecksum(api: SpSessionCApi, handle: number): void {
+  let code: unknown
+  try {
+    code = api.sp_session_set_downlink_checksum(handle, 1)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    logger.error(`sp_session_set_downlink_checksum threw: handle=${handle} message=${message}`)
+    return
+  }
+  if (typeof code === 'number' && code === 0) return
+  reportDownlinkChecksumFailure(handle, code, api)
+}
+
 // ---------------------------------------------------------------------------
 // 6. SpSession
 // ---------------------------------------------------------------------------
@@ -376,6 +407,9 @@ export class SpSession {
         `SpSessionCreate failed for proto ${proto} (devCmds=${JSON.stringify(devCmds)}); ` +
           `every entry must be a command short code the native library knows`
       )
+    }
+    if (opts.downlinkChecksum === true) {
+      enableDownlinkChecksum(api, handle)
     }
     return new SpSession(handle, binCap, jsonCap)
   }

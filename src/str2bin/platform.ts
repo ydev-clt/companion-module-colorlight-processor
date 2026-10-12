@@ -83,6 +83,7 @@ export interface SpSessionCApi {
   sp_session_drop(handle: number, token: number): void
   sp_err_str(code: number): string
   sp_version(): string
+  sp_session_set_downlink_checksum(handle: number, enabled: number): number
   sp_str_cmd_parse(namePtr: number): number
 }
 
@@ -202,7 +203,7 @@ async function doLoad(): Promise<EmscriptenModule> {
 }
 
 /**
- * Bind the 10 exports of sp_session.* + 2 alloc helpers to a typed JS API
+ * Bind the sp_session exports used by SpSession, including sp_session_set_downlink_checksum.
  * on the Module. Mirrors `cwrapApi()` in the upstream WASM package's
  * `src/js/emlib.js`. The shape here is a structural subset — `SpSession`
  * only touches these methods.
@@ -256,6 +257,10 @@ function bindCApi(em: EmscriptenModule): void {
     sp_version(): string {
       const fn = em.cwrap('sp_version', 'string', [])
       return fn() as string
+    },
+    sp_session_set_downlink_checksum(handle: number, enabled: number): number {
+      const fn = em.cwrap('sp_session_set_downlink_checksum', 'number', ['number', 'number'])
+      return fn(handle, enabled) as number
     },
     sp_str_cmd_parse(namePtr: number): number {
       // C signature:
