@@ -87,9 +87,7 @@ export class SPTransmitter {
       // Debug mode: do not pass devCmds, allow all commands through
       this._spSession = await SpSessionCtor.create(proto, { downlinkChecksum })
       this._spProto = proto
-      logger.info(
-        `SpSession bound: proto=${proto} token=${this._token} downlinkChecksum=${downlinkChecksum === true}`
-      )
+      logger.info(`SpSession bound: proto=${proto} token=${this._token} downlinkChecksum=${downlinkChecksum === true}`)
     } catch (err) {
       logger.error(`SpSession.create failed: ${(err as Error).message ?? String(err)}`)
       this._spSession = null
@@ -139,9 +137,10 @@ export class SPTransmitter {
   /**
    * Handle received downlink data (callback at Connection `socket.on('data', ...)`)
    *  - Restore Z/V binary back to String-Protocol JSON via SpSession.outbound
-   *  - Parse JSON array and dispatch to _handleResponse
-   *  - Library errors (8002-8999) are logged and discarded; protocol errors
-   *    (9001-9011) go through the json branch
+   *  - Every finished result carries JSON with the request id (success, 9999, or
+   *    any other code). Dispatch that id only; the GetGate then lets the queue
+   *    send in order. Do not drop the token and do not touch other requests.
+   *  - PARTIAL (8001) has no id yet and waits for more bytes
    */
   handleIncoming(data: Buffer): void {
     if (!this._spSession) {
@@ -153,18 +152,8 @@ export class SPTransmitter {
     try {
       result = this._spSession.outbound(this._token, data)
     } catch (err) {
-      logger.error(`SpSession.outbound threw: ${(err as Error).message ?? String(err)}; dropping buffer`)
-      return
-    }
-
-    if (result.err === 0) {
-      if (result.json) {
-        logger.debug(`SpSession.outbound JSON: ${result.json}`)
-        this._dispatchJsonString(result.json)
-      } else {
-        // err=0 but json/bin are both missing: debug
-        logger.debug('SpSession.outbound returned err=0 with no payload')
-      }
+      const message = err instanceof Error ? err.message : String(err)
+      logger.error(`SpSession.outbound threw: ${message}`)
       return
     }
 
@@ -174,23 +163,17 @@ export class SPTransmitter {
       return
     }
 
-    if (result.err >= 8002 && result.err <= 8999) {
-      // Library error: discard this buffer
-      logger.error(`SpSession.outbound library error: err=${result.err}; dropping buffer`)
+    if (!result.json) {
+      logger.debug(`SpSession.outbound err=${result.err} with no json`)
       return
     }
 
-    if (result.err >= 9001 && result.err <= 9011) {
-      // Protocol/parameter error: go through json branch (if SpSession returned json)
-      if (result.json) {
-        this._dispatchJsonString(result.json)
-      } else {
-        logger.warn(`SpSession.outbound protocol error with no json: err=${result.err}`)
-      }
-      return
+    if (result.err === 0) {
+      logger.debug(`SpSession.outbound JSON: ${result.json}`)
+    } else {
+      logger.warn(`SpSession.outbound err=${result.err} JSON: ${result.json}`)
     }
-
-    logger.warn(`SpSession.outbound unexpected err: ${result.err}`)
+    this._dispatchJsonString(result.json)
   }
 
   /**
