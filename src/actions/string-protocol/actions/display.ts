@@ -2,7 +2,14 @@ import type { CompanionActionDefinition, CompanionActionDefinitions } from '@com
 import { logger } from '../../../log'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { buildGetAction, deviceAndBroadcastFields, gidField, openCloseField, openCloseToggleField, sidFromOptions } from './_shared'
+import {
+  buildGetAction,
+  deviceAndBroadcastFields,
+  gidField,
+  openCloseField,
+  openCloseToggleField,
+  sidFromOptions
+} from './_shared'
 import type { StringActionHost } from './_shared'
 import { DeviceProtocolEnum } from '../../../types'
 
@@ -28,14 +35,14 @@ async function sendOpenCloseOrToggle(
   conn: StringActionHost['conn'],
   cmd: string,
   featureName: 'Freeze' | 'Blackout',
-  options: { deviceId: number; isSelectAll: boolean; openStatus: number; gid?: number }
+  options: { deviceId: number; isSelectAll: boolean; enableStatus: number; gid?: number }
 ): Promise<void> {
   const sid = sidFromOptions(options.isSelectAll, options.deviceId)
   const data: Record<string, unknown> = {}
   if (typeof options.gid === 'number') data.gid = options.gid
 
-  if (options.openStatus !== 2) {
-    data.en = options.openStatus
+  if (options.enableStatus !== 2) {
+    data.en = options.enableStatus
     await conn.sendOnly(cmd, 'set', sid, data)
     return
   }
@@ -228,7 +235,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
     description: 'Freeze the output (en=1), unfreeze (en=0), or toggle the current state.',
     options: [...deviceAndBroadcastFields(), openCloseToggleField(1), gidField()],
     callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: number; gid?: number }
+      const o = event.options as { deviceId: number; isSelectAll: boolean; enableStatus: number; gid?: number }
       await sendOpenCloseOrToggle(conn, CMD.FREEZE, 'Freeze', o)
     }
   }
@@ -254,7 +261,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
     description: 'Blackout (en=1), restore (en=0), or toggle the current state.',
     options: [...deviceAndBroadcastFields(), openCloseToggleField(1), gidField()],
     callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: number; gid?: number }
+      const o = event.options as { deviceId: number; isSelectAll: boolean; enableStatus: number; gid?: number }
       await sendOpenCloseOrToggle(conn, CMD.BLACKOUT, 'Blackout', o)
     }
   }
@@ -350,9 +357,9 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
     description: 'Set mute on or off.',
     options: [...deviceAndBroadcastFields(), openCloseField(1), gidField()],
     callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: 0 | 1; gid?: number }
+      const o = event.options as { deviceId: number; isSelectAll: boolean; enableStatus: 0 | 1; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { en: o.openStatus }
+      const data: Record<string, unknown> = { en: o.enableStatus }
       if (typeof o.gid === 'number') data.gid = o.gid
       await conn.sendOnly(CMD.MUTE, 'set', sid, data)
     }
@@ -370,9 +377,9 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
     description: 'Enable or disable fade in/out.',
     options: [...deviceAndBroadcastFields(), openCloseField(1), gidField()],
     callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: 0 | 1; gid?: number }
+      const o = event.options as { deviceId: number; isSelectAll: boolean; enableStatus: 0 | 1; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { en: o.openStatus }
+      const data: Record<string, unknown> = { en: o.enableStatus }
       if (typeof o.gid === 'number') data.gid = o.gid
       await conn.sendOnly(CMD.FADE, 'set', sid, data)
     }
@@ -395,7 +402,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
         id: 'ms',
         min: 0,
         max: Number.MAX_SAFE_INTEGER,
-        default: 0,
+        default: 0
       },
       gidField()
     ],
@@ -444,12 +451,12 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       const o = event.options as {
         deviceId: number
         isSelectAll: boolean
-        openStatus: 0 | 1
+        enableStatus: 0 | 1
         mode: 1 | 2
         gid?: number
       }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { en: o.openStatus, mode: o.mode }
+      const data: Record<string, unknown> = { en: o.enableStatus, mode: o.mode }
       if (typeof o.gid === 'number') data.gid = o.gid
       await conn.sendOnly(CMD.ZERODELAY, 'set', sid, data)
     }
@@ -468,9 +475,9 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
     description: 'Set the UH5 status (A protocol only).',
     options: [...deviceAndBroadcastFields(), openCloseField(1)],
     callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: 0 | 1 }
+      const o = event.options as { deviceId: number; isSelectAll: boolean; enableStatus: 0 | 1 }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { en: o.openStatus }
+      const data: Record<string, unknown> = { en: o.enableStatus }
       await conn.sendOnly(CMD.UH5_ST, 'set', sid, data)
     }
   }

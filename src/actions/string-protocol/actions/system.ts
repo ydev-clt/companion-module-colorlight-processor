@@ -41,7 +41,7 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
         id: 'osdId',
         min: 0,
         max: Number.MAX_SAFE_INTEGER,
-        default: 0,
+        default: 0
       },
       gidField()
     ],
@@ -49,13 +49,13 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
       const o = event.options as {
         deviceId: number
         isSelectAll: boolean
-        openStatus: 0 | 1
+        enableStatus: 0 | 1
         type: number
         osdId: number
         gid?: number
       }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { en: o.openStatus, type: o.type, osdId: o.osdId }
+      const data: Record<string, unknown> = { en: o.enableStatus, type: o.type, osdId: o.osdId }
       if (typeof o.gid === 'number') data.gid = o.gid
       await conn.sendOnly(CMD.OSD, 'set', sid, data)
     }
@@ -110,9 +110,9 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
     description: 'Enable or disable frame rate adaptation for the specified screen group.',
     options: [...deviceAndBroadcastFields(), openCloseField(1), gidField()],
     callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: 0 | 1; gid?: number }
+      const o = event.options as { deviceId: number; isSelectAll: boolean; enableStatus: 0 | 1; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { en: o.openStatus }
+      const data: Record<string, unknown> = { en: o.enableStatus }
       if (typeof o.gid === 'number') data.gid = o.gid
       await conn.sendOnly(CMD.FPS_ADAPT, 'set', sid, data)
     }
@@ -124,9 +124,9 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
     description: 'Enable or disable the low-power energy saving mode (B protocol only).',
     options: [...deviceAndBroadcastFields(), openCloseField(0)],
     callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: 0 | 1 }
+      const o = event.options as { deviceId: number; isSelectAll: boolean; enableStatus: 0 | 1 }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { en: o.openStatus }
+      const data: Record<string, unknown> = { en: o.enableStatus }
       await conn.sendOnly(CMD.LOW_PWR, 'set', sid, data)
     }
   }

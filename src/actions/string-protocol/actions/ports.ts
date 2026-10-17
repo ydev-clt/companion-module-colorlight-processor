@@ -32,11 +32,11 @@ export function setupPortActions(host: StringActionHost): CompanionActionDefinit
         deviceId: number
         isSelectAll: boolean
         port: number
-        openStatus: 0 | 1
+        enableStatus: 0 | 1
         gid?: number
       }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { port: o.port, en: o.openStatus }
+      const data: Record<string, unknown> = { port: o.port, en: o.enableStatus }
       if (typeof o.gid === 'number') data.gid = o.gid
       await conn.sendOnly(CMD.PORTOUT, 'set', sid, data)
     }
@@ -57,7 +57,7 @@ export function setupPortActions(host: StringActionHost): CompanionActionDefinit
         id: 'port',
         min: 1,
         max: 64,
-        default: 1,
+        default: 1
       }
     ],
     skipGid: true,
@@ -66,9 +66,7 @@ export function setupPortActions(host: StringActionHost): CompanionActionDefinit
       // §5.2.13 portout get response: `{ count, opticalCount, ports: [{idx, en}, ...] }`.
       // We requested a specific 1-based `port`; pick the entry whose 0-based
       // `idx` matches and surface its `en` as the user-facing `enable` value.
-      const data = resp.data as
-        | { ports?: Array<{ idx?: number; en?: number }> }
-        | undefined
+      const data = resp.data as { ports?: Array<{ idx?: number; en?: number }> } | undefined
       if (!data || !Array.isArray(data.ports)) return undefined
       const targetIdx = o.port - 1
       const entry = data.ports.find((p) => p && p.idx === targetIdx)
@@ -83,17 +81,16 @@ export function setupPortActions(host: StringActionHost): CompanionActionDefinit
     description: 'Enable or disable output on all network ports.',
     options: [...deviceAndBroadcastFields(), openCloseField(1), gidField()],
     callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: 0 | 1; gid?: number }
+      const o = event.options as { deviceId: number; isSelectAll: boolean; enableStatus: 0 | 1; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { en: o.openStatus }
+      const data: Record<string, unknown> = { en: o.enableStatus }
       if (typeof o.gid === 'number') data.gid = o.gid
       await conn.sendOnly(CMD.ALLPORTS, 'set', sid, data)
     }
   }
   actions[ACTION_ID.ALLPORTS_GET] = buildGetAction(host, {
     name: 'Get All Network Ports Output',
-    description:
-      'Query the global output enable state and write to the `allports_enable` variable (0: off, 1: on).',
+    description: 'Query the global output enable state and write to the `allports_enable` variable (0: off, 1: on).',
     cmd: CMD.ALLPORTS,
     skipGid: true
   })
@@ -111,7 +108,7 @@ export function setupPortActions(host: StringActionHost): CompanionActionDefinit
         id: 'brt',
         min: 0,
         max: 10000,
-        default: 5000,
+        default: 5000
       },
       gidField()
     ],
@@ -140,7 +137,7 @@ export function setupPortActions(host: StringActionHost): CompanionActionDefinit
         id: 'port',
         min: 1,
         max: 64,
-        default: 1,
+        default: 1
       }
     ],
     dataBuilder: ({ port, gid }) => {
@@ -191,9 +188,9 @@ export function setupPortActions(host: StringActionHost): CompanionActionDefinit
     description: 'Master switch for network-port brightness on U-series screen groups.',
     options: [...deviceAndBroadcastFields({ allowSelectAll: false }), openCloseField(1), gidField()],
     callback: async (event) => {
-      const o = event.options as { deviceId: number; openStatus: 0 | 1; gid?: number }
+      const o = event.options as { deviceId: number; enableStatus: 0 | 1; gid?: number }
       const sid = sidFromOptions(false, o.deviceId)
-      const data: Record<string, unknown> = { en: o.openStatus }
+      const data: Record<string, unknown> = { en: o.enableStatus }
       if (typeof o.gid === 'number') data.gid = o.gid
       await conn.sendOnly(CMD.NET_BRT_EN, 'set', sid, data)
     }

@@ -59,13 +59,13 @@ export function openCloseField(
 ): SomeCompanionActionInputField {
   return {
     type: 'dropdown',
-    label: 'Open/Close',
-    id: 'openStatus',
-    tooltip: 'Open/Close',
+    label: 'enable/disable',
+    id: 'enableStatus',
+    tooltip: 'enable/disable',
     default: defaultValue,
     choices: [
-      { id: 1, label: 'Open' },
-      { id: 0, label: 'Close' }
+      { id: 1, label: 'enable' },
+      { id: 0, label: 'disable' }
     ],
     ...(opts.disableAutoExpression ? { disableAutoExpression: true } : {})
   }
@@ -75,8 +75,8 @@ export function openCloseField(
 export function openCloseToggleField(defaultValue: 0 | 1 | 2 = 1): SomeCompanionActionInputField {
   return {
     type: 'dropdown',
-    label: 'Open/Close/Toggle',
-    id: 'openStatus',
+    label: 'enable/disable/toggle',
+    id: 'enableStatus',
     tooltip: 'Open, close, or toggle the current state',
     default: defaultValue,
     choices: [

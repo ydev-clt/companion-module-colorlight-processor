@@ -79,7 +79,7 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
         tooltip: 'Brightness delta: positive values increase, negative values decrease.',
         min: -10000,
         max: 10000,
-        default: 0,
+        default: 0
       },
       gidField()
     ],
@@ -105,7 +105,7 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
         tooltip: 'Color temperature delta in Kelvin: positive values increase, negative values decrease.',
         min: -10000,
         max: 10000,
-        default: 0,
+        default: 0
       },
       gidField()
     ],
@@ -131,7 +131,7 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
         tooltip: 'Step value: positive values increase, negative values decrease.',
         min: Number.MIN_SAFE_INTEGER,
         max: Number.MAX_SAFE_INTEGER,
-        default: 1,
+        default: 1
       },
       gidField()
     ],
@@ -188,7 +188,7 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
       const o = event.options as {
         deviceId: number
         isSelectAll: boolean
-        openStatus: number
+        enableStatus: number
         method: number
         mul: number
         gid?: number
@@ -197,7 +197,7 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
       const data: Record<string, unknown> = {}
       if (typeof o.gid === 'number') data.gid = o.gid
       // Divided into 3 API calls to set each parameter individually
-      await conn.sendOnly(CMD.VSYNC_MUL, 'set', sid, { ...data, en: o.openStatus })
+      await conn.sendOnly(CMD.VSYNC_MUL, 'set', sid, { ...data, en: o.enableStatus })
       await conn.sendOnly(CMD.VSYNC_MUL, 'set', sid, { ...data, method: o.method })
       await conn.sendOnly(CMD.VSYNC_MUL, 'set', sid, { ...data, mul: o.mul })
     }

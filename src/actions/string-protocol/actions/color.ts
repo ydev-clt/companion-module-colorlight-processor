@@ -65,9 +65,9 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
     description: 'Enable or disable precise color management.',
     options: [...deviceAndBroadcastFields(), openCloseField(1), gidField()],
     callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: 0 | 1; gid?: number }
+      const o = event.options as { deviceId: number; isSelectAll: boolean; enableStatus: 0 | 1; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { en: o.openStatus }
+      const data: Record<string, unknown> = { en: o.enableStatus }
       if (typeof o.gid === 'number') data.gid = o.gid
       await conn.sendOnly(CMD.PREC_MGR, 'set', sid, data)
     }
@@ -239,7 +239,8 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
   }
   actions[ACTION_ID.CT_G_GET] = buildGetAction(host, {
     name: 'Get Color Temp Green Gain',
-    description: 'Query the green gain of the screen group color temperature and write to `screen_color_temperature_g`.',
+    description:
+      'Query the green gain of the screen group color temperature and write to `screen_color_temperature_g`.',
     cmd: CMD.CT_G,
     dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
   })
@@ -367,7 +368,7 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
           { id: 2, label: '3x virtual' },
           { id: 3, label: '0.75 virtual' }
         ],
-        isVisibleExpression: '$(options:openStatus) == 1'
+        isVisibleExpression: '$(options:enableStatus) == 1'
       },
       {
         type: 'dropdown',
@@ -378,21 +379,21 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
           { id: 0, label: 'Left to right' },
           { id: 1, label: 'Top to bottom' }
         ],
-        isVisibleExpression: '$(options:openStatus) == 1'
+        isVisibleExpression: '$(options:enableStatus) == 1'
       },
       {
         type: 'checkbox',
         label: 'Row Offset',
         id: 'rowOffset',
         default: false,
-        isVisibleExpression: '$(options:openStatus) == 1'
+        isVisibleExpression: '$(options:enableStatus) == 1'
       },
       {
         type: 'checkbox',
         label: 'Col Offset',
         id: 'colOffset',
         default: false,
-        isVisibleExpression: '$(options:openStatus) == 1'
+        isVisibleExpression: '$(options:enableStatus) == 1'
       },
       gidField()
     ],
@@ -400,7 +401,7 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
       const o = event.options as {
         deviceId: number
         isSelectAll: boolean
-        openStatus: 0 | 1
+        enableStatus: 0 | 1
         rate: number
         direction: number
         rowOffset: number
@@ -408,8 +409,8 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
         gid?: number
       }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { en: o.openStatus }
-      if (o.openStatus) {
+      const data: Record<string, unknown> = { en: o.enableStatus }
+      if (o.enableStatus) {
         const { rate, direction, rowOffset, colOffset } = o
         Object.assign(data, {
           rate,
