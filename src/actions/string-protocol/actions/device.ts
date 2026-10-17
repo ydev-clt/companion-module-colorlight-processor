@@ -24,7 +24,7 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
     description: 'Set the device serial number.',
     options: [
       ...deviceAndBroadcastFields({ allowSelectAll: false }),
-      { type: 'textinput', label: 'Serial number', id: 'serial', default: '', required: true }
+      { type: 'textinput', label: 'Serial number', id: 'serial', default: '', minLength: 1, useVariables: true }
     ],
     callback: async (event) => {
       const o = event.options as { deviceId: number; serial: string }
@@ -45,13 +45,14 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
     description: 'Set the EDID for an input source.',
     options: [
       ...deviceAndBroadcastFields(),
-      { type: 'number', label: 'Input source (1-based)', id: 'src', min: 1, max: 32, default: 1, required: true },
+      { type: 'number', label: 'Input source (1-based)', id: 'src', min: 1, max: 32, default: 1 },
       {
         type: 'textinput',
         label: 'EDID hex (no spaces)',
         tooltip: 'EDID must be a continuous hex string without spaces.',
         id: 'edid',
         default: '',
+        useVariables: true,
         regex: '^[0-9A-Fa-f]+$'
       },
       gidField()
@@ -79,7 +80,6 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
         min: -10000,
         max: 10000,
         default: 0,
-        required: true
       },
       gidField()
     ],
@@ -106,7 +106,6 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
         min: -10000,
         max: 10000,
         default: 0,
-        required: true
       },
       gidField()
     ],
@@ -133,7 +132,6 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
         min: Number.MIN_SAFE_INTEGER,
         max: Number.MAX_SAFE_INTEGER,
         default: 1,
-        required: true
       },
       gidField()
     ],

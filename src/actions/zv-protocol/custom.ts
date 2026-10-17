@@ -18,8 +18,8 @@ export function setCustomCommandAction(context: CltProcessorType) {
         label: 'Command',
         type: 'textinput',
         default: '',
-        required: true,
-        regex: '^([0-9A-Fa-f]{2})+$'
+        minLength: 1,
+        useVariables: true
       }
     ],
     callback: (action) => {

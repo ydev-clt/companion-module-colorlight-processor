@@ -26,7 +26,8 @@ export function setupCustomActions(host: StringActionHost): CompanionActionDefin
         label: 'Command',
         type: 'textinput',
         default: '',
-        required: true,
+        minLength: 1,
+        useVariables: true,
         regex: '^([0-9A-Fa-f]{2})+$'
       }
     ],

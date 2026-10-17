@@ -32,12 +32,12 @@ export interface StringActionHost {
  *  - isSelectAll=true → 255 (broadcast, see §4.2.5)
  *  - otherwise → deviceId (1-254)
  */
-export function sidFromOptions(isSelectAll: boolean | undefined, deviceId: number | undefined): number {
+export function sidFromOptions(isSelectAll: boolean | undefined, deviceId: number | string | undefined): number {
   if (isSelectAll) return SID_BROADCAST
-  const v = Number.isFinite(deviceId) ? Number(deviceId) : 1
-  if (v < 1) return 1
+  const v = Number(deviceId)
+  if (!Number.isFinite(v) || v < 1) return 1
   if (v > 254) return 254
-  return v
+  return Math.trunc(v)
 }
 
 /** Screen group gid field (used only when the protocol marks it as "optional", see §2) */
@@ -48,13 +48,15 @@ export function gidField(defaultValue: number = GID_DEFAULT, max = 128): SomeCom
     id: 'gid',
     min: 1,
     max,
-    default: defaultValue,
-    required: false
+    default: defaultValue
   }
 }
 
 /** Open/Close dropdown */
-export function openCloseField(defaultValue: 0 | 1 = 1): SomeCompanionActionInputField {
+export function openCloseField(
+  defaultValue: 0 | 1 = 1,
+  opts: { disableAutoExpression?: boolean } = {}
+): SomeCompanionActionInputField {
   return {
     type: 'dropdown',
     label: 'Open/Close',
@@ -64,7 +66,8 @@ export function openCloseField(defaultValue: 0 | 1 = 1): SomeCompanionActionInpu
     choices: [
       { id: 1, label: 'Open' },
       { id: 0, label: 'Close' }
-    ]
+    ],
+    ...(opts.disableAutoExpression ? { disableAutoExpression: true } : {})
   }
 }
 
@@ -88,24 +91,25 @@ export function openCloseToggleField(defaultValue: 0 | 1 | 2 = 1): SomeCompanion
 export function deviceAndBroadcastFields(
   opts: { allowSelectAll?: boolean; deviceMax?: number } = {}
 ): SomeCompanionActionInputField[] {
+  const allowSelectAll = opts.allowSelectAll !== false
   const fields: SomeCompanionActionInputField[] = [
     {
       type: 'number',
       label: 'Device ID',
       id: 'deviceId',
+      default: 1,
       min: 1,
       max: opts.deviceMax ?? 64,
-      default: 1,
-      required: true,
-      isVisible: (action) => !(action.options as { isSelectAll?: boolean }).isSelectAll
+      ...(allowSelectAll ? { isVisibleExpression: '!$(options:isSelectAll)' } : {})
     }
   ]
-  if (opts.allowSelectAll !== false) {
+  if (allowSelectAll) {
     fields.push({
       type: 'checkbox',
       label: 'Send to all devices (sid=255)',
       id: 'isSelectAll',
-      default: false
+      default: false,
+      disableAutoExpression: true
     })
   }
   return fields

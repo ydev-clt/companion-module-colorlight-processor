@@ -107,7 +107,6 @@ export function setupProbeActions(host: StringActionHost): CompanionActionDefini
         min: 0,
         max: 65535,
         default: 16,
-        required: true
       },
       {
         type: 'number',
@@ -117,7 +116,6 @@ export function setupProbeActions(host: StringActionHost): CompanionActionDefini
         min: 0,
         max: 255,
         default: 17,
-        required: true
       }
     ],
     dataBuilder: ({ slotCode, boardKind }) => ({ slotCode, boardKind })
@@ -162,7 +160,6 @@ export function setupProbeActions(host: StringActionHost): CompanionActionDefini
         min: 1,
         max: 64,
         default: 1,
-        required: true
       }
     ],
     dataBuilder: ({ port }) => ({ port })
@@ -188,7 +185,6 @@ export function setupProbeActions(host: StringActionHost): CompanionActionDefini
         min: 1,
         max: 64,
         default: 1,
-        required: true
       },
       {
         type: 'number',
@@ -198,7 +194,6 @@ export function setupProbeActions(host: StringActionHost): CompanionActionDefini
         min: 1,
         max: 65534,
         default: 1,
-        required: true
       }
     ],
     dataBuilder: ({ port, rcv }) => ({ port, rcv })
@@ -219,7 +214,6 @@ export function setupProbeActions(host: StringActionHost): CompanionActionDefini
         min: 1,
         max: 64,
         default: 1,
-        required: true
       }
     ],
     dataBuilder: ({ port }) => ({ port })
@@ -240,7 +234,6 @@ export function setupProbeActions(host: StringActionHost): CompanionActionDefini
         min: 1,
         max: 64,
         default: 1,
-        required: true
       }
     ],
     dataBuilder: ({ port }) => ({ port })

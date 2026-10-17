@@ -2,14 +2,15 @@ import type { CompanionVariableDefinition } from '@companion-module/base'
 import type { CltProcessorType } from '../types'
 import { logger } from '../log'
 import { VARIABLE_GROUPS } from './core/registry'
-import { ACTION_ID } from '../actions/string-protocol/core/ids'
+import { VARIABLE_ID } from './core/ids'
+import { ACTION_ID, FEEDBACK_ID } from '../actions/string-protocol/core/ids'
 import { isActionSupported, type DeviceIdentity } from '../actions/string-protocol/core/action-support'
 
 /**
  * String-Protocol variables aggregator.
  *
  * Responsibilities:
- *  - Build a `CompanionVariableDefinition[]` from the registry, filtered
+ *  - Build variable definitions from the registry, filtered
  *    by the same per-action support matrix actions use. Definitions track
  *    the subset that survives device support so Companion only renders
  *    variables the current device can actually populate.
@@ -139,15 +140,15 @@ if (UNMAPPED.length > 0) {
  * aren't supported register no variables (so the user can't accidentally
  * observe stale data).
  */
-function buildDefinitionsForDevice(device: DeviceIdentity): CompanionVariableDefinition[] {
-  const out: CompanionVariableDefinition[] = []
+function buildDefinitionsForDevice(device: DeviceIdentity): Record<string, CompanionVariableDefinition> {
+  const out: Record<string, CompanionVariableDefinition> = {}
   for (const g of VARIABLE_GROUPS) {
     if (!isCmdSupported(g.cmd, device)) {
       logger.debug(`variables: dropping cmd '${g.cmd}' (unsupported on protocol=${device.protocol})`)
       continue
     }
     for (const s of g.specs) {
-      out.push({ variableId: s.variableId, name: s.displayName })
+      out[s.variableId] = { name: s.displayName }
     }
   }
   return out
@@ -171,7 +172,7 @@ export function setupVariables(context: CltProcessorType): {
   // runtime does. We cast through `unknown` to avoid widening the public
   // surface (these are Companion Module API methods, not application state).
   const ib = context as unknown as {
-    setVariableDefinitions: (defs: CompanionVariableDefinition[]) => void
+    setVariableDefinitions: (defs: Record<string, CompanionVariableDefinition>) => void
     setVariableValues: (values: Record<string, string | number | boolean | object>) => void
   }
 
@@ -182,21 +183,27 @@ export function setupVariables(context: CltProcessorType): {
     })
     try {
       ib.setVariableDefinitions(defs)
-      logger.info(`Variables registered: ${defs.length} (modelByte=${context.state.modelByte ?? 'unresolved'})`)
+      logger.info(
+        `Variables registered: ${Object.keys(defs).length} (modelByte=${context.state.modelByte ?? 'unresolved'})`
+      )
     } catch (err) {
       logger.error(`setVariableDefinitions failed: ${(err as Error).message ?? String(err)}`)
     }
   }
 
   function setVariableValues(values: Record<string, number | string | boolean | object>): void {
-    // The InstanceBase signature restricts values to string|number|boolean, but
-    // composite variables (e.g. `layer: {layer, x, y, width, height}`) carry
-    // nested objects which Companion preserves at runtime. Cast through unknown
-    // to bridge the public type gap without changing the registry payload shape.
+    // Composite variables (e.g. `layer: {layer, x, y, width, height}`) are JSON
+    // objects. CompanionVariableValue accepts JsonValue, including objects.
     try {
-      ib.setVariableValues(values as unknown as Record<string, string | number | boolean>)
+      ib.setVariableValues(values)
     } catch (err) {
       logger.warn(`setVariableValues failed: ${(err as Error).message ?? String(err)}`)
+    }
+    if (Object.prototype.hasOwnProperty.call(values, VARIABLE_ID.FREEZE_ENABLE)) {
+      context.checkFeedbacks(FEEDBACK_ID.FREEZE_SCREEN)
+    }
+    if (Object.prototype.hasOwnProperty.call(values, VARIABLE_ID.BLACKOUT_ENABLE)) {
+      context.checkFeedbacks(FEEDBACK_ID.BLACKOUT)
     }
   }
 

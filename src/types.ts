@@ -1,4 +1,4 @@
-import type { InstanceBase } from '@companion-module/base'
+import type { InstanceBase, InstanceTypes, JsonObject } from '@companion-module/base'
 import type { StateCache } from './state'
 
 export enum DeviceProtocolEnum {
@@ -10,10 +10,15 @@ export enum DeviceProtocolEnum {
 /**
  * device config
  */
-export type DeviceConfig = {
+export interface DeviceConfig {
   host: string
   port: number
   protocol: DeviceProtocolEnum
+}
+
+export interface ModuleTypes extends InstanceTypes {
+  config: DeviceConfig & JsonObject
+  secrets: undefined
 }
 
 /**
@@ -25,7 +30,7 @@ export interface ProcessorBase {
   send(data: Buffer): Promise<boolean>
 }
 
-export type CltProcessorType = ProcessorBase & InstanceBase<DeviceConfig>
+export type CltProcessorType = ProcessorBase & InstanceBase<ModuleTypes>
 
 /**
  * state context
@@ -45,4 +50,4 @@ export type StateContext = {
 export type ConnectionContext = {
   config: DeviceConfig
   handleIncoming(data: Buffer): void
-} & Pick<InstanceBase<DeviceConfig>, 'updateStatus'>
+} & Pick<InstanceBase<ModuleTypes>, 'updateStatus'>

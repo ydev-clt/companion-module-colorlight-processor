@@ -23,8 +23,7 @@ export function setupSwitchPresetAction(context: CltProcessorType) {
         min: 1,
         max: 64,
         default: 1,
-        required: true,
-        isVisible: (action) => !action.isSelectAll
+        isVisibleExpression: '!$(options:isSelectAll)'
       },
       {
         type: 'number',
@@ -35,13 +34,13 @@ export function setupSwitchPresetAction(context: CltProcessorType) {
         max: 16,
         default: 1,
         step: 1.0,
-        required: true,
         range: false
       },
       {
         type: 'checkbox',
         label: 'Send to all devices',
         id: 'isSelectAll',
+        disableAutoExpression: true,
         default: false
       }
     ],

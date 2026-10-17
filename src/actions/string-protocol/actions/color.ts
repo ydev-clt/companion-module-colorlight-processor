@@ -90,6 +90,7 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
         type: 'dropdown',
         label: 'Operation',
         id: 'operation',
+        disableAutoExpression: true,
         default: 'set',
         choices: [
           { id: 'set', label: 'Set percentage' },
@@ -103,8 +104,7 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
         min: 0,
         max: 100,
         default: 0,
-        required: true,
-        isVisible: (options) => options.operation !== 'step'
+        isVisibleExpression: '$(options:operation) != "step"'
       },
       {
         type: 'number',
@@ -114,8 +114,7 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
         min: -100,
         max: 100,
         default: 0,
-        required: true,
-        isVisible: (options) => options.operation === 'step'
+        isVisibleExpression: '$(options:operation) == "step"'
       },
       gidField()
     ],
@@ -173,6 +172,7 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
         type: 'dropdown',
         label: 'Operation',
         id: 'operation',
+        disableAutoExpression: true,
         default: 'set',
         choices: [
           { id: 'set', label: 'Set percentage' },
@@ -186,8 +186,7 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
         min: 0,
         max: 100,
         default: 0,
-        required: true,
-        isVisible: (options) => options.operation !== 'step'
+        isVisibleExpression: '$(options:operation) != "step"'
       },
       {
         type: 'number',
@@ -197,8 +196,7 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
         min: -100,
         max: 100,
         default: 0,
-        required: true,
-        isVisible: (options) => options.operation === 'step'
+        isVisibleExpression: '$(options:operation) == "step"'
       },
       gidField()
     ],
@@ -256,6 +254,7 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
         type: 'dropdown',
         label: 'Operation',
         id: 'operation',
+        disableAutoExpression: true,
         default: 'set',
         choices: [
           { id: 'set', label: 'Set percentage' },
@@ -269,8 +268,7 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
         min: 0,
         max: 100,
         default: 0,
-        required: true,
-        isVisible: (options) => options.operation !== 'step'
+        isVisibleExpression: '$(options:operation) != "step"'
       },
       {
         type: 'number',
@@ -280,8 +278,7 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
         min: -100,
         max: 100,
         default: 0,
-        required: true,
-        isVisible: (options) => options.operation === 'step'
+        isVisibleExpression: '$(options:operation) == "step"'
       },
       gidField()
     ],
@@ -335,7 +332,7 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
     description: 'Set the screen group intensity gain.',
     options: [
       ...deviceAndBroadcastFields(),
-      { type: 'number', label: 'Gain (0-10000)', id: 'gain', min: 0, max: 10000, default: 0, required: true },
+      { type: 'number', label: 'Gain (0-10000)', id: 'gain', min: 0, max: 10000, default: 0 },
       gidField()
     ],
     callback: async (event) => {
@@ -359,7 +356,7 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
     description: 'Enable or disable virtual pixel.',
     options: [
       ...deviceAndBroadcastFields(),
-      openCloseField(1),
+      openCloseField(1, { disableAutoExpression: true }),
       {
         type: 'dropdown',
         label: 'Scale Factor',
@@ -370,7 +367,7 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
           { id: 2, label: '3x virtual' },
           { id: 3, label: '0.75 virtual' }
         ],
-        isVisible: (options) => options.openStatus === 1
+        isVisibleExpression: '$(options:openStatus) == 1'
       },
       {
         type: 'dropdown',
@@ -381,21 +378,21 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
           { id: 0, label: 'Left to right' },
           { id: 1, label: 'Top to bottom' }
         ],
-        isVisible: (options) => options.openStatus === 1
+        isVisibleExpression: '$(options:openStatus) == 1'
       },
       {
         type: 'checkbox',
         label: 'Row Offset',
         id: 'rowOffset',
         default: false,
-        isVisible: (options) => options.openStatus === 1
+        isVisibleExpression: '$(options:openStatus) == 1'
       },
       {
         type: 'checkbox',
         label: 'Col Offset',
         id: 'colOffset',
         default: false,
-        isVisible: (options) => options.openStatus === 1
+        isVisibleExpression: '$(options:openStatus) == 1'
       },
       gidField()
     ],

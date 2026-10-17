@@ -1,11 +1,12 @@
 import type { CompanionAdvancedFeedbackDefinition } from '@companion-module/base'
 import { combineRgb } from '@companion-module/base'
+import type { CltProcessorType } from '../types'
 import { VARIABLE_ID } from '../variables/core/ids'
 
 /**
  * Freeze screen feedback.
  */
-export function setupFreezeScreenFeedback(): CompanionAdvancedFeedbackDefinition {
+export function setupFreezeScreenFeedback(context: CltProcessorType): CompanionAdvancedFeedbackDefinition {
   const ColorWhite = combineRgb(255, 255, 255)
   const ColorRed = combineRgb(200, 0, 0)
   const ColorGreen = combineRgb(0, 200, 0)
@@ -20,10 +21,9 @@ export function setupFreezeScreenFeedback(): CompanionAdvancedFeedbackDefinition
       { type: 'colorpicker', label: 'Foreground color (unFreeze)', id: 'fg_', default: ColorWhite },
       { type: 'colorpicker', label: 'Background color (unFreeze)', id: 'bg_', default: ColorGreen }
     ],
-    callback: async (feedback, ctx) => {
-      // const freezeStatus = context.getVariableValue(VARIABLE_ID.FREEZE_ENABLE)
-      const freeze = await ctx.parseVariablesInString(`$(colorlight:${VARIABLE_ID.FREEZE_ENABLE})`)
-      if (freeze === '1') {
+    callback: (feedback) => {
+      const freeze = context.getVariableValue(VARIABLE_ID.FREEZE_ENABLE)
+      if (freeze === 1 || freeze === '1') {
         return {
           bgcolor: feedback.options.bg as number,
           color: feedback.options.fg as number

@@ -1,7 +1,7 @@
 import type { SomeCompanionConfigField } from '@companion-module/base'
-import type { ProcessorBase, DeviceConfig } from './types'
+import type { ProcessorBase, DeviceConfig, ModuleTypes } from './types'
 import type { SPTransmitterHost } from './actions/string-protocol/core/transmitter'
-import { InstanceBase, runEntrypoint } from '@companion-module/base'
+import { InstanceBase } from '@companion-module/base'
 import { defaultConfig, generateConfigFields } from './config'
 import { DeviceProtocolEnum } from './types'
 import { Connection } from './connection'
@@ -14,7 +14,7 @@ import { setupVariables } from './variables'
 import { getProtocolForDeviceType, type ProbeResult } from './udp-probe'
 import { downlinkChecksumForFamily, resolveDeviceModel } from './device-models'
 
-class CltProcessor extends InstanceBase<DeviceConfig> implements ProcessorBase {
+class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
   // device config
   public config: DeviceConfig
   // connection instance
@@ -63,11 +63,11 @@ class CltProcessor extends InstanceBase<DeviceConfig> implements ProcessorBase {
    * assigned `this.config` and skipped everything else, which meant UDP
    * never opened on first init and the UDP probe never fired.
    */
-  public async init(config: DeviceConfig, _isFirstInit: boolean): Promise<void> {
+  public async init(config: DeviceConfig, _isFirstInit: boolean, _secrets: undefined): Promise<void> {
     logger.info('Init connection instance.')
     config.protocol = DeviceProtocolEnum.None
 
-    await this.configUpdated(config)
+    await this.configUpdated(config, undefined)
   }
 
   /**
@@ -95,7 +95,7 @@ class CltProcessor extends InstanceBase<DeviceConfig> implements ProcessorBase {
   private initFeedbacks(): void {
     logger.info('Init feedbacks.')
     // After refactoring: feedbacks unified to String-Protocol
-    this.setFeedbackDefinitions(setupFeedbacks())
+    this.setFeedbackDefinitions(setupFeedbacks(this))
   }
 
   /**
@@ -114,7 +114,7 @@ class CltProcessor extends InstanceBase<DeviceConfig> implements ProcessorBase {
   /**
    * config updated
    */
-  public async configUpdated(config: DeviceConfig): Promise<void> {
+  public async configUpdated(config: DeviceConfig, _secrets: undefined): Promise<void> {
     this.config = config
 
     logger.info(`Config updated. protocol=${this.config.protocol}`)
@@ -273,4 +273,4 @@ class CltProcessor extends InstanceBase<DeviceConfig> implements ProcessorBase {
   }
 }
 
-runEntrypoint(CltProcessor, [])
+export = CltProcessor

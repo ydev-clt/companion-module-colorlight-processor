@@ -39,16 +39,6 @@ const PIC_ADJ_MODE_HELP: Record<number, { min: number; max: number; default: num
   }
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const PIC_ADJ_IS_VISIBLE: Record<number, (arg: any) => boolean> = {
-  0: (arg) => Number((arg?.options ?? arg)?.mode) === 0,
-  1: (arg) => Number((arg?.options ?? arg)?.mode) === 1,
-  2: (arg) => Number((arg?.options ?? arg)?.mode) === 2,
-  3: (arg) => Number((arg?.options ?? arg)?.mode) === 3,
-  4: (arg) => Number((arg?.options ?? arg)?.mode) === 4
-}
-/* eslint-enable @typescript-eslint/no-explicit-any */
-
 function buildPicAdjValueFields(): CompanionInputFieldNumber[] {
   return [0, 1, 2, 3, 4].map((mode) => {
     const spec = PIC_ADJ_MODE_HELP[mode]
@@ -60,8 +50,7 @@ function buildPicAdjValueFields(): CompanionInputFieldNumber[] {
       min: spec.min,
       max: spec.max,
       default: spec.default,
-      required: true,
-      isVisible: PIC_ADJ_IS_VISIBLE[mode]
+      isVisibleExpression: `$(options:mode) == ${mode}`
     } as CompanionInputFieldNumber
   })
 }
@@ -109,6 +98,7 @@ export function setupPictureActions(host: StringActionHost): CompanionActionDefi
         label: 'Mode',
         id: 'mode',
         default: 0,
+        disableAutoExpression: true,
         choices: [
           { id: 0, label: 'Hue' },
           { id: 1, label: 'Saturation' },
@@ -196,7 +186,6 @@ export function setupPictureActions(host: StringActionHost): CompanionActionDefi
         min: PIC_ADJ_MODE_HELP[0].min,
         max: PIC_ADJ_MODE_HELP[0].max,
         default: PIC_ADJ_MODE_HELP[0].default,
-        required: true
       },
       gidField()
     ],
@@ -228,7 +217,6 @@ export function setupPictureActions(host: StringActionHost): CompanionActionDefi
         min: PIC_ADJ_MODE_HELP[1].min,
         max: PIC_ADJ_MODE_HELP[1].max,
         default: PIC_ADJ_MODE_HELP[1].default,
-        required: true
       },
       gidField()
     ],
@@ -260,7 +248,6 @@ export function setupPictureActions(host: StringActionHost): CompanionActionDefi
         min: PIC_ADJ_MODE_HELP[3].min,
         max: PIC_ADJ_MODE_HELP[3].max,
         default: PIC_ADJ_MODE_HELP[3].default,
-        required: true
       },
       gidField()
     ],
@@ -293,7 +280,6 @@ export function setupPictureActions(host: StringActionHost): CompanionActionDefi
         min: PIC_ADJ_MODE_HELP[2].min,
         max: PIC_ADJ_MODE_HELP[2].max,
         default: PIC_ADJ_MODE_HELP[2].default,
-        required: true
       },
       gidField()
     ],

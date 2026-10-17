@@ -1,8 +1,12 @@
 {
-  "extends": "@companion-module/tools/tsconfig/node18/recommended",
+  "extends": "@companion-module/tools/tsconfig/node22/recommended",
   "compilerOptions": {
     "outDir": "./dist",
-    "sourceMap": false
+    "sourceMap": false,
+    "paths": {
+      "@companion-module/base": ["./node_modules/@companion-module/base/dist/main.d.ts"],
+      "*": ["../node_modules/*"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules/**", "src/**/*spec.ts", "src/**/__tests__/*", "src/**/__mocks__/*"]

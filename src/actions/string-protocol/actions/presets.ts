@@ -32,7 +32,6 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
         min: 1,
         max: 64,
         default: 1,
-        required: true
       },
       gidField()
     ],
@@ -55,7 +54,7 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
         label: 'Preset name',
         id: 'name',
         default: 'preset1',
-        required: false
+        useVariables: true,
       } as const)
 
   actions[ACTION_ID.SAVE_PRESET] = {
@@ -70,7 +69,6 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
         min: 1,
         max: 64,
         default: 1,
-        required: true
       },
       ...(svpresetNameField ? [svpresetNameField] : []),
       gidField()
@@ -98,7 +96,6 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
         min: 1,
         max: 64,
         default: 1,
-        required: true
       },
       gidField()
     ],
@@ -124,14 +121,14 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
         min: 1,
         max: 64,
         default: 1,
-        required: true
       },
       {
         type: 'textinput',
         label: 'New name',
         id: 'name',
         default: 'preset1',
-        required: true
+        minLength: 1,
+        useVariables: true,
       }
     ],
     callback: async (event) => {

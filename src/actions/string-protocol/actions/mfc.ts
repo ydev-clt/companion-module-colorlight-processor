@@ -31,7 +31,6 @@ export function setupMfcActions(host: StringActionHost): CompanionActionDefiniti
         min: 1,
         max: 8,
         default: 1,
-        required: true
       },
       {
         type: 'number',
@@ -41,7 +40,6 @@ export function setupMfcActions(host: StringActionHost): CompanionActionDefiniti
         min: 0,
         max: 255,
         default: 0,
-        required: true
       },
       {
         type: 'number',
@@ -51,7 +49,6 @@ export function setupMfcActions(host: StringActionHost): CompanionActionDefiniti
         min: 0,
         max: Number.MAX_SAFE_INTEGER,
         default: 0,
-        required: true
       }
     ],
     callback: async (event) => {
@@ -74,7 +71,6 @@ export function setupMfcActions(host: StringActionHost): CompanionActionDefiniti
         min: 1,
         max: Number.MAX_SAFE_INTEGER,
         default: 1,
-        required: true
       }
     ],
     callback: async (event) => {

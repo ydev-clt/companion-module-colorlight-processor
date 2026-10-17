@@ -67,6 +67,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
         type: 'dropdown',
         label: 'Operation',
         id: 'operation',
+        disableAutoExpression: true,
         default: 'set',
         choices: [
           { id: 'set', label: 'Set percentage' },
@@ -80,8 +81,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
         min: 0,
         max: 100,
         default: 100,
-        required: true,
-        isVisible: (options) => options.operation !== 'step'
+        isVisibleExpression: '$(options:operation) != "step"'
       },
       {
         type: 'number',
@@ -91,8 +91,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
         min: -100,
         max: 100,
         default: 0,
-        required: true,
-        isVisible: (options) => options.operation === 'step'
+        isVisibleExpression: '$(options:operation) == "step"'
       },
       gidField()
     ],
@@ -151,6 +150,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
         type: 'dropdown',
         label: 'Operation',
         id: 'operation',
+        disableAutoExpression: true,
         default: 'set',
         choices: [
           { id: 'set', label: 'Set value' },
@@ -164,8 +164,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
         min: 2000,
         max: 10000,
         default: 6500,
-        required: true,
-        isVisible: (options) => options.operation !== 'step'
+        isVisibleExpression: '$(options:operation) != "step"'
       },
       {
         type: 'number',
@@ -175,8 +174,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
         min: -8000,
         max: 8000,
         default: 0,
-        required: true,
-        isVisible: (options) => options.operation === 'step'
+        isVisibleExpression: '$(options:operation) == "step"'
       },
       gidField()
     ],
@@ -398,7 +396,6 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
         min: 0,
         max: Number.MAX_SAFE_INTEGER,
         default: 0,
-        required: true
       },
       gidField()
     ],

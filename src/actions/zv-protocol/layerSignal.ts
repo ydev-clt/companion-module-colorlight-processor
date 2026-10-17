@@ -1008,10 +1008,9 @@ export function setupLayerSignalAction(context: CltProcessorType) {
         label: 'Device ID',
         type: 'number',
         default: 1,
-        required: true,
         min: 1,
         max: 64,
-        isVisible: (action) => !action.isSelectAll
+        isVisibleExpression: '!$(options:isSelectAll)'
       },
       {
         id: 'deviceType',
@@ -1031,6 +1030,7 @@ export function setupLayerSignalAction(context: CltProcessorType) {
         type: 'checkbox',
         label: 'Send to all devices',
         id: 'isSelectAll',
+        disableAutoExpression: true,
         default: false
       }
     ],
@@ -1113,10 +1113,9 @@ export function setupLayerSignalAction(context: CltProcessorType) {
         label: 'Device ID',
         type: 'number',
         default: 1,
-        required: true,
         min: 1,
         max: 64,
-        isVisible: (action) => !action.isSelectAll
+        isVisibleExpression: '!$(options:isSelectAll)'
       },
       {
         id: 'deviceType',
@@ -1124,7 +1123,7 @@ export function setupLayerSignalAction(context: CltProcessorType) {
         type: 'dropdown',
         default: Z_PROTOCOL_DEVICES[1].id, // Default to "Other"
         choices: Z_PROTOCOL_DEVICES,
-        isVisible: () => false // Temporarily hidden
+        isVisibleExpression: 'false' // Temporarily hidden
       },
       {
         id: 'interfaceName',
@@ -1137,6 +1136,7 @@ export function setupLayerSignalAction(context: CltProcessorType) {
         type: 'checkbox',
         label: 'Send to all devices',
         id: 'isSelectAll',
+        disableAutoExpression: true,
         default: false
       }
     ],

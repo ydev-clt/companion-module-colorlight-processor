@@ -42,7 +42,6 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
         min: 0,
         max: Number.MAX_SAFE_INTEGER,
         default: 0,
-        required: true
       },
       gidField()
     ],

@@ -50,7 +50,7 @@ export function generateConfigFields(): SomeCompanionConfigField[] {
           label: 'None'
         }
       ],
-      isVisible: () => false,
+      isVisibleExpression: 'false',
       default: DeviceProtocolEnum.None
     }
   ]

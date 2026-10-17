@@ -23,7 +23,7 @@ export function setupPortActions(host: StringActionHost): CompanionActionDefinit
     description: 'Enable or disable the specified network port output.',
     options: [
       ...deviceAndBroadcastFields(),
-      { type: 'number', label: 'Port index (1-based)', id: 'port', min: 1, max: 64, default: 1, required: true },
+      { type: 'number', label: 'Port index (1-based)', id: 'port', min: 1, max: 64, default: 1 },
       openCloseField(1),
       gidField()
     ],
@@ -58,7 +58,6 @@ export function setupPortActions(host: StringActionHost): CompanionActionDefinit
         min: 1,
         max: 64,
         default: 1,
-        required: true
       }
     ],
     skipGid: true,
@@ -105,7 +104,7 @@ export function setupPortActions(host: StringActionHost): CompanionActionDefinit
     description: 'Set the brightness of a specific network port on the sender.',
     options: [
       ...deviceAndBroadcastFields(),
-      { type: 'number', label: 'Port index (1-based)', id: 'port', min: 1, max: 64, default: 1, required: true },
+      { type: 'number', label: 'Port index (1-based)', id: 'port', min: 1, max: 64, default: 1 },
       {
         type: 'number',
         label: 'Brightness (0-10000)',
@@ -113,7 +112,6 @@ export function setupPortActions(host: StringActionHost): CompanionActionDefinit
         min: 0,
         max: 10000,
         default: 5000,
-        required: true
       },
       gidField()
     ],
@@ -143,7 +141,6 @@ export function setupPortActions(host: StringActionHost): CompanionActionDefinit
         min: 1,
         max: 64,
         default: 1,
-        required: true
       }
     ],
     dataBuilder: ({ port, gid }) => {

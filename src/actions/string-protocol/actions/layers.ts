@@ -31,12 +31,11 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
         min: 1,
         max: 16,
         default: 1,
-        required: true
       },
-      { type: 'number', label: 'X (left)', id: 'x', min: 0, max: 65535, default: 0, required: true },
-      { type: 'number', label: 'Y (top)', id: 'y', min: 0, max: 65535, default: 0, required: true },
-      { type: 'number', label: 'Width', id: 'w', min: 1, max: 65535, default: 1920, required: true },
-      { type: 'number', label: 'Height', id: 'h', min: 1, max: 65535, default: 1080, required: true },
+      { type: 'number', label: 'X (left)', id: 'x', min: 0, max: 65535, default: 0 },
+      { type: 'number', label: 'Y (top)', id: 'y', min: 0, max: 65535, default: 0 },
+      { type: 'number', label: 'Width', id: 'w', min: 1, max: 65535, default: 1920 },
+      { type: 'number', label: 'Height', id: 'h', min: 1, max: 65535, default: 1080 },
       gidField()
     ],
     callback: async (event) => {
@@ -74,7 +73,6 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
         min: 1,
         max: 16,
         default: 1,
-        required: true
       }
     ],
     dataBuilder: ({ layer, gid }) => {
@@ -97,7 +95,6 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
         min: 1,
         max: 16,
         default: 1,
-        required: true
       },
       {
         type: 'dropdown',
@@ -122,7 +119,6 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
         min: 0,
         max: 100,
         default: 100,
-        required: true
       },
       {
         type: 'number',
@@ -131,7 +127,6 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
         min: 1,
         max: 32,
         default: 2,
-        required: true
       },
       { type: 'number', label: 'R (0-255)', id: 'r', min: 0, max: 255, default: 0 },
       { type: 'number', label: 'G (0-255)', id: 'g', min: 0, max: 255, default: 0 },
@@ -185,7 +180,6 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
         min: 1,
         max: 16,
         default: 1,
-        required: true
       }
     ],
     dataBuilder: ({ layer, gid }) => {
@@ -201,8 +195,8 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
     description: 'Set the background box size.',
     options: [
       ...deviceAndBroadcastFields(),
-      { type: 'number', label: 'Width', id: 'w', min: 1, max: 65535, default: 1920, required: true },
-      { type: 'number', label: 'Height', id: 'h', min: 1, max: 65535, default: 1080, required: true },
+      { type: 'number', label: 'Width', id: 'w', min: 1, max: 65535, default: 1920 },
+      { type: 'number', label: 'Height', id: 'h', min: 1, max: 65535, default: 1080 },
       gidField()
     ],
     callback: async (event) => {
@@ -235,7 +229,6 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
         min: 1,
         max: Number.MAX_SAFE_INTEGER,
         default: 1,
-        required: true
       },
       {
         type: 'number',
@@ -244,7 +237,6 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
         min: 1,
         max: Number.MAX_SAFE_INTEGER,
         default: 1,
-        required: true
       },
       {
         type: 'dropdown',
@@ -280,7 +272,7 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
     description: 'Delete a layer.',
     options: [
       ...deviceAndBroadcastFields(),
-      { type: 'number', label: 'Layer index to delete', id: 'layer', min: 1, max: 16, default: 1, required: true },
+      { type: 'number', label: 'Layer index to delete', id: 'layer', min: 1, max: 16, default: 1 },
       gidField()
     ],
     callback: async (event) => {

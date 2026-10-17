@@ -68,10 +68,9 @@ export function setupStringActions(
   // action (including heartbeat / CMDLIST) so multi-step set→get stays atomic.
   const mutex = new ActionMutex()
   for (const def of Object.values(all)) {
-    if (!def?.callback) continue
-    const original = def.callback
-    def.callback = async (...args: Parameters<typeof original>) =>
-      mutex.run(() => Promise.resolve(original(...args)))
+    if (!def || typeof def.callback !== 'function') continue
+    const original = def.callback as (...args: never[]) => Promise<unknown> | unknown
+    ;(def as { callback: typeof original }).callback = (...args) => mutex.run(() => Promise.resolve(original(...args)))
   }
 
   logger.info(`String-Protocol actions setup completed. (${Object.keys(all).length} actions registered)`)

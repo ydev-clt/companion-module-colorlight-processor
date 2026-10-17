@@ -135,7 +135,7 @@ class Connection {
     if (!this.socket) return false
     try {
       logger.debug(`UDP send:${data.toString('hex')}`)
-      await this.socket.send(data)
+      await this.socket.sendAsync(data)
       return true
     } catch (err) {
       logger.warn(`UDP send failed: ${(err as Error).message ?? String(err)}`)
@@ -179,7 +179,7 @@ class Connection {
     const req = buildProbeRequest()
     logger.info(`UDPProbe: sending 0xEB to ${host}:${port}`)
 
-    this.socket.send(req).catch((err: Error) => {
+    void this.socket.sendAsync(req).catch((err: Error) => {
       logger.error(`UDPProbe send failed: ${err.message}`)
       this._finishProbe(null)
     })
@@ -210,7 +210,7 @@ class Connection {
     const req = buildSenderModelRequest()
     logger.info('UDPProbe: deviceType=0 (sender card); sending model query')
 
-    this.socket?.send(req).catch((err: Error) => {
+    void this.socket?.sendAsync(req).catch((err: Error) => {
       logger.warn(`UDPProbe: model query send failed: ${err.message}; continuing with model unknown`)
       this._finishModelQuery(undefined)
     })

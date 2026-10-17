@@ -23,8 +23,7 @@ export function setupBlackScreenAction(context: CltProcessorType) {
         min: 1,
         max: 64,
         default: 1,
-        required: true,
-        isVisible: (action) => !action.isSelectAll
+        isVisibleExpression: '!$(options:isSelectAll)'
       },
       {
         type: 'dropdown',
@@ -47,6 +46,7 @@ export function setupBlackScreenAction(context: CltProcessorType) {
         type: 'checkbox',
         label: 'Send to all devices',
         id: 'isSelectAll',
+        disableAutoExpression: true,
         default: false
       }
     ],
