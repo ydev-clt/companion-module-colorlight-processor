@@ -134,6 +134,8 @@ export function resolveDeviceModel(
 }
 
 /** True only for families whose session must enable downlink checksum after create. */
-export function downlinkChecksumForFamily(family: DeviceFamilyId | undefined): boolean {
-  return family === 'V' || family === 'VX'
+export function downlinkChecksumForFamily(_: DeviceFamilyId | undefined): boolean {
+  // return family === 'V' || family === 'VX'
+  // all families need downlink checksum
+  return true
 }
