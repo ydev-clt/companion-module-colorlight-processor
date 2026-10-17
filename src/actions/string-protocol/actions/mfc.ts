@@ -8,7 +8,6 @@ import type { StringActionHost } from './_shared'
  * Multi-function card / receiving card / module / audio preset actions:
  *  - mfc_manual       (§5.4.4)
  *  - ld_audpreset_idx (§5.4.13) (B protocol only)
- *  - restorehost      (§5.4.9)
  *  - reboot           (§5.4.14) (B protocol only)
  *  - shutdown         (§5.4.15)
  */
@@ -30,7 +29,7 @@ export function setupMfcActions(host: StringActionHost): CompanionActionDefiniti
         id: 'port',
         min: 1,
         max: 8,
-        default: 1,
+        default: 1
       },
       {
         type: 'number',
@@ -39,7 +38,7 @@ export function setupMfcActions(host: StringActionHost): CompanionActionDefiniti
         tooltip: `Relay state bitmask: low-order bits bit0-bit6 correspond to relays 1-7. A bit set to 1 closes that relay in this frame; 0 releases (opens) it. Multiple relays can be written at once. To drive only relay 5 closed while all others remain open, the value is decimal 16 (0b10000, the 5th bit from bit0).`,
         min: 0,
         max: 255,
-        default: 0,
+        default: 0
       },
       {
         type: 'number',
@@ -48,7 +47,7 @@ export function setupMfcActions(host: StringActionHost): CompanionActionDefiniti
         tooltip: 'Delay before the relay action, in seconds. Use 0 for no delay.',
         min: 0,
         max: Number.MAX_SAFE_INTEGER,
-        default: 0,
+        default: 0
       }
     ],
     callback: async (event) => {
@@ -70,7 +69,7 @@ export function setupMfcActions(host: StringActionHost): CompanionActionDefiniti
         id: 'idx',
         min: 1,
         max: Number.MAX_SAFE_INTEGER,
-        default: 1,
+        default: 1
       }
     ],
     callback: async (event) => {
@@ -80,23 +79,11 @@ export function setupMfcActions(host: StringActionHost): CompanionActionDefiniti
     }
   }
 
-  // ---- restorehost ----
-  actions[ACTION_ID.RESTOREHOST] = {
-    name: 'Restore Host Work',
-    description: 'Restore the host to normal operation, typically after an abnormal state or to wake the device.',
-    options: [...deviceAndBroadcastFields()],
-    callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean }
-      const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      await conn.sendOnly(CMD.RESTOREHOST, 'set', sid, { restore: 1 })
-    }
-  }
-
   // ---- reboot (dangerous) ----
   actions[ACTION_ID.REBOOT] = {
     name: '⚠ Reboot Device (dangerous)',
     description: 'Software restart of the device.',
-    options: [...deviceAndBroadcastFields({ allowSelectAll: false })],
+    options: [...deviceAndBroadcastFields()],
     callback: async (event) => {
       const o = event.options as { deviceId: number }
       const sid = sidFromOptions(false, o.deviceId)
@@ -108,7 +95,7 @@ export function setupMfcActions(host: StringActionHost): CompanionActionDefiniti
   actions[ACTION_ID.SHUTDOWN] = {
     name: '⚠ Shutdown Device (dangerous)',
     description: 'Shut down the device.',
-    options: [...deviceAndBroadcastFields({ allowSelectAll: false })],
+    options: [...deviceAndBroadcastFields()],
     callback: async (event) => {
       const o = event.options as { deviceId: number }
       const sid = sidFromOptions(false, o.deviceId)

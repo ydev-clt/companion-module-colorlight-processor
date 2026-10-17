@@ -17,10 +17,6 @@
  */
 
 export enum ACTION_ID {
-  // === Connection maintenance (set-only side effects) ===
-  HEARTBEAT = 'string_heartbeat_set',
-  CMDLIST = 'string_cmdlist_get',
-
   // === Display / picture ===
   BRIGHT_SET = 'string_brightness_set',
   BRIGHT_GET = 'string_brightness_get',
@@ -151,7 +147,6 @@ export enum ACTION_ID {
   LD_AUDPRESET_IDX = 'string_load_audio_preset_index',
 
   // === Dangerous operations ===
-  RESTOREHOST = 'string_restore_host',
   REBOOT = 'string_reboot',
   SHUTDOWN = 'string_shutdown',
 

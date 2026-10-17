@@ -52,10 +52,6 @@ function isProtocolBaseline(rule: SupportRule): rule is readonly DeviceProtocolE
  * availability is identical, only the op differs.
  */
 export const ACTION_SUPPORT: Record<ACTION_ID, SupportRule> = {
-  // === Connection maintenance ===
-  [ACTION_ID.HEARTBEAT]: AB,
-  [ACTION_ID.CMDLIST]: AB,
-
   // === Display / picture ===
   [ACTION_ID.BRIGHT_SET]: AB,
   [ACTION_ID.BRIGHT_GET]: AB,
@@ -188,7 +184,6 @@ export const ACTION_SUPPORT: Record<ACTION_ID, SupportRule> = {
   [ACTION_ID.LD_AUDPRESET_IDX]: { protocols: [B], except: ['V', 'VX'] },
 
   // === Dangerous operations ===
-  [ACTION_ID.RESTOREHOST]: AB,
   [ACTION_ID.REBOOT]: { protocols: [B], except: ['V', 'VX'] },
   [ACTION_ID.SHUTDOWN]: { protocols: [A, B], except: ['V', 'VX'] },
 

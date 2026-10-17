@@ -76,8 +76,6 @@ export const PROTOCOL_CODE = {
  *  - Values correspond one-to-one with the protocol `cmd` field.
  */
 export const CMD = {
-  HEARTBEAT: 'heartbeat',
-  CMDLIST: 'cmdlist',
   BRIGHT: 'bright',
   COLORTEMP: 'colortemp',
   FREEZE: 'freeze',
@@ -140,7 +138,6 @@ export const CMD = {
   MFC_MANUAL: 'mfc_manual',
   LOW_PWR: 'low_pwr',
   PR_RCV_STATE: 'pr_rcv_state',
-  RESTOREHOST: 'restorehost',
   REBOOT: 'reboot',
   SHUTDOWN: 'shutdown',
   OSD: 'osd',

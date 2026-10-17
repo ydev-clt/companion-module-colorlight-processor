@@ -1,13 +1,11 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { buildGetAction, deviceAndBroadcastFields } from './_shared'
+import { buildGetAction } from './_shared'
 import type { StringActionHost } from './_shared'
 
 /**
  * Query-only actions:
- *  - heartbeat       (§5.1)              Connection heartbeat ping (does not write variables)
- *  - cmdlist         (§5.1)              List supported cmds from device (no vars)
  *  - sndinfo         (§5.2.6 / §5.3.1)   Sender card info
  *  - snd_eth         (§5.3.2)            Sender Ethernet ports
  *  - pr_layer        (§5.3.3)            Screen layer count
@@ -27,29 +25,6 @@ import type { StringActionHost } from './_shared'
  */
 export function setupProbeActions(host: StringActionHost): CompanionActionDefinitions {
   const actions: Record<string, CompanionActionDefinition> = {}
-
-  // ---- heartbeat (no variable write; action used to keep connection alive / round-trip test) ----
-  actions[ACTION_ID.HEARTBEAT] = {
-    name: 'Send Heartbeat',
-    description:
-      'Send a heartbeat ping (cmd=heartbeat, op=set). The response code is logged but not surfaced as a variable.',
-    options: [...deviceAndBroadcastFields()],
-    callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean }
-      const sid = (o.isSelectAll ? 255 : Number(o.deviceId) || 1) as number
-      // Heartbeat is fire-and-forget (no response expected); we still go through
-      // sendOnly rather than sendAndAwait because the device never replies.
-      await host.conn.sendOnly(CMD.HEARTBEAT, 'set', sid, {})
-    }
-  }
-
-  // ---- cmdlist (no variable write; used to verify which cmds the device supports) ----
-  actions[ACTION_ID.CMDLIST] = buildGetAction(host, {
-    name: 'Get Supported Command List',
-    description: 'Query the device supported command list (cmd=cmdlist, op=get).',
-    cmd: CMD.CMDLIST,
-    skipGid: true
-  })
 
   // ---- sndinfo ----
   actions[ACTION_ID.SNDINFO_GET] = buildGetAction(host, {
@@ -106,7 +81,7 @@ export function setupProbeActions(host: StringActionHost): CompanionActionDefini
         id: 'slotCode',
         min: 0,
         max: 65535,
-        default: 16,
+        default: 16
       },
       {
         type: 'number',
@@ -115,7 +90,7 @@ export function setupProbeActions(host: StringActionHost): CompanionActionDefini
         id: 'boardKind',
         min: 0,
         max: 255,
-        default: 17,
+        default: 17
       }
     ],
     dataBuilder: ({ slotCode, boardKind }) => ({ slotCode, boardKind })
@@ -159,7 +134,7 @@ export function setupProbeActions(host: StringActionHost): CompanionActionDefini
         id: 'port',
         min: 1,
         max: 64,
-        default: 1,
+        default: 1
       }
     ],
     dataBuilder: ({ port }) => ({ port })
@@ -184,7 +159,7 @@ export function setupProbeActions(host: StringActionHost): CompanionActionDefini
         id: 'port',
         min: 1,
         max: 64,
-        default: 1,
+        default: 1
       },
       {
         type: 'number',
@@ -193,7 +168,7 @@ export function setupProbeActions(host: StringActionHost): CompanionActionDefini
         id: 'rcv',
         min: 1,
         max: 65534,
-        default: 1,
+        default: 1
       }
     ],
     dataBuilder: ({ port, rcv }) => ({ port, rcv })
@@ -213,31 +188,34 @@ export function setupProbeActions(host: StringActionHost): CompanionActionDefini
         id: 'port',
         min: 1,
         max: 64,
-        default: 1,
+        default: 1
       }
     ],
     dataBuilder: ({ port }) => ({ port })
   })
 
   // ---- pr_rcv_state ----
-  actions[ACTION_ID.PR_RCV_STATE_GET] = buildGetAction<{ deviceId: number; isSelectAll?: boolean; port: number }>(host, {
-    name: 'Get Receiver Module State',
-    description:
-      'Query the receiver module state. Writes the result to the `recv_module_state` variable as a single object: `{ port, modules }`.',
-    cmd: CMD.PR_RCV_STATE,
-    skipGid: true,
-    extraFields: [
-      {
-        type: 'number',
-        label: 'Output port index (1-based)',
-        id: 'port',
-        min: 1,
-        max: 64,
-        default: 1,
-      }
-    ],
-    dataBuilder: ({ port }) => ({ port })
-  })
+  actions[ACTION_ID.PR_RCV_STATE_GET] = buildGetAction<{ deviceId: number; isSelectAll?: boolean; port: number }>(
+    host,
+    {
+      name: 'Get Receiver Module State',
+      description:
+        'Query the receiver module state. Writes the result to the `recv_module_state` variable as a single object: `{ port, modules }`.',
+      cmd: CMD.PR_RCV_STATE,
+      skipGid: true,
+      extraFields: [
+        {
+          type: 'number',
+          label: 'Output port index (1-based)',
+          id: 'port',
+          min: 1,
+          max: 64,
+          default: 1
+        }
+      ],
+      dataBuilder: ({ port }) => ({ port })
+    }
+  )
 
   return actions as CompanionActionDefinitions
 }
