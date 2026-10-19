@@ -48,6 +48,9 @@ class Connection {
   private probeRetryTimer: NodeJS.Timeout | null = null
   private probeInFlight: boolean = false
   private probeClosed: boolean = true
+  // Incremented when a round starts and when close() runs. Async send and
+  // timeout callbacks capture the value and no-op once a newer round begins.
+  private probeGeneration: number = 0
   // second probe stage (deviceType 0): sender-card model query awaiting its
   // 0xF1 reply. A non-null pendingProbe marks the stage as in flight.
   private modelQueryTimer: NodeJS.Timeout | null = null
@@ -96,6 +99,7 @@ class Connection {
    * Does not call updateStatus — InstanceBase handles teardown.
    */
   public close(): void {
+    this.probeGeneration++
     const hadSocket = this.socket !== null
     this.probeClosed = true
     this._clearProbeTimer()
@@ -169,16 +173,23 @@ class Connection {
     }
     this.probeInFlight = true
     this.pendingProbe = null
+    const generation = ++this.probeGeneration
 
     const req = buildProbeRequest()
-    logger.info(`UDPProbe: sending 0xEB to ${host}:${port}`)
+    if (this.probeMode === 'discovery') {
+      logger.info(`UDPProbe: sending 0xEB to ${host}:${port}`)
+    } else {
+      logger.debug(`UDPProbe: sending 0xEB to ${host}:${port}`)
+    }
 
     void this.socket.sendAsync(req).catch((err: Error) => {
+      if (generation !== this.probeGeneration) return
       logger.warn(`UDPProbe send failed: ${err.message}`)
       this._finishProbe(null)
     })
 
     this.probeTimer = setTimeout(() => {
+      if (generation !== this.probeGeneration) return
       logger.warn(`UDPProbe: timeout after ${UDP_PROBE_TIMEOUT_MS}ms (host=${host}:${port})`)
       this._finishProbe(null)
     }, UDP_PROBE_TIMEOUT_MS)
@@ -201,15 +212,20 @@ class Connection {
     this._clearProbeTimer()
 
     const req = buildSenderModelRequest()
+    const generation = this.probeGeneration
     logger.info('UDPProbe: deviceType=0 (sender card); sending model query')
 
     void this.socket?.sendAsync(req).catch((err: Error) => {
-      logger.warn(`UDPProbe: model query send failed: ${err.message}; continuing with model unknown`)
+      if (generation !== this.probeGeneration) return
+      logger.warn(`UDPProbe: model query failed: ${err.message}; discovery will retry`)
       this._finishModelQuery(undefined)
     })
 
     this.modelQueryTimer = setTimeout(() => {
-      logger.warn(`UDPProbe: model query timeout after ${UDP_PROBE_TIMEOUT_MS}ms; continuing with model unknown`)
+      if (generation !== this.probeGeneration) return
+      logger.warn(
+        `UDPProbe: model query failed: timeout after ${UDP_PROBE_TIMEOUT_MS}ms; discovery will retry`
+      )
       this._finishModelQuery(undefined)
     }, UDP_PROBE_TIMEOUT_MS)
   }
@@ -344,7 +360,12 @@ class Connection {
    */
   private _bindSocketEvents(socket: UDPHelper): void {
     socket.on('data', (buf: Buffer) => {
-      logger.info(`UDP receive buffer, length: ${buf.length}: ${buf.toString('hex')}`)
+      const message = `UDP receive buffer, length: ${buf.length}: ${buf.toString('hex')}`
+      if (this.probeMode === 'keepalive' && buf.length > 0 && buf[0] === 0xea) {
+        logger.debug(message)
+      } else {
+        logger.info(message)
+      }
       this._dispatchIncoming(buf)
     })
 
