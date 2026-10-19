@@ -119,9 +119,9 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
 
     logger.info(`Config updated. protocol=${this.config.protocol}`)
 
-    // Probe result (success or null/timeout) → fire _onProbeResult.
-    // The probe fires on every connection.open(); status flips to Ok on
-    // first valid 0xEA, stays Connecting on timeout (see Connection).
+    // Probe result → fire _onProbeResult. Discovery success enters keepalive
+    // and sets Ok; keepalive failure sets Connecting, clears identity, and
+    // re-discovers after 2s (see Connection).
     this.connection.setOnProbeResult((result) => {
       const host = this.config.host
       this._onProbeResult(result, host)
@@ -169,25 +169,23 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     this.checkFeedbacksById(id)
   }
 
-  /**
-   * Fired by Connection when the 0xEB probe resolves (success or null/timeout).
-   * On success, applies the detected device identity (protocol + model byte)
-   * to config/state in-memory. On null (timeout, send failure, re-entry),
-   * keeps the current identity and logs a warn.
-   *
-   * Note: Connection already calls updateStatus(Ok) on success before this
-   * callback runs. On null, Connection makes no updateStatus call — the
-   * status remains Connecting.
-   */
   private _onProbeResult(result: ProbeResult | null, host: string): void {
     if (result) {
       this._applyDetectedIdentity(result, host)
-    } else {
-      logger.warn(`UDP probe returned no result (host=${host}); keeping current identity`)
+      this._bindSpSessionFromConfig()
+      return
     }
+    this._clearDetectedIdentity(host)
+  }
 
-    // After probe completes (or probe fails), bind SpSession based on current config.protocol
-    this._bindSpSessionFromConfig()
+  private _clearDetectedIdentity(host: string): void {
+    logger.warn(`UDP probe lost device (host=${host}); clearing identity`)
+    this.config.protocol = DeviceProtocolEnum.None
+    this.state.modelByte = null
+    this.refreshVariableDefinitions()
+    this.initActions()
+    this.initFeedbacks()
+    this.spTransmitter.releaseSpSession()
   }
 
   /**

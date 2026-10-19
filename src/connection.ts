@@ -10,51 +10,31 @@ import {
   type ProbeResult
 } from './udp-probe'
 
-// UDP probe timeout (ms). Matches the previous UDPProbe default.
+// UDP probe timeout (ms). A round fails when no valid reply arrives in this window.
 const UDP_PROBE_TIMEOUT_MS = 1500
 
-// Delay (ms) before retrying a failed probe (timeout / send failure).
-// A second probe keeps the connection in `Connecting` until the device
-// comes online — the user-configured host may be temporarily unreachable.
+// Delay (ms) after a probe round ends (valid reply or failure) before the next
+// round. Discovery retries a full probe; keepalive sends 0xEB only.
 const UDP_PROBE_RETRY_DELAY_MS = 2000
 
 /**
- * UDP transport + embedded 0xEB/0xEA probe state machine.
+ * UDP transport + 0xEB/0xEA probe state machine.
  *
- * Lifecycle:
- *   new Connection(ctx) → IDLE
- *     open(host, port) → SENDING (constructs UDPHelper, sends 0xEB, starts
- *                        1500ms timer, updateStatus(Connecting))
- *       valid 0xEA, deviceType 1/2 → setOnProbeResult callback fires
- *                        (model = 0xEA offset 23); updateStatus(Ok)
- *       valid 0xEA, deviceType 0 → MODEL_QUERY: sends the 17-byte sender-card
- *                        model query, restarts the 1500ms timer; valid 0xF1
- *                        reply → callback fires (model = 0xF1 offset 12);
- *                        updateStatus(Ok). A model query that times out or
- *                        fails to send still succeeds with model=0 — the 0xEA
- *                        already proved the device is alive.
- *       timer fires (0xEB stage) → setOnProbeResult callback fires with null;
- *                    status unchanged; schedules a retry 2000ms later
- *                    (until close() or success)
- *     send(bin)   → writes to UDPHelper; returns false if socket missing/closed
- *     close()     → destroys UDPHelper, rejects in-flight probe as null,
- *                    cancels any pending retry
+ * open() → discovery. A full probe is sent immediately (0xEB, plus a model
+ * query when deviceType is 0). Success stores the identity, calls
+ * onProbeResult(result), sets Ok, and enters keepalive.
  *
- * Status is updated only on:
- *   - open() → Connecting
- *   - first valid 0xEA → Ok
- *   - UDPHelper.status_change === UnknownError → UnknownError
- * No other code path calls updateStatus.
+ * keepalive sends only 0xEB. A valid 0xEA sets Ok. onProbeResult(result) runs
+ * only when the delivered identity changes. 1500ms with no valid 0xEA, or a
+ * send failure, calls onProbeResult(null) once, clears the stored identity,
+ * sets Connecting, and returns to discovery. The next round is a full probe
+ * 2000ms after the round ends.
  *
- * Heartbeat: removed. There is no periodic 1.5s V/Z send.
+ * discovery failure sets Connecting and retries a full probe after 2000ms.
+ * It does not call onProbeResult.
  *
- * Retry: a probe that times out (or fails to send) does not terminate the
- *   state machine — _finishProbe(null) schedules _fireProbe again after
- *   UDP_PROBE_RETRY_DELAY_MS, so a device that powers up later is detected
- *   without re-opening the connection.
- *
- * Concurrency: _probeInFlight mutex prevents reentrant _fireProbe calls.
- *   A second call while one is in flight logs a warn and resolves null.
+ * close() destroys the socket and clears timers, mode, and stored identity.
+ * It does not call updateStatus or onProbeResult.
  */
 class Connection {
   // connection context (used for handleIncoming + updateStatus)
@@ -76,6 +56,9 @@ class Connection {
   private probeHost: string = ''
   private probePort: number = 0
   private onProbeResult: ((result: ProbeResult | null) => void) | null = null
+  private probeMode: 'discovery' | 'keepalive' = 'discovery'
+  private deliveredIdentity: { deviceType: 0 | 1 | 2; model: number } | null = null
+  private publishedStatus: InstanceStatus | null = null
 
   constructor(context: ConnectionContext) {
     this.context = context
@@ -100,7 +83,7 @@ class Connection {
     this.probeClosed = false
     this._bindSocketEvents(this.socket)
 
-    this.context.updateStatus(InstanceStatus.Connecting)
+    this._publishStatus(InstanceStatus.Connecting)
     logger.info(`UDP connection opening, host=${host}:${port}`)
 
     this._fireProbe(host, port)
@@ -120,6 +103,9 @@ class Connection {
     this._clearProbeRetryTimer()
     this.probeInFlight = false
     this.pendingProbe = null
+    this.probeMode = 'discovery'
+    this.deliveredIdentity = null
+    this.publishedStatus = null
     if (this.socket) {
       this.socket.destroy()
       this.socket = null
@@ -144,14 +130,22 @@ class Connection {
   }
 
   /**
-   * Register a one-shot callback fired when the probe resolves (success or
-   * null/timeout). Re-registration invalidates any previous callback.
-   *
-   * The callback fires at most once per open(); a subsequent open() will
-   * re-arm the probe and may fire the callback again.
+   * Called on discovery success, on a keepalive identity change, and once
+   * with null when keepalive fails. Not called on discovery failure.
+   * One open() can invoke the callback more than once. close() never does.
    */
   public setOnProbeResult(cb: ((result: ProbeResult | null) => void) | null): void {
     this.onProbeResult = cb
+  }
+
+  private _publishStatus(status: InstanceStatus): void {
+    if (this.publishedStatus === status) return
+    this.publishedStatus = status
+    try {
+      this.context.updateStatus(status)
+    } catch (err) {
+      logger.error(`updateStatus threw: ${(err as Error).message ?? String(err)}`)
+    }
   }
 
   // ============================================================
@@ -180,7 +174,7 @@ class Connection {
     logger.info(`UDPProbe: sending 0xEB to ${host}:${port}`)
 
     void this.socket.sendAsync(req).catch((err: Error) => {
-      logger.error(`UDPProbe send failed: ${err.message}`)
+      logger.warn(`UDPProbe send failed: ${err.message}`)
       this._finishProbe(null)
     })
 
@@ -196,10 +190,9 @@ class Connection {
    * dedicated 17-byte query is sent and the model is read from the 0xF1
    * reply (offset 12).
    *
-   * Re-arms the probe timer for this stage. Any stage failure (send error,
-   * timeout) does NOT fail the probe: `_finishModelQuery(0)` resolves it
-   * with an unknown model, because the 0xEA already confirmed the device —
-   * failing here would loop the retry forever over a cosmetic model byte.
+   * Re-arms the probe timer for this stage. Query failure (send error or
+   * timeout) finishes the probe as failure; discovery stays active and does
+   * not call onProbeResult.
    */
   private _startModelQuery(parsed: ProbeResult): void {
     // offset 23 of the 0xEA is meaningless for sender cards — zero it out
@@ -228,50 +221,95 @@ class Connection {
    */
   private _finishModelQuery(model?: number): void {
     if (!this.pendingProbe) return
-    const pending = this.pendingProbe
-    this._finishProbe(model === undefined ? null : { ...pending, model })
+    this._finishProbe(model === undefined ? null : { ...this.pendingProbe, model })
   }
 
-  /**
-   * Resolve the in-flight probe. Clears both stage timers and the pending
-   * model query, drops the mutex, fires the registered callback, and (on
-   * success) flips status to Ok.
-   *
-   * On null result (timeout / send failure / re-entry), no updateStatus
-   * call is made — status remains where it was.
-   */
   private _finishProbe(result: ProbeResult | null): void {
     if (!this.probeInFlight) return
+    const mode = this.probeMode
     this.probeInFlight = false
     this._clearProbeTimer()
     this._clearModelQueryTimer()
     this.pendingProbe = null
 
-    const cb = this.onProbeResult
-    if (result) {
-      logger.info(`UDPProbe: probe resolved, model=0x${result.model?.toString(16)}, deviceType=${result.deviceType}`)
-      try {
-        this.context.updateStatus(InstanceStatus.Ok)
-      } catch (err) {
-        logger.error(`updateStatus(Ok) threw: ${(err as Error).message ?? String(err)}`)
-      }
-      try {
-        cb?.(result)
-      } catch (err) {
-        logger.error(`onProbeResult callback threw: ${(err as Error).message ?? String(err)}`)
-      }
-      logger.info('UDP connection ready (probe Ok)')
+    if (result) this._onProbeSuccess(mode, result)
+    else this._onProbeFailure(mode)
+  }
+
+  private _onProbeSuccess(mode: 'discovery' | 'keepalive', result: ProbeResult): void {
+    this._publishStatus(InstanceStatus.Ok)
+    if (mode === 'discovery') {
+      this.probeMode = 'keepalive'
+      logger.info(
+        `UDPProbe: discovery resolved, model=0x${result.model.toString(16)}, deviceType=${result.deviceType}; entering keepalive`
+      )
+      this._deliverIdentity(result)
     } else {
+      const delivered = this._keepaliveDelivery(result)
+      if (delivered) {
+        logger.info(
+          `UDPProbe: keepalive identity changed, model=0x${delivered.model.toString(16)}, deviceType=${delivered.deviceType}`
+        )
+        this._deliverIdentity(delivered)
+      } else {
+        logger.debug(`UDPProbe: keepalive ok, deviceType=${result.deviceType}`)
+      }
+    }
+    this._scheduleNextRound()
+  }
+
+  private _onProbeFailure(mode: 'discovery' | 'keepalive'): void {
+    this._publishStatus(InstanceStatus.Connecting)
+    if (mode === 'keepalive') {
+      this.probeMode = 'discovery'
+      this.deliveredIdentity = null
+      logger.warn(`UDPProbe: keepalive failed; returning to discovery (host=${this.probeHost}:${this.probePort})`)
       try {
-        cb?.(null)
+        this.onProbeResult?.(null)
       } catch (err) {
         logger.error(`onProbeResult(null) callback threw: ${(err as Error).message ?? String(err)}`)
       }
-      // Probe failed (timeout / send error / re-entry). Keep the connection
-      // alive and retry after a short delay — the user-configured host may
-      // come online later. close() cancels the pending retry.
-      this._scheduleProbeRetry()
+    } else {
+      logger.warn(`UDPProbe: discovery failed; retrying full probe (host=${this.probeHost}:${this.probePort})`)
     }
+    this._scheduleNextRound()
+  }
+
+  private _keepaliveDelivery(result: ProbeResult): ProbeResult | null {
+    const prev = this.deliveredIdentity
+    if (result.deviceType === 0) {
+      if (prev && prev.deviceType === 0) return null
+      return { ...result, model: 0 }
+    }
+    if (prev && prev.deviceType === result.deviceType && prev.model === result.model) return null
+    return result
+  }
+
+  private _deliverIdentity(result: ProbeResult): void {
+    this.deliveredIdentity = { deviceType: result.deviceType, model: result.model }
+    try {
+      this.onProbeResult?.(result)
+    } catch (err) {
+      logger.error(`onProbeResult callback threw: ${(err as Error).message ?? String(err)}`)
+    }
+  }
+
+  private _scheduleNextRound(): void {
+    if (this.probeClosed) return
+    if (this.probeRetryTimer) return
+    this.probeRetryTimer = setTimeout(() => {
+      this.probeRetryTimer = null
+      if (this.probeClosed || !this.socket) return
+      if (this.probeInFlight) {
+        logger.warn('UDPProbe: skip scheduled probe; round already in flight')
+        return
+      }
+      const kind = this.probeMode === 'keepalive' ? 'keepalive' : 'discovery'
+      logger.debug(
+        `UDPProbe: ${kind} round after ${UDP_PROBE_RETRY_DELAY_MS}ms (host=${this.probeHost}:${this.probePort})`
+      )
+      this._fireProbe(this.probeHost, this.probePort)
+    }, UDP_PROBE_RETRY_DELAY_MS)
   }
 
   private _clearProbeTimer(): void {
@@ -286,22 +324,6 @@ class Connection {
       clearTimeout(this.modelQueryTimer)
       this.modelQueryTimer = null
     }
-  }
-
-  /**
-   * Schedule a fresh _fireProbe after UDP_PROBE_RETRY_DELAY_MS, using the
-   * host/port captured by the last open(). No-op once the connection is
-   * closed or a retry is already pending.
-   */
-  private _scheduleProbeRetry(): void {
-    if (this.probeClosed) return
-    if (this.probeRetryTimer) return
-    this.probeRetryTimer = setTimeout(() => {
-      this.probeRetryTimer = null
-      if (this.probeClosed || !this.socket) return
-      logger.info(`UDPProbe: retrying after ${UDP_PROBE_RETRY_DELAY_MS}ms (host=${this.probeHost}:${this.probePort})`)
-      this._fireProbe(this.probeHost, this.probePort)
-    }, UDP_PROBE_RETRY_DELAY_MS)
   }
 
   private _clearProbeRetryTimer(): void {
@@ -333,11 +355,7 @@ class Connection {
     socket.on('status_change', (status: InstanceStatus, _message: string | undefined) => {
       logger.info(`UDP connection status change, status: ${status}`)
       if (status === InstanceStatus.UnknownError) {
-        try {
-          this.context.updateStatus(InstanceStatus.UnknownError)
-        } catch (err) {
-          logger.error(`updateStatus(UnknownError) threw: ${(err as Error).message ?? String(err)}`)
-        }
+        this._publishStatus(InstanceStatus.UnknownError)
       }
     })
   }
@@ -366,21 +384,22 @@ class Connection {
     // into the business layer.
     if (buf.length > 0 && buf[0] === 0xea) {
       if (this.pendingProbe) {
-        // duplicate 0xEA while the model query is in flight — the probe has
-        // already moved past stage 1, ignore it
         logger.debug('UDPProbe: duplicate 0xEA during model query; ignoring')
         return
       }
       const parsed = parseProbeResponse(buf)
-      if (parsed) {
-        if (parsed.deviceType === 0) {
-          // Sender card: model is not in the 0xEA frame — query it (0xF1).
-          this._startModelQuery(parsed)
-        } else {
-          this._finishProbe(parsed)
-        }
-      } else {
+      if (!parsed) {
         logger.warn(`UDPProbe: dropping malformed 0xEA response (length=${buf.length}, expected ≥23)`)
+        return
+      }
+      if (!this.probeInFlight) {
+        this._handleUnsolicitedEa(parsed)
+        return
+      }
+      if (this.probeMode === 'discovery' && parsed.deviceType === 0) {
+        this._startModelQuery(parsed)
+      } else {
+        this._finishProbe(parsed)
       }
       return
     }
@@ -399,6 +418,33 @@ class Connection {
     }
     // Business response: hand to the String-Protocol layer.
     this.context.handleIncoming(buf)
+  }
+
+  private _handleUnsolicitedEa(parsed: ProbeResult): void {
+    if (!this.probeRetryTimer) {
+      logger.debug('UDPProbe: dropping 0xEA outside a probe round')
+      return
+    }
+    if (this.probeMode === 'keepalive') {
+      this._publishStatus(InstanceStatus.Ok)
+      const delivered = this._keepaliveDelivery(parsed)
+      if (delivered) {
+        logger.info(
+          `UDPProbe: keepalive identity changed from late 0xEA, model=0x${delivered.model.toString(16)}, deviceType=${delivered.deviceType}`
+        )
+        this._deliverIdentity(delivered)
+      } else {
+        logger.debug('UDPProbe: keepalive confirmed by late 0xEA')
+      }
+      return
+    }
+    this._clearProbeRetryTimer()
+    this.probeInFlight = true
+    if (parsed.deviceType === 0) {
+      this._startModelQuery(parsed)
+    } else {
+      this._finishProbe(parsed)
+    }
   }
 }
 
