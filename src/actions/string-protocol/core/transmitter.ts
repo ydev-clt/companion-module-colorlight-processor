@@ -7,6 +7,13 @@ import { SpSession as SpSessionCtor } from '../../../str2bin'
 import type { SpSession } from '../../../str2bin'
 
 /**
+ * A set is acknowledged inside SpSession and does not wait for the device.
+ * When the next queued request is a get of that same cmd and sid, wait this
+ * long after the set is on the wire so the read does not return the old value.
+ */
+const SET_READBACK_DELAY_MS = 50
+
+/**
  * SPTransmitter — String-Protocol transmit / receive + response routing layer
  *
  * Design goals:
@@ -29,6 +36,13 @@ interface PendingRequest {
   startedAt: number
 }
 
+/** Set whose UDP send has finished, waiting for the next queued request to observe it. */
+interface PendingSetReadback {
+  cmd: string
+  sid: number
+  sentAt: number
+}
+
 interface SPTransmitterOptions {
   /** Custom response timeout (default 5s) */
   responseTimeoutMs?: number
@@ -46,6 +60,7 @@ export class SPTransmitter {
   private _allocator: TransactionIdAllocator
   private _handlers: Map<number, PendingRequest> = new Map()
   private _gate = new GetGate()
+  private _pendingSetReadback: PendingSetReadback | null = null
   private _options: Required<SPTransmitterOptions>
 
   private _host: SPTransmitterHost | null = null
@@ -102,6 +117,7 @@ export class SPTransmitter {
    *  - Sets _spSession to null
    */
   public releaseSpSession(): void {
+    this._pendingSetReadback = null
     this._gate.rejectAll(new Error('SpSession released'))
     const sess = this._spSession
     const proto = this._spProto
@@ -285,11 +301,9 @@ export class SPTransmitter {
     const frame = encodeRequest(request)
     logger.debug(`sendOnly req: ${JSON.stringify(request)}`)
 
-    let bin: Buffer
     try {
+      await this._pauseIfReadAfterSet(cmd, op, sid)
       const enc = this._encodeFrame(frame)
-      // set releases right after inbound; it does not leave a pending get
-      release()
       if (!enc.ok) {
         if (enc.code === 8001) {
           // PARTIAL: kept internally by SpSession, should not occur in inbound
@@ -304,18 +318,18 @@ export class SPTransmitter {
         logger.info(`StringProtocol send ${cmd}#${id} (sid=${sid}, op=${op}) -> no bin (silent ok)`)
         return true
       }
-      bin = enc.bin
+      const ok = await this._host.send(enc.bin)
+      if (ok) this._noteSetDispatched(cmd, sid)
+      logger.info(`StringProtocol send ${cmd}#${id} (sid=${sid}, op=${op}) -> ${ok ? 'OK' : 'FAIL'}`)
+      return ok
     } catch (err) {
-      release()
       logger.warn(
         `StringProtocol send ${cmd}#${id} (sid=${sid}, op=${op}) failed: ${(err as Error).message ?? String(err)}`
       )
       return false
+    } finally {
+      release()
     }
-
-    const ok = await this._host.send(bin)
-    logger.info(`StringProtocol send ${cmd}#${id} (sid=${sid}, op=${op}) -> ${ok ? 'OK' : 'FAIL'}`)
-    return ok
   }
 
   private async _sendAndAwait(req: StringRequest, timeoutMs: number): Promise<StringResponse> {
@@ -325,13 +339,19 @@ export class SPTransmitter {
       logger.debug(`${req.op} ${req.cmd}#${req.id} queued (waiting=${this._gate.waiting + 1})`)
     }
     const release = await this._gate.acquire()
+    try {
+      await this._pauseIfReadAfterSet(req.cmd, req.op, req.sid)
+    } catch (err) {
+      release()
+      throw err
+    }
     return this._dispatch(req, timeoutMs, release)
   }
 
   /**
    * Register handler, inbound, send. `release` is the GetGate slot:
    *  - get: held until response / timeout / encode-or-send failure (with drop)
-   *  - set: released right after inbound (no pending get to drop)
+   *  - set: held until the UDP send finishes, then released (no pending get to drop)
    */
   private _dispatch(req: StringRequest, timeoutMs: number, release: () => void): Promise<StringResponse> {
     return new Promise<StringResponse>((resolve, reject) => {
@@ -415,11 +435,6 @@ export class SPTransmitter {
         return
       }
 
-      // set does not leave a pending get; free the gate so others may inbound
-      if (isSetOpt) {
-        releaseSlot()
-      }
-
       this._host
         .send(bin)
         .then((ok) => {
@@ -427,25 +442,60 @@ export class SPTransmitter {
             clearTimeout(timer)
             // UDP send failed: reject immediately to avoid waiting forever
             this._handlers.delete(req.id)
-            if (!isSetOpt) {
+            if (isSetOpt) {
+              releaseSlot()
+            } else {
               abortGet()
             }
             reject(new Error('host send returned false'))
             return
           }
           if (isSetOpt) {
+            // Timeout may already have freed the slot.
+            if (!this._handlers.has(req.id)) return
             clearTimeout(timer)
+            this._noteSetDispatched(req.cmd, req.sid)
             this._handleResponse(resJson)
+            // Handler resolve frees the slot; this covers a response that did not match.
+            releaseSlot()
           }
         })
         .catch((err) => {
           clearTimeout(timer)
           this._handlers.delete(req.id)
-          if (!isSetOpt) {
+          if (isSetOpt) {
+            releaseSlot()
+          } else {
             abortGet()
           }
           reject(err instanceof Error ? err : new Error(String(err)))
         })
+    })
+  }
+
+  /**
+   * Remember a set that has just been written to the socket. Only the next
+   * queued request observes it.
+   */
+  private _noteSetDispatched(cmd: string, sid: number): void {
+    this._pendingSetReadback = { cmd, sid, sentAt: Date.now() }
+  }
+
+  /**
+   * After a set, pause only when this request is the matching get.
+   * Any other follower clears the marker and sends immediately.
+   */
+  private async _pauseIfReadAfterSet(cmd: string, op: string, sid: number): Promise<void> {
+    const pending = this._pendingSetReadback
+    this._pendingSetReadback = null
+    if (!pending) return
+    if (op !== 'get' || pending.cmd !== cmd || pending.sid !== sid) return
+
+    const waitMs = SET_READBACK_DELAY_MS - (Date.now() - pending.sentAt)
+    if (waitMs <= 0) return
+    logger.debug(`delay ${waitMs}ms before get ${cmd} (sid=${sid}) so the preceding set can apply`)
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, waitMs)
     })
   }
 

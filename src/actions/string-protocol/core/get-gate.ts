@@ -3,8 +3,9 @@
  *
  * libsp forbids any further inbound (get or set) after a `get` inbound until
  * that get's response has gone through outbound (or the token was dropped).
- * Callers `await acquire()` before inbound. A get holds the slot until it
- * finishes; a set releases right after its own inbound. Waiters are FIFO.
+ * Callers `await acquire()` before inbound. A get holds the slot until its
+ * response finishes. A set holds the slot through its UDP send, then releases.
+ * Waiters are FIFO.
  *
  * A release function only affects the holder it was issued to: calling it
  * twice, or after `rejectAll()`, is a no-op. This keeps a late-finishing
