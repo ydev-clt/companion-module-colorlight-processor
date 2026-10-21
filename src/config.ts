@@ -8,7 +8,7 @@ import { DeviceProtocolEnum } from './types'
  */
 export const defaultConfig: DeviceConfig = {
   host: '192.168.1.10',
-  port: 9099,
+  port: 9999,
   protocol: DeviceProtocolEnum.None
 }
 
