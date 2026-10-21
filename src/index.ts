@@ -148,6 +148,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
       this.connection.open(this.config.host, this.config.port)
     } else {
       logger.error('Host config is empty.')
+      this.connection.close()
     }
 
     // Variables first so the writeback hook is wired before any get-action
