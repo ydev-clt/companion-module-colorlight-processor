@@ -21,6 +21,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
   public connection: Connection
   // string-protocol supplementary layer
   public spTransmitter: SPTransmitter
+  private _linkGeneration = 0
   // state cache
   public state: StateCache
 
@@ -74,6 +75,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
    * destroy connection instance
    */
   public async destroy(): Promise<void> {
+    this._linkGeneration++
     this.connection.close()
     this.spTransmitter.destroy()
 
@@ -115,16 +117,18 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
    * config updated
    */
   public async configUpdated(config: DeviceConfig, _secrets: undefined): Promise<void> {
+    this._linkGeneration++
     this.config = config
 
     logger.info(`Config updated. protocol=${this.config.protocol}`)
 
-    // Probe result → fire _onProbeResult. Discovery success enters keepalive
-    // and sets Ok; keepalive failure sets Connecting, clears identity, and
-    // re-discovers after 2s (see Connection).
+    // Probe success binds SpSession. Link loss clears identity and reconnects.
     this.connection.setOnProbeResult((result) => {
       const host = this.config.host
       this._onProbeResult(result, host)
+    })
+    this.connection.setOnLinkLost(() => {
+      this.failLink()
     })
 
     // Re-instantiate SPTransmitter (when protocol switches)
@@ -134,7 +138,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     // Inject the host required by SPTransmitter
     const transmitterHost: SPTransmitterHost = {
       send: async (bin: Buffer) => {
-        // Binary converted by SPTransmitter via SpSession is sent directly over UDP
+        // Binary converted by SPTransmitter via SpSession is sent directly over TCP
         return this.send(bin)
       }
     }
@@ -172,14 +176,14 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
   private _onProbeResult(result: ProbeResult | null, host: string): void {
     if (result) {
       this._applyDetectedIdentity(result, host)
-      this._bindSpSessionFromConfig()
+      this._bindSpSessionFromConfig(this._linkGeneration)
       return
     }
     this._clearDetectedIdentity(host)
   }
 
   private _clearDetectedIdentity(host: string): void {
-    logger.warn(`UDP probe lost device (host=${host}); clearing identity`)
+    logger.warn(`Probe lost device (host=${host}); clearing identity`)
     this.config.protocol = DeviceProtocolEnum.None
     this.state.modelByte = null
     this.refreshVariableDefinitions()
@@ -188,26 +192,31 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     this.spTransmitter.releaseSpSession()
   }
 
-  /**
-   * Bind SpSession based on this.config.protocol.
-   *  - PROTO_A=1 → A-Protocol
-   *  - PROTO_B=2 → B-Protocol
-   *
-   * Async: the underlying WASM first instantiation is async. The caller is
-   * a synchronous callback from `setOnProbeResult` (Connection side only has
-   * synchronous events like on('data')), so this uses fire-and-forget:
-   * the promise is put into `_bindInflight` with a `.catch()` fallback.
-   * Protocol switching + probe occurring simultaneously will not race.
-   */
-  private _bindSpSessionFromConfig(): void {
+  private _bindSpSessionFromConfig(generation: number): void {
     if (this.config.protocol === DeviceProtocolEnum.None) return
     const proto = this.config.protocol === DeviceProtocolEnum.A ? 1 : 2
     const model = resolveDeviceModel(this.config.protocol, this.state.modelByte)
     const downlinkChecksum = downlinkChecksumForFamily(model?.family)
-    const inflight = this.spTransmitter.bindSpSession(proto, { downlinkChecksum })
-    inflight.catch((err: Error) => {
-      logger.error(`bindSpSession failed: ${err.message ?? String(err)}`)
-    })
+    this.spTransmitter
+      .bindSpSession(proto, { downlinkChecksum })
+      .then(() => {
+        if (generation !== this._linkGeneration) return
+        this.connection.beginReceiving()
+        this.spTransmitter.startHeartbeat(() => this.failLink())
+      })
+      .catch((err: Error) => {
+        if (generation !== this._linkGeneration) return
+        logger.error(`bindSpSession failed: ${err.message ?? String(err)}`)
+        this.failLink()
+      })
+  }
+
+  /** Probe already succeeded. Clear identity once and keep a single reconnect timer. */
+  private failLink(): void {
+    this._linkGeneration++
+    this.spTransmitter.stopHeartbeat()
+    this._clearDetectedIdentity(this.config.host)
+    this.connection.reconnect()
   }
 
   /**
