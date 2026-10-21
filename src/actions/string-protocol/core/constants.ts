@@ -77,6 +77,7 @@ export const PROTOCOL_CODE = {
  */
 export const CMD = {
   BRIGHT: 'bright',
+  HEARTBEAT: 'heartbeat',
   COLORTEMP: 'colortemp',
   FREEZE: 'freeze',
   BLACKOUT: 'blackout',

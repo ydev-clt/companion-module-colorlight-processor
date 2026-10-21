@@ -1,4 +1,5 @@
-import { PROTOCOL_CODE } from './constants'
+import { CMD, PROTOCOL_CODE, STRING_HEARTBEAT_DEFAULT_MS } from './constants'
+import { HeartbeatRunner } from './heartbeat'
 import { logger } from '../../../log'
 import { encodeRequest, TransactionIdAllocator } from './frames'
 import { GetGate } from './get-gate'
@@ -17,9 +18,7 @@ const SET_READBACK_DELAY_MS = 50
  * SPTransmitter — String-Protocol transmit / receive + response routing layer
  *
  * Design goals:
- *  1. Share the UDPHelper from `src/connection.ts`
- *     (by injecting `send()` into SPTransmitter, which handles protocol
- *     semantics on its own)
+ *  1. Send device binary through the injected host.send (TCP after the probe)
  *  2. Response routing: when sending a request with a callback, register
  *     (id → callback) in `_handlers`; on receiving a response frame, match
  *     the callback by `id` and remove it; clean up on timeout
@@ -67,6 +66,7 @@ export class SPTransmitter {
 
   // SpSession bridge (injected by CltProcessor via bindSpSession when TCP is OK)
   private _spSession: SpSession | null = null
+  private _heartbeat: HeartbeatRunner | null = null
   private _token: number = 1
   // Proto used by the current SpSession (for logging only)
   private _spProto: 1 | 2 | null = null
@@ -117,6 +117,7 @@ export class SPTransmitter {
    *  - Sets _spSession to null
    */
   public releaseSpSession(): void {
+    this.stopHeartbeat()
     this._pendingSetReadback = null
     this._gate.rejectAll(new Error('SpSession released'))
     const sess = this._spSession
@@ -135,6 +136,22 @@ export class SPTransmitter {
       logger.warn(`SpSession.destroy error: ${(err as Error).message ?? String(err)}`)
     }
     logger.info(`SpSession released: proto=${proto} token=${this._token}`)
+  }
+
+  /** Encode one heartbeat through the normal get queue. Call only after bindSpSession resolves. */
+  public startHeartbeat(onFailure: () => void): void {
+    this.stopHeartbeat()
+    this._heartbeat = new HeartbeatRunner(
+      () => this.sendAndAwait(CMD.HEARTBEAT, 'get', 1),
+      STRING_HEARTBEAT_DEFAULT_MS,
+      onFailure
+    )
+    this._heartbeat.start()
+  }
+
+  public stopHeartbeat(): void {
+    this._heartbeat?.stop()
+    this._heartbeat = null
   }
 
   /** Destroy (called when connection is disconnected / instance is destroyed) */
