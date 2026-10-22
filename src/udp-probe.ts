@@ -1,5 +1,8 @@
 import type { DeviceConfig } from './types'
 import { DeviceProtocolEnum } from './types'
+import type { InstanceStatus } from '@companion-module/base'
+import { InstanceStatus as Status, UDPHelper } from '@companion-module/base'
+import { logger } from './log'
 
 /**
  * Parsed result of a single 0xEA UDP probe response.
@@ -88,5 +91,239 @@ export function parseProbeResponse(buf: Buffer): ProbeResult | null {
     model: buf.length > 23 ? buf[23] : -1,
     deviceType: buf[22] as ProbeResult['deviceType'],
     raw: Buffer.from(buf.buffer, buf.byteOffset, buf.byteLength)
+  }
+}
+
+export const UDP_PROBE_PORT = 9099
+
+const DEFAULT_PROBE_TIMEOUT_MS = 1500
+const DEFAULT_RETRY_DELAY_MS = 2000
+
+export interface UdpProbeSocket {
+  sendAsync(message: Buffer): Promise<boolean | void>
+  destroy(): void
+  on(event: 'data', listener: (msg: Buffer) => void): void
+  on(event: 'error', listener: (err: Error) => void): void
+  on(event: 'status_change', listener: (status: InstanceStatus, message?: string) => void): void
+}
+
+export interface UdpProbeOptions {
+  socketFactory?: (host: string, port: number) => UdpProbeSocket
+  probeTimeoutMs?: number
+  retryDelayMs?: number
+}
+
+type ProbePhase = 'idle' | 'await-ea' | 'await-model' | 'retry-wait'
+
+/**
+ * One-shot UDP discovery on port 9099.
+ * Success destroys the socket and calls onResult once.
+ * Failure retries; it does not call onResult.
+ */
+export class UdpProbe {
+  private readonly socketFactory: (host: string, port: number) => UdpProbeSocket
+  private readonly probeTimeoutMs: number
+  private readonly retryDelayMs: number
+  private socket: UdpProbeSocket | null = null
+  private timer: NodeJS.Timeout | null = null
+  private onResult: ((result: ProbeResult) => void) | null = null
+  private host = ''
+  private running = false
+  private generation = 0
+  private sendTicket = 0
+  private phase: ProbePhase = 'idle'
+  private pendingProbe: ProbeResult | null = null
+
+  constructor(options: UdpProbeOptions = {}) {
+    this.socketFactory =
+      options.socketFactory ?? ((host, port) => new UDPHelper(host, port, {}) as unknown as UdpProbeSocket)
+    this.probeTimeoutMs = options.probeTimeoutMs ?? DEFAULT_PROBE_TIMEOUT_MS
+    this.retryDelayMs = options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS
+  }
+
+  public setOnResult(cb: ((result: ProbeResult) => void) | null): void {
+    this.onResult = cb
+  }
+
+  public start(host: string): void {
+    this.stop()
+    this.host = host
+    this.running = true
+    this.openAndFire()
+  }
+
+  public stop(): void {
+    this.generation++
+    this.sendTicket++
+    this.running = false
+    this.phase = 'idle'
+    this.pendingProbe = null
+    this.host = ''
+    this.clearTimer()
+    this.destroySocket()
+  }
+
+  private openAndFire(): void {
+    this.destroySocket()
+    this.socket = this.socketFactory(this.host, UDP_PROBE_PORT)
+    this.bind(this.socket, this.generation)
+    this.fireProbe()
+  }
+
+  private bind(socket: UdpProbeSocket, generation: number): void {
+    const current = (): boolean => generation === this.generation && this.running
+    socket.on('data', (buf: Buffer) => {
+      if (!current()) return
+      this.onDatagram(buf)
+    })
+    socket.on('error', (err: Error) => {
+      if (!current()) return
+      this.failSocket(err.message)
+    })
+    socket.on('status_change', (status: InstanceStatus) => {
+      if (!current()) return
+      if (status === Status.UnknownError) this.failSocket('UnknownError')
+    })
+  }
+
+  private fireProbe(): void {
+    this.phase = 'await-ea'
+    this.pendingProbe = null
+    this.sendTicket++
+    const ticket = this.sendTicket
+    const generation = this.generation
+    logger.info(`UDP probe: sending 0xEB to ${this.host}:${UDP_PROBE_PORT}`)
+    this.armTimeout(generation, '0xEB')
+    void this.send(buildProbeRequest(), ticket)
+  }
+
+  private startModelQuery(parsed: ProbeResult): void {
+    this.pendingProbe = { ...parsed, model: 0 }
+    this.phase = 'await-model'
+    this.sendTicket++
+    const ticket = this.sendTicket
+    const generation = this.generation
+    logger.info('UDP probe: deviceType=0; sending model query')
+    this.armTimeout(generation, 'model')
+    void this.send(buildSenderModelRequest(), ticket)
+  }
+
+  private async send(payload: Buffer, ticket: number): Promise<void> {
+    const socket = this.socket
+    if (!socket) {
+      this.failRound()
+      return
+    }
+    try {
+      const ok = await socket.sendAsync(payload)
+      if (ticket !== this.sendTicket || !this.running) return
+      if (ok === false) this.failRound()
+    } catch (err) {
+      if (ticket !== this.sendTicket || !this.running) return
+      logger.warn(`UDP probe send failed: ${(err as Error).message ?? String(err)}`)
+      this.failRound()
+    }
+  }
+
+  private onDatagram(buf: Buffer): void {
+    if (buf.length === 0) return
+    if ((this.phase === 'await-ea' || this.phase === 'retry-wait') && buf[0] === 0xea) {
+      const parsed = parseProbeResponse(buf)
+      if (!parsed) {
+        logger.warn(`UDP probe: dropping malformed 0xEA (length=${buf.length})`)
+        return
+      }
+      if (this.phase === 'retry-wait') this.clearTimer()
+      if (parsed.deviceType === 0) this.startModelQuery(parsed)
+      else this.succeed(parsed)
+      return
+    }
+    if (this.phase === 'await-model' && buf[0] === 0xea) {
+      logger.debug('UDP probe: duplicate 0xEA during model query; ignoring')
+      return
+    }
+    if (this.phase === 'await-model' && buf[0] === 0xf1) {
+      const model = parseSenderModelResponse(buf)
+      if (model === null || !this.pendingProbe) {
+        logger.warn(`UDP probe: dropping malformed 0xF1 (length=${buf.length})`)
+        return
+      }
+      this.succeed({ ...this.pendingProbe, model })
+    }
+  }
+
+  private succeed(result: ProbeResult): void {
+    if (!this.running) return
+    const cb = this.onResult
+    this.generation++
+    this.sendTicket++
+    this.running = false
+    this.phase = 'idle'
+    this.pendingProbe = null
+    this.clearTimer()
+    this.destroySocket()
+    logger.info(`UDP probe resolved, model=0x${result.model.toString(16)}, deviceType=${result.deviceType}`)
+    try {
+      cb?.(result)
+    } catch (err) {
+      logger.error(`UDP probe result callback threw: ${(err as Error).message ?? String(err)}`)
+    }
+  }
+
+  private failRound(): void {
+    if (!this.running) return
+    if (this.phase !== 'await-ea' && this.phase !== 'await-model') return
+    this.sendTicket++
+    this.pendingProbe = null
+    this.phase = 'retry-wait'
+    this.clearTimer()
+    logger.warn(`UDP probe failed; retrying full probe (host=${this.host}:${UDP_PROBE_PORT})`)
+    this.scheduleRetry(false)
+  }
+
+  private failSocket(message: string): void {
+    if (!this.running) return
+    logger.error(`UDP probe socket error: ${message}`)
+    this.generation++
+    this.sendTicket++
+    this.pendingProbe = null
+    this.phase = 'idle'
+    this.clearTimer()
+    this.destroySocket()
+    this.scheduleRetry(true)
+  }
+
+  private scheduleRetry(replaceSocket: boolean): void {
+    if (!this.running || this.timer) return
+    const generation = this.generation
+    this.timer = setTimeout(() => {
+      this.timer = null
+      if (generation !== this.generation || !this.running) return
+      if (replaceSocket || !this.socket) this.openAndFire()
+      else this.fireProbe()
+    }, this.retryDelayMs)
+  }
+
+  private armTimeout(generation: number, label: string): void {
+    this.clearTimer()
+    this.timer = setTimeout(() => {
+      this.timer = null
+      if (generation !== this.generation || !this.running) return
+      logger.warn(`UDP probe timeout after ${this.probeTimeoutMs}ms (${label})`)
+      this.failRound()
+    }, this.probeTimeoutMs)
+  }
+
+  private clearTimer(): void {
+    if (!this.timer) return
+    clearTimeout(this.timer)
+    this.timer = null
+  }
+
+  private destroySocket(): void {
+    if (!this.socket) return
+    const dead = this.socket
+    this.socket = null
+    dead.destroy()
   }
 }
