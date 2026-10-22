@@ -15,15 +15,22 @@ test('schedules the next beat after a response, including a non-zero code', asyn
     40,
     () => failures.push('fail')
   )
-  runner.start()
-  await delay(20)
-  assert.equal(calls, 1)
-  await delay(60)
-  assert.equal(calls, 2)
-  assert.deepEqual(failures, [])
-  runner.stop()
-  await delay(60)
-  assert.equal(calls, 2)
+  try {
+    runner.start()
+    await delay(20)
+    assert.equal(calls, 1)
+    // Second beat is at 40ms; the third is at least 40ms after that. Waiting until 50ms
+    // observes the second beat without sharing an expiry with the third (that tie left
+    // the runner's timer active when the assertion threw).
+    await delay(30)
+    assert.equal(calls, 2)
+    assert.deepEqual(failures, [])
+    runner.stop()
+    await delay(60)
+    assert.equal(calls, 2)
+  } finally {
+    runner.stop()
+  }
 })
 
 test('a missing response fails the link once', async () => {
@@ -37,12 +44,16 @@ test('a missing response fails the link once', async () => {
     40,
     () => failures.push('fail')
   )
-  runner.start()
-  await delay(20)
-  assert.equal(calls, 1)
-  assert.deepEqual(failures, ['fail'])
-  await delay(60)
-  assert.equal(calls, 1)
+  try {
+    runner.start()
+    await delay(20)
+    assert.equal(calls, 1)
+    assert.deepEqual(failures, ['fail'])
+    await delay(60)
+    assert.equal(calls, 1)
+  } finally {
+    runner.stop()
+  }
 })
 
 test('stop during an in-flight send does not fail the link', async () => {
@@ -56,12 +67,16 @@ test('stop during an in-flight send does not fail the link', async () => {
     40,
     () => failures.push('fail')
   )
-  runner.start()
-  await delay(10)
-  runner.stop()
-  resolveSend(undefined)
-  await delay(30)
-  assert.deepEqual(failures, [])
+  try {
+    runner.start()
+    await delay(10)
+    runner.stop()
+    resolveSend(undefined)
+    await delay(30)
+    assert.deepEqual(failures, [])
+  } finally {
+    runner.stop()
+  }
 })
 
 test('does not send a second beat while the first send is still pending', async () => {
@@ -74,8 +89,11 @@ test('does not send a second beat while the first send is still pending', async 
     20,
     () => {}
   )
-  runner.start()
-  await delay(50)
-  assert.equal(calls, 1)
-  runner.stop()
+  try {
+    runner.start()
+    await delay(50)
+    assert.equal(calls, 1)
+  } finally {
+    runner.stop()
+  }
 })
