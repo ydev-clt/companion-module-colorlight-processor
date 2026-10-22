@@ -59,8 +59,8 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
    * init connection instance
    *
    * Always delegates to `configUpdated` so the first init runs the full
-   * pipeline: UDP-open + probe callback registration + actions /
-   * feedbacks registration. Previously the `isFirstInit=true` branch only
+   * pipeline: UDP probe, then TCP open, plus probe callback registration and
+   * actions / feedbacks registration. Previously the `isFirstInit=true` branch only
    * assigned `this.config` and skipped everything else, which meant UDP
    * never opened on first init and the UDP probe never fired.
    */
