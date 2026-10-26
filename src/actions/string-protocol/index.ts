@@ -64,6 +64,20 @@ export function setupStringActions(
     modelByte: ctx.state.modelByte
   })
 
+  // Get actions stay in the source tree. Companion no longer exposes them;
+  // device TCP sync will refresh variables later.
+  const droppedGetIds: string[] = []
+  for (const id of Object.keys(all)) {
+    if (!id.endsWith('_get')) continue
+    delete all[id]
+    droppedGetIds.push(id)
+  }
+  if (droppedGetIds.length > 0) {
+    logger.debug(
+      `setupStringActions: unregistered ${droppedGetIds.length} get action(s): ${droppedGetIds.join(', ')}`
+    )
+  }
+
   // Companion may fire action callbacks in parallel; serialize every String
   // action (including heartbeat / CMDLIST) so multi-step set→get stays atomic.
   const mutex = new ActionMutex()
