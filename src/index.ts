@@ -128,6 +128,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
       this._onProbeResult(result, host)
     })
     this.connection.setOnLinkLost(() => {
+      logger.warn('Link lost.')
       this.failLink()
     })
 
@@ -203,7 +204,10 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
       .then(() => {
         if (generation !== this._linkGeneration) return
         this.connection.beginReceiving()
-        this.spTransmitter.startHeartbeat(() => this.failLink())
+        this.spTransmitter.startHeartbeat(() => {
+          logger.warn('Heartbeat lost.')
+          this.failLink()
+        })
       })
       .catch((err: Error) => {
         if (generation !== this._linkGeneration) return

@@ -126,6 +126,17 @@ test('opens UDP first and delivers the probe only after TCP connects', async () 
   tcps[0].isConnected = true
   tcps[0].emit('connect')
   await delay(10)
+  assert.deepEqual(
+    tcps[0].sent[0],
+    Buffer.from([
+      0x82, 0x00, 0x00, 0x15, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x9d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x03, 0x9d
+    ])
+  )
+  assert.equal(tcps[0].sent.length, 1)
+  tcps[0].emit('connect')
+  await delay(10)
+  assert.equal(tcps[0].sent.length, 1)
   assert.equal(probes.length, 1)
   assert.equal(probes[0].deviceType, 2)
   assert.equal(probes[0].model, 34)

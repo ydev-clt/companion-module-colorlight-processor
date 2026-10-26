@@ -152,7 +152,7 @@ export const CMD = {
  */
 export const STRING_HEARTBEAT_MIN_MS = 5_000
 export const STRING_HEARTBEAT_MAX_MS = 30_000
-export const STRING_HEARTBEAT_DEFAULT_MS = 10_000
+export const STRING_HEARTBEAT_DEFAULT_MS = 5_000
 
 /** Per-transaction id upper bound (uint32). */
 export const TRANSACTION_ID_MAX = 0xffffffff

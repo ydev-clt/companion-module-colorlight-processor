@@ -7,6 +7,12 @@ import { UdpProbe, type ProbeResult, type UdpProbeSocket } from './udp-probe'
 const DEFAULT_PROBE_TIMEOUT_MS = 1500
 const DEFAULT_RETRY_DELAY_MS = 2000
 
+/** One frame per TCP session. Starts device push sync before heartbeat or commands. */
+const START_SYNC_FRAME = Buffer.from([
+  0x82, 0x00, 0x00, 0x15, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x9d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x03, 0x9d
+])
+
 export interface TcpSocket {
   readonly isConnected: boolean
   sendAsync(message: Buffer): Promise<boolean>
@@ -54,8 +60,7 @@ class Connection {
   constructor(context: ConnectionContext, options: ConnectionOptions = {}) {
     this.context = context
     this.tcpSocketFactory =
-      options.tcpSocketFactory ??
-      ((host, port) => new TCPHelperCtor(host, port, { reconnect: false }) as TcpSocket)
+      options.tcpSocketFactory ?? ((host, port) => new TCPHelperCtor(host, port, { reconnect: false }) as TcpSocket)
     this.retryDelayMs = options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS
     this.udpProbe = new UdpProbe({
       socketFactory: options.udpSocketFactory,
@@ -149,10 +154,29 @@ class Connection {
     this.phase = 'holding'
     this.delivered = true
     this.publishStatus(Status.Ok)
+    const generation = this.generation
+    void this.sendStartSync(generation).then(() => {
+      if (generation !== this.generation || this.closed) return
+      try {
+        this.onProbeResult?.(result)
+      } catch (err) {
+        logger.error(`onProbeResult callback threw: ${(err as Error).message ?? String(err)}`)
+      }
+    })
+  }
+
+  /** First payload on this TCP session. */
+  private async sendStartSync(generation: number): Promise<void> {
+    const socket = this.tcp
+    if (!socket || generation !== this.generation) return
     try {
-      this.onProbeResult?.(result)
+      logger.info(`TCP send start-sync:${START_SYNC_FRAME.toString('hex')}`)
+      const ok = await socket.sendAsync(START_SYNC_FRAME)
+      if (generation !== this.generation) return
+      if (ok !== true) logger.warn('TCP start-sync was not sent')
     } catch (err) {
-      logger.error(`onProbeResult callback threw: ${(err as Error).message ?? String(err)}`)
+      if (generation !== this.generation) return
+      logger.warn(`TCP start-sync failed: ${(err as Error).message ?? String(err)}`)
     }
   }
 
@@ -174,6 +198,7 @@ class Connection {
       this.onTcpConnect()
     })
     socket.on('data', (buf: Buffer) => {
+      logger.debug(`TCP received data: ${buf.toString('hex')}`)
       if (!current()) return
       if (this.phase !== 'business') return
       this.context.handleIncoming(buf)
