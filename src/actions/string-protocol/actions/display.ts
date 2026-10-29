@@ -11,6 +11,7 @@ import {
 } from './_shared'
 import type { StringActionHost } from './_shared'
 import { DeviceProtocolEnum } from '../../../types'
+import { isCmdOpSupported, type DeviceIdentity } from '../core/cmd-support'
 
 /**
  * Display / picture actions:
@@ -32,6 +33,7 @@ import { DeviceProtocolEnum } from '../../../types'
 
 async function sendOpenCloseOrToggle(
   conn: StringActionHost['conn'],
+  identity: DeviceIdentity,
   cmd: string,
   featureName: 'Freeze' | 'Blackout',
   options: { deviceId: number; isSelectAll: boolean; enableStatus: number; gid?: number }
@@ -43,6 +45,11 @@ async function sendOpenCloseOrToggle(
   if (options.enableStatus !== 2) {
     data.en = options.enableStatus
     await conn.sendOnly(cmd, 'set', sid, data)
+    return
+  }
+
+  if (!isCmdOpSupported(cmd, 'get', identity)) {
+    logger.warn(`${featureName} skipped: GET ${cmd} is not supported on this device.`)
     return
   }
 
@@ -61,6 +68,10 @@ async function sendOpenCloseOrToggle(
 
 export function setupDisplayActions(host: StringActionHost): CompanionActionDefinitions {
   const { conn } = host
+  const identity: DeviceIdentity = {
+    protocol: host.ctx.config.protocol,
+    modelByte: host.ctx.state.modelByte
+  }
   const actions: Record<string, CompanionActionDefinition> = {}
 
   // ---- bright (brightness) ----
@@ -115,6 +126,10 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
 
       let brt: number
       if (o.operation === 'step') {
+        if (!isCmdOpSupported(CMD.BRIGHT, 'get', identity)) {
+          logger.warn(`Brightness skipped: GET ${CMD.BRIGHT} is not supported on this device.`)
+          return
+        }
         const resp = await conn.sendAndAwait<unknown, { brt?: unknown }>(CMD.BRIGHT, 'get', sid, requestData)
         const rawCurrent = resp?.data?.brt
         const current = Number(rawCurrent)
@@ -192,6 +207,10 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
 
       let ct: number
       if (o.operation === 'step') {
+        if (!isCmdOpSupported(CMD.COLORTEMP, 'get', identity)) {
+          logger.warn(`Color temperature skipped: GET ${CMD.COLORTEMP} is not supported on this device.`)
+          return
+        }
         const resp = await conn.sendAndAwait<unknown, { ct?: unknown }>(CMD.COLORTEMP, 'get', sid, requestData)
         const rawCurrent = resp?.data?.ct
         const current = Number(rawCurrent)
@@ -223,7 +242,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
     options: [...deviceAndBroadcastFields(), openCloseToggleField(1), gidField()],
     callback: async (event) => {
       const o = event.options as { deviceId: number; isSelectAll: boolean; enableStatus: number; gid?: number }
-      await sendOpenCloseOrToggle(conn, CMD.FREEZE, 'Freeze', o)
+      await sendOpenCloseOrToggle(conn, identity, CMD.FREEZE, 'Freeze', o)
     }
   }
 
@@ -234,7 +253,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
     options: [...deviceAndBroadcastFields(), openCloseToggleField(1), gidField()],
     callback: async (event) => {
       const o = event.options as { deviceId: number; isSelectAll: boolean; enableStatus: number; gid?: number }
-      await sendOpenCloseOrToggle(conn, CMD.BLACKOUT, 'Blackout', o)
+      await sendOpenCloseOrToggle(conn, identity, CMD.BLACKOUT, 'Blackout', o)
     }
   }
 
