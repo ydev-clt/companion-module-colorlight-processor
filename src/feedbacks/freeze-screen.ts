@@ -1,7 +1,14 @@
 import type { CompanionAdvancedFeedbackDefinition } from '@companion-module/base'
 import { combineRgb } from '@companion-module/base'
 import type { CltProcessorType } from '../types'
-import { VARIABLE_ID } from '../variables/core/ids'
+import { publishVariableId } from '../variables/publish'
+
+function screenGroupId(value: unknown): number {
+  if (typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 128) {
+    return value
+  }
+  return 1
+}
 
 /**
  * Freeze screen feedback.
@@ -19,10 +26,11 @@ export function setupFreezeScreenFeedback(context: CltProcessorType): CompanionA
       { type: 'colorpicker', label: 'Foreground color (Freeze)', id: 'fg', default: ColorWhite },
       { type: 'colorpicker', label: 'Background color (Freeze)', id: 'bg', default: ColorRed },
       { type: 'colorpicker', label: 'Foreground color (unFreeze)', id: 'fg_', default: ColorWhite },
-      { type: 'colorpicker', label: 'Background color (unFreeze)', id: 'bg_', default: ColorGreen }
+      { type: 'colorpicker', label: 'Background color (unFreeze)', id: 'bg_', default: ColorGreen },
+      { type: 'number', label: 'Screen group ID (gid)', id: 'gid', min: 1, max: 128, default: 1 }
     ],
     callback: (feedback) => {
-      const freeze = context.getVariableValue(VARIABLE_ID.FREEZE_ENABLE)
+      const freeze = context.getVariableValue(publishVariableId('screen-group', 'freeze_enable', screenGroupId(feedback.options.gid)))
       if (freeze === 1 || freeze === '1') {
         return {
           bgcolor: feedback.options.bg as number,
