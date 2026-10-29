@@ -27,11 +27,11 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
         type: 'dropdown',
         label: 'OSD type',
         id: 'type',
-        default: 2,
+        default: 0,
         choices: [
-          { id: 2, label: 'Video OSD' },
-          { id: 4, label: 'Image OSD' },
-          { id: 5, label: 'Subtitle OSD' }
+          { id: 0, label: 'Subtitle OSD' },
+          { id: 1, label: 'Image OSD' },
+          { id: 2, label: 'Video OSD' }
         ]
       },
       {
@@ -39,9 +39,9 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
         label: 'OSD ID',
         tooltip: 'Used for non-video OSD types.',
         id: 'osdId',
-        min: 0,
+        min: 1,
         max: Number.MAX_SAFE_INTEGER,
-        default: 0
+        default: 1
       },
       gidField()
     ],
@@ -55,7 +55,8 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
         gid?: number
       }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { en: o.enableStatus, type: o.type, osdId: o.osdId }
+      const data: Record<string, unknown> = { en: o.enableStatus, type: o.type }
+      if (o.type !== 2) data.osdId = o.osdId
       if (typeof o.gid === 'number') data.gid = o.gid
       await conn.sendOnly(CMD.OSD, 'set', sid, data)
     }
