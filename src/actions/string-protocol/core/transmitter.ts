@@ -42,6 +42,24 @@ interface PendingSetReadback {
   sentAt: number
 }
 
+/**
+ * Resolve a pending id, or hand an unmatched response to the unsolicited hook.
+ * Pending ids are deleted and do not call the hook.
+ */
+export function deliverParsedResponse(
+  resp: { id: number },
+  handlers: Map<number, { resolve: (resp: unknown) => void }>,
+  onUnsolicited: (resp: unknown) => void
+): void {
+  const pending = handlers.get(resp.id)
+  if (pending) {
+    handlers.delete(resp.id)
+    pending.resolve(resp)
+    return
+  }
+  onUnsolicited(resp)
+}
+
 interface SPTransmitterOptions {
   /** Custom response timeout (default 5s) */
   responseTimeoutMs?: number
@@ -70,6 +88,7 @@ export class SPTransmitter {
   private _token: number = 1
   // Proto used by the current SpSession (for logging only)
   private _spProto: 1 | 2 | null = null
+  private _onUnsolicited: (resp: StringResponse) => void = () => {}
 
   constructor(options: SPTransmitterOptions = {}) {
     this._allocator = new TransactionIdAllocator(1)
@@ -152,6 +171,11 @@ export class SPTransmitter {
   public stopHeartbeat(): void {
     this._heartbeat?.stop()
     this._heartbeat = null
+  }
+
+  /** Replace the no-op default. Does not write variables. */
+  public setOnUnsolicited(cb: (resp: StringResponse) => void): void {
+    this._onUnsolicited = cb
   }
 
   /** Destroy (called when connection is disconnected / instance is destroyed) */
@@ -566,11 +590,11 @@ export class SPTransmitter {
     }
 
     // 3) Match handler
-    const pending = this._handlers.get(resp.id)
-    if (pending) {
-      this._handlers.delete(resp.id)
-      pending.resolve(resp)
-    }
+    deliverParsedResponse(
+      resp,
+      this._handlers as Map<number, { resolve: (resp: unknown) => void }>,
+      this._onUnsolicited as (resp: unknown) => void
+    )
   }
 
   private _logProtocolCode(resp: StringResponse): void {
