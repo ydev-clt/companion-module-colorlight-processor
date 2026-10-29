@@ -9,4 +9,6 @@ test('the instance starts business receive and heartbeat after bind', () => {
   assert.match(src, /startHeartbeat/)
   assert.match(src, /_linkGeneration/)
   assert.match(src, /Host config is empty[\s\S]{0,120}connection\.close\(/)
+  assert.match(src, /beginReceiving\(\)[\s\S]*startHeartbeat\([\s\S]*_startInitialPoll\(/)
+  assert.match(src, /runInitialPoll/)
 })

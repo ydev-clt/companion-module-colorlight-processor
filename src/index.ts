@@ -9,8 +9,10 @@ import { StateCache } from './state'
 import { setupLogger, logger } from './log'
 import { setupActions } from './actions'
 import { SPTransmitter } from './actions/string-protocol/core/transmitter'
+import { runInitialPoll } from './actions/string-protocol/core/poll-runner'
 import { setupFeedbacks } from './feedbacks'
 import { setupVariables } from './variables'
+import { getScreenGroupIds } from './variables/screen-groups'
 import { getProtocolForDeviceType, type ProbeResult } from './udp-probe'
 import { downlinkChecksumForFamily, resolveDeviceModel } from './device-models'
 
@@ -208,12 +210,27 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
           logger.warn('Heartbeat lost.')
           this.failLink()
         })
+        this._startInitialPoll(generation)
       })
       .catch((err: Error) => {
         if (generation !== this._linkGeneration) return
         logger.error(`bindSpSession failed: ${err.message ?? String(err)}`)
         this.failLink()
       })
+  }
+
+  /** Poll initial device state once the session can send commands. A failed get does not drop the link. */
+  private _startInitialPoll(generation: number): void {
+    void runInitialPoll({
+      identity: { protocol: this.config.protocol, modelByte: this.state.modelByte },
+      groupIds: getScreenGroupIds(),
+      isCurrent: () => generation === this._linkGeneration,
+      send: (request) => this.spTransmitter.sendAndAwait(request.cmd, 'get', request.sid, request.data),
+      write: this.writebackVariableValues,
+      log: (message) => logger.warn(message)
+    }).catch((err: Error) => {
+      logger.error(`initial poll failed: ${err.message ?? String(err)}`)
+    })
   }
 
   /** Probe already succeeded. Clear identity once and keep a single reconnect timer. */
