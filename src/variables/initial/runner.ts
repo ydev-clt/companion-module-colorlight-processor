@@ -1,4 +1,4 @@
-import type { DeviceIdentity } from '../../actions/string-protocol/core/cmd-support'
+import type { DeviceIdentity } from '../../common/cmd-support'
 import { publishVariableId } from '../publish'
 import { selectPollRequests, projectPollData, type PollRequest } from './catalog'
 

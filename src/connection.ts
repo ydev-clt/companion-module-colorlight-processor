@@ -1,7 +1,7 @@
-import type { ConnectionContext } from './types'
+import type { ConnectionContext } from './common/types'
 import type { InstanceStatus } from '@companion-module/base'
 import { TCPHelper as TCPHelperCtor, InstanceStatus as Status } from '@companion-module/base'
-import { logger } from './log'
+import { logger } from './common/log'
 import { UdpProbe, type ProbeResult, type UdpProbeSocket } from './udp-probe'
 
 const DEFAULT_PROBE_TIMEOUT_MS = 1500

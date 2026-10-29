@@ -3,7 +3,7 @@ import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
 import { deviceAndBroadcastFields, gidField, sidFromOptions } from './_shared'
 import type { StringActionHost } from './_shared'
-import { DeviceProtocolEnum } from '../../../types'
+import { DeviceProtocolEnum } from '../../../common/types'
 
 /**
  * Preset actions:

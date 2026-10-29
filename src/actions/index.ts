@@ -1,6 +1,6 @@
 import type { CompanionActionDefinitions } from '@companion-module/base'
-import type { CltProcessorType } from '../types'
-import { logger } from '../log'
+import type { CltProcessorType } from '../common/types'
+import { logger } from '../common/log'
 import { setupStringActions, type SPTransmitter } from './string-protocol'
 
 /**

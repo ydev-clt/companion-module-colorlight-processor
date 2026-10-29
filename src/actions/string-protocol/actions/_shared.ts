@@ -1,5 +1,5 @@
 import type { SomeCompanionActionInputField } from '@companion-module/base'
-import type { CltProcessorType } from '../../../types'
+import type { CltProcessorType } from '../../../common/types'
 import type { SPTransmitter } from '../core/transmitter'
 import { GID_DEFAULT, SID_BROADCAST } from '../core/constants'
 

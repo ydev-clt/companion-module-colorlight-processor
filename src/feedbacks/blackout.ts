@@ -1,6 +1,6 @@
 import type { CompanionAdvancedFeedbackDefinition } from '@companion-module/base'
 import { combineRgb } from '@companion-module/base'
-import type { CltProcessorType } from '../types'
+import type { CltProcessorType } from '../common/types'
 import { publishVariableId } from '../variables/publish'
 
 function screenGroupId(value: unknown): number {

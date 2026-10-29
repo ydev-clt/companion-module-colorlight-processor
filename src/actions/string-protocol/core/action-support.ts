@@ -1,11 +1,11 @@
 import type { CompanionActionDefinitions } from '@companion-module/base'
-import { resolveDeviceModel } from '../../../device-models'
-import { logger } from '../../../log'
+import { resolveDeviceModel } from '../../../common/device-models'
+import { logger } from '../../../common/log'
 import { ACTION_ID } from './ids'
 import { ACTION_CMD } from './action-cmds'
-import { isCmdOpSupported, type DeviceIdentity } from './cmd-support'
+import { isCmdOpSupported, type DeviceIdentity } from '../../../common/cmd-support'
 
-export type { DeviceIdentity } from './cmd-support'
+export type { DeviceIdentity } from '../../../common/cmd-support'
 
 /**
  * Filter a definitions object down to the set actions supported by the device.

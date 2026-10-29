@@ -1,5 +1,5 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
-import { logger } from '../../../log'
+import { logger } from '../../../common/log'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
 import {
@@ -10,8 +10,8 @@ import {
   sidFromOptions
 } from './_shared'
 import type { StringActionHost } from './_shared'
-import { DeviceProtocolEnum } from '../../../types'
-import { isCmdOpSupported, type DeviceIdentity } from '../core/cmd-support'
+import { DeviceProtocolEnum } from '../../../common/types'
+import { isCmdOpSupported, type DeviceIdentity } from '../../../common/cmd-support'
 
 /**
  * Display / picture actions:

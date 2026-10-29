@@ -1,7 +1,7 @@
 import type { CompanionActionDefinition } from '@companion-module/base'
-import { DeviceProtocolEnum } from '../../types'
-import type { CltProcessorType } from '../../types'
-import { logger } from '../../log'
+import { DeviceProtocolEnum } from '../../common/types'
+import type { CltProcessorType } from '../../common/types'
+import { logger } from '../../common/log'
 
 type OptionValues = {
   deviceId: number

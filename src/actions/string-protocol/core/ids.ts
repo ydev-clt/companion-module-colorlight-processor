@@ -1,5 +1,5 @@
 /**
- * String-Protocol Action / Feedback id constants.
+ * String-Protocol action id constants.
  *
  * Naming convention:
  *  - Set actions: `string_<cmd>_set`, or a set-only id without that suffix.
@@ -7,7 +7,6 @@
  *
  * Used for:
  *  - Keys returned by setupActions
- *  - References from state.triggerFeedbacks(FEEDBACK_ID.X)
  *  - Central entrypoints for connection-level actions like heartbeat/cmdlist
  */
 
@@ -94,10 +93,4 @@ export enum ACTION_ID {
 
   // === Custom ===
   RAW_COMMAND = 'string_raw_command'
-}
-
-export enum FEEDBACK_ID {
-  FREEZE_SCREEN = 'string_freeze_feedback',
-  BLACKOUT = 'string_blackout_feedback',
-  BRIGHTNESS = 'string_brightness_feedback'
 }

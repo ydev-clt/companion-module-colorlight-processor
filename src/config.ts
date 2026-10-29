@@ -1,7 +1,7 @@
 import type { SomeCompanionConfigField } from '@companion-module/base'
-import type { DeviceConfig } from './types'
+import type { DeviceConfig } from './common/types'
 import { Regex } from '@companion-module/base'
-import { DeviceProtocolEnum } from './types'
+import { DeviceProtocolEnum } from './common/types'
 
 /**
  * default config

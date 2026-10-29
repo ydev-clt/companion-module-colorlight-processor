@@ -1,4 +1,4 @@
-import { isCmdOpSupported, type DeviceIdentity } from '../../actions/string-protocol/core/cmd-support'
+import { isCmdOpSupported, type DeviceIdentity } from '../../common/cmd-support'
 import { extractValuesForCmd } from '../core/registry'
 import { projectPortOutput } from './port-output'
 

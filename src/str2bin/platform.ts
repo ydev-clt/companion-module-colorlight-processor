@@ -34,7 +34,7 @@
 import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import { readFileSync } from 'node:fs'
-import { logger } from '../log'
+import { logger } from '../common/log'
 
 /** Path/name constants — keep in sync with `build-config.cjs#extraFiles`. */
 const WASM_GLUE_NAME = 'sp_session.js'

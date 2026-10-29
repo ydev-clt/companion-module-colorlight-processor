@@ -1,6 +1,6 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { ACTION_ID } from '../core/ids'
-import { logger } from '../../../log'
+import { logger } from '../../../common/log'
 import type { StringActionHost } from './_shared'
 
 /** Even-length hex bytes, same rule as the Z/V custom command. */

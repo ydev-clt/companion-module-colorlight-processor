@@ -28,7 +28,7 @@
  */
 
 import { loadWasmModule, type EmscriptenModule, type SpSessionCApi } from './platform'
-import { logger } from '../log'
+import { logger } from '../common/log'
 
 // ---------------------------------------------------------------------------
 // 1. Constants and error semantics (aligned with lib/sp/sp_error.h sp_err_t)

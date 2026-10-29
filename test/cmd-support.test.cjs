@@ -1,6 +1,6 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
-const { isCmdOpSupported } = require('../dist/actions/string-protocol/core/cmd-support')
+const { isCmdOpSupported } = require('../dist/common/cmd-support')
 
 const u9 = { protocol: 'B-Protocol', modelByte: 35 }
 const v20 = { protocol: 'B-Protocol', modelByte: 50 }

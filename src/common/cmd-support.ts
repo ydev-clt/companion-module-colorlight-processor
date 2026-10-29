@@ -1,6 +1,6 @@
-import { DeviceProtocolEnum } from '../../../types'
-import type { DeviceFamilyId } from '../../../device-models'
-import { resolveDeviceModel } from '../../../device-models'
+import { DeviceProtocolEnum } from './types'
+import type { DeviceFamilyId } from './device-models'
+import { resolveDeviceModel } from './device-models'
 
 const { A, B } = DeviceProtocolEnum
 /** Shorthand for commands supported by both protocols (shared readonly instance) */

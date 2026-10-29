@@ -1,5 +1,5 @@
 import type { InstanceBase, InstanceTypes, JsonObject } from '@companion-module/base'
-import type { StateCache } from './state'
+import type { StateCache } from '../state'
 
 export enum DeviceProtocolEnum {
   A = 'A-Protocol',

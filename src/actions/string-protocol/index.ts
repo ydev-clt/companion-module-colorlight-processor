@@ -1,8 +1,8 @@
 import type { CompanionActionDefinitions } from '@companion-module/base'
 /** Make the SPTransmitter type also available for consumers */
 import { SPTransmitter } from './core/transmitter'
-import type { CltProcessorType } from '../../types'
-import { logger } from '../../log'
+import type { CltProcessorType } from '../../common/types'
+import { logger } from '../../common/log'
 import type { StringActionHost } from './actions/_shared'
 import { filterActionsForDevice } from './core/action-support'
 import { ActionMutex } from './core/action-mutex'
@@ -78,4 +78,4 @@ export function setupStringActions(
 /** Re-export types and constants */
 export { ACTION_ID as STRING_ACTION_ID } from './core/ids'
 export { CMD as STRING_CMD } from './core/constants'
-export { FEEDBACK_ID as STRING_FEEDBACK_ID } from './core/ids'
+export { FEEDBACK_ID as STRING_FEEDBACK_ID } from '../../common/feedback-ids'

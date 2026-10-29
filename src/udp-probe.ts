@@ -1,8 +1,8 @@
-import type { DeviceConfig } from './types'
-import { DeviceProtocolEnum } from './types'
+import type { DeviceConfig } from './common/types'
+import { DeviceProtocolEnum } from './common/types'
 import type { InstanceStatus } from '@companion-module/base'
 import { InstanceStatus as Status, UDPHelper } from '@companion-module/base'
-import { logger } from './log'
+import { logger } from './common/log'
 
 /**
  * Parsed result of a single 0xEA UDP probe response.
@@ -13,7 +13,7 @@ export interface ProbeResult {
    *  - deviceType 1/2: 0xEA offset 23
    *  - deviceType 0: 0xF1 secondary response offset 12 (resolved by Connection;
    *    0 = the secondary query timed out / failed and the model is unknown)
-   * Resolved to a registry entry via `resolveDeviceModel` (src/device-models.ts).
+   * Resolved to a registry entry via `resolveDeviceModel` (src/common/device-models.ts).
    */
   model: number
   /** Device type byte (0xEA offset 22): 0=Sender card / 1=Player box / 2=Processor */

@@ -1,6 +1,6 @@
 import { CMD, PROTOCOL_CODE, STRING_HEARTBEAT_DEFAULT_MS } from './constants'
 import { HeartbeatRunner } from './heartbeat'
-import { logger } from '../../../log'
+import { logger } from '../../../common/log'
 import { encodeRequest, TransactionIdAllocator } from './frames'
 import { GetGate } from './get-gate'
 import type { StringRequest, StringResponse } from './types'

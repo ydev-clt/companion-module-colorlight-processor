@@ -1,7 +1,7 @@
 import type { CompanionFeedbackDefinitions } from '@companion-module/base'
-import type { CltProcessorType } from '../types'
-import { FEEDBACK_ID } from '../actions/string-protocol/core/ids'
-import { logger } from '../log'
+import type { CltProcessorType } from '../common/types'
+import { FEEDBACK_ID } from '../common/feedback-ids'
+import { logger } from '../common/log'
 import { setupFreezeScreenFeedback } from './freeze-screen'
 import { setupBlackoutFeedback } from './blackout'
 
@@ -20,4 +20,4 @@ export function setupFeedbacks(context: CltProcessorType): CompanionFeedbackDefi
   return feedbacks
 }
 
-export { FEEDBACK_ID as STRING_FEEDBACK_ID } from '../actions/string-protocol/core/ids'
+export { FEEDBACK_ID as STRING_FEEDBACK_ID } from '../common/feedback-ids'
