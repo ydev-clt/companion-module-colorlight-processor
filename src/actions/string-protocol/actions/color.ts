@@ -2,7 +2,7 @@ import type { CompanionActionDefinition, CompanionActionDefinitions } from '@com
 import { logger } from '../../../log'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { buildGetAction, deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
+import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
 import type { StringActionHost } from './_shared'
 
 /**
@@ -51,13 +51,6 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
       await conn.sendOnly(CMD.COLORSPACE, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.COLORSPACE_GET] = buildGetAction(host, {
-    name: 'Get Output Color Space',
-    description:
-      'Query the current output color space and write to the `colorspace` variable (0: native, 1: sRGB, 2: Adobe RGB, 3: PAL, 4: NTSC, 5: Rec.601, 6: Rec.709, 7: Rec.2020, 8: DCI-P3).',
-    cmd: CMD.COLORSPACE,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   // ---- prec_mgr ----
   actions[ACTION_ID.PREC_MGR_SET] = {
@@ -72,13 +65,6 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
       await conn.sendOnly(CMD.PREC_MGR, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.PREC_MGR_GET] = buildGetAction(host, {
-    name: 'Get Precise Color Manager',
-    description:
-      'Query the precise color manager state and write to the `precise_color_management_enable` variable (0: off, 1: on).',
-    cmd: CMD.PREC_MGR,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   // ---- ct_r ----
   actions[ACTION_ID.CT_R_SET] = {
@@ -155,12 +141,6 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
       await conn.sendOnly(CMD.CT_R, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.CT_R_GET] = buildGetAction(host, {
-    name: 'Get Color Temp Red Gain',
-    description: 'Query the red gain of the screen group color temperature and write to `screen_color_temperature_r`.',
-    cmd: CMD.CT_R,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   // ---- ct_g ----
   actions[ACTION_ID.CT_G_SET] = {
@@ -237,13 +217,6 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
       await conn.sendOnly(CMD.CT_G, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.CT_G_GET] = buildGetAction(host, {
-    name: 'Get Color Temp Green Gain',
-    description:
-      'Query the green gain of the screen group color temperature and write to `screen_color_temperature_g`.',
-    cmd: CMD.CT_G,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   // ---- ct_b ----
   actions[ACTION_ID.CT_B_SET] = {
@@ -320,12 +293,6 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
       await conn.sendOnly(CMD.CT_B, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.CT_B_GET] = buildGetAction(host, {
-    name: 'Get Color Temp Blue Gain',
-    description: 'Query the blue gain of the screen group color temperature and write to `screen_color_temperature_b`.',
-    cmd: CMD.CT_B,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   // ---- grp_gain ----
   actions[ACTION_ID.GRP_GAIN_SET] = {
@@ -344,12 +311,6 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
       await conn.sendOnly(CMD.GRP_GAIN, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.GRP_GAIN_GET] = buildGetAction(host, {
-    name: 'Get Screen Group Intensity Gain',
-    description: 'Query the screen group intensity gain and write to the `screen_intensity_gain` variable.',
-    cmd: CMD.GRP_GAIN,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   // ---- virtual_pixel ----
   actions[ACTION_ID.VIRTUAL_PIXEL_SET] = {
@@ -423,13 +384,6 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
       await conn.sendOnly(CMD.VIRTUAL_PIXEL, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.VIRTUAL_PIXEL_GET] = buildGetAction(host, {
-    name: 'Get Virtual Pixel',
-    description:
-      'Query the virtual pixel state. Writes the result to the `virtual_pixel` variable as a single object: `{ enable, rate, direction, row_offset, col_offset }` — enable (0: off, 1: on); rate (1: 4x virtual, 2: 3x virtual, 3: 0.75 virtual); direction (0: left to right, 1: top to bottom); row_offset (0: off, 1: on); col_offset (0: off, 1: on).',
-    cmd: CMD.VIRTUAL_PIXEL,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   return actions as CompanionActionDefinitions
 }

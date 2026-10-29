@@ -1,227 +1,18 @@
 import type { CompanionActionDefinitions } from '@companion-module/base'
-import { DeviceProtocolEnum } from '../../../types'
-import type { DeviceFamilyId } from '../../../device-models'
 import { resolveDeviceModel } from '../../../device-models'
 import { logger } from '../../../log'
 import { ACTION_ID } from './ids'
+import { ACTION_CMD } from './action-cmds'
+import { isCmdOpSupported, type DeviceIdentity } from './cmd-support'
 
-const { A, B } = DeviceProtocolEnum
-/** Shorthand for actions supported by both protocols (shared readonly instance) */
-const AB: readonly DeviceProtocolEnum[] = [A, B]
-
-/** Model-family targets participating in only/except judgment. */
-export type SupportTarget = DeviceFamilyId
+export type { DeviceIdentity } from './cmd-support'
 
 /**
- * Support rule for a single action:
- *  - `readonly DeviceProtocolEnum[]` — protocol baseline (shorthand; plain
- *    rows stay exactly as compact as before)
- *  - `{ only }` — whitelist: only these families support the action
- *  - `{ protocols, except? }` — protocol baseline minus excluded families
- *  - `'always'` — no device restriction, including an unresolved model
- */
-export type SupportRule =
-  | readonly DeviceProtocolEnum[]
-  | { only: readonly SupportTarget[] }
-  | { protocols: readonly DeviceProtocolEnum[]; except?: readonly SupportTarget[] }
-  | 'always'
-
-/** Device identity used for support judgment (both parts probe-derived). */
-export interface DeviceIdentity {
-  protocol: DeviceProtocolEnum
-  /** Probe-resolved model byte; null = not probed / unidentified */
-  modelByte: number | null
-}
-
-/** Type guard separating the protocol-array shorthand from object rules. */
-function isProtocolBaseline(rule: SupportRule): rule is readonly DeviceProtocolEnum[] {
-  return Array.isArray(rule)
-}
-
-/**
- * Action support matrix — single source of truth.
+ * Filter a definitions object down to the set actions supported by the device.
  *
- * Keys are ACTION_ID *values* (the same keys the setupXxxActions objects
- * produce at runtime). Computed-property keys keep the Record completeness
- * check active: a new ACTION_ID without a row here fails to compile.
- *
- * Layout mirrors the grouping in core/ids.ts for easy cross-reference.
- * U-family exceptions per the B-Protocol device manual (spec §2.1).
- *
- * Set / Get pairs share the same support rule — the protocol-level
- * availability is identical, only the op differs.
- */
-export const ACTION_SUPPORT: Record<ACTION_ID, SupportRule> = {
-  // === Display / picture ===
-  [ACTION_ID.BRIGHT_SET]: AB,
-  [ACTION_ID.BRIGHT_GET]: AB,
-  [ACTION_ID.COLORTEMP_SET]: AB,
-  [ACTION_ID.COLORTEMP_GET]: AB,
-  [ACTION_ID.FREEZE_SCREEN_SET]: AB,
-  [ACTION_ID.FREEZE_SCREEN_GET]: AB,
-  [ACTION_ID.BLACKOUT_SET]: AB,
-  [ACTION_ID.BLACKOUT_GET]: AB,
-  [ACTION_ID.TESTMODE_SET]: AB,
-  [ACTION_ID.TESTMODE_GET]: AB,
-  [ACTION_ID.HDRMODE_SET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.HDRMODE_GET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.MUTE_SET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.MUTE_GET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.FADE_SET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.FADE_GET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.FADETIME_SET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.FADETIME_GET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.ZERODELAY_SET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.ZERODELAY_GET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.UH5_ST_SET]: [A], // A-only; the U family is B-Protocol, never sees it
-  [ACTION_ID.UH5_ST_GET]: [A],
-
-  // === Picture adjustment (all unsupported on U-series) ===
-  [ACTION_ID.PIC_ADJ_SET]: { protocols: AB, except: ['U', 'V', 'VX'] },
-  [ACTION_ID.PIC_ADJ_GET]: { protocols: AB, except: ['U', 'V', 'VX'] },
-  [ACTION_ID.HUE_SET]: { protocols: AB, except: ['U', 'V', 'VX'] },
-  [ACTION_ID.HUE_GET]: { protocols: AB, except: ['U', 'V', 'VX'] },
-  [ACTION_ID.SATURATION_SET]: { protocols: AB, except: ['U', 'V', 'VX'] },
-  [ACTION_ID.SATURATION_GET]: { protocols: AB, except: ['U', 'V', 'VX'] },
-  [ACTION_ID.CONTRAST_SET]: { protocols: AB, except: ['U', 'V', 'VX'] },
-  [ACTION_ID.CONTRAST_GET]: { protocols: AB, except: ['U', 'V', 'VX'] },
-  [ACTION_ID.BRTCOMP_SET]: { protocols: AB, except: ['U', 'V', 'VX'] },
-  [ACTION_ID.BRTCOMP_GET]: { protocols: AB, except: ['U', 'V', 'VX'] },
-
-  // === Preset (ldpreset unsupported on U-series) ===
-  [ACTION_ID.QUICK_PRESET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.SAVE_PRESET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.LOAD_PRESET]: { protocols: AB, except: ['U', 'V', 'VX'] },
-  [ACTION_ID.RENAME_PRESET]: { protocols: AB, except: ['V', 'VX'] },
-
-  // === Layer ===
-  [ACTION_ID.LAYER_SET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.LAYER_GET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.LAYER_BORDER_SET]: { protocols: [B], except: ['V', 'VX'] },
-  [ACTION_ID.LAYER_BORDER_GET]: { protocols: [B], except: ['V', 'VX'] },
-  [ACTION_ID.BG_BOX_SET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.BG_BOX_GET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.LAYER_ORDER]: { protocols: [B], except: ['V', 'VX'] },
-  [ACTION_ID.DEL_LAYER]: { protocols: [B], except: ['V', 'VX'] },
-  [ACTION_ID.CLEAR_LAYER]: { protocols: [B], except: ['V', 'VX'] },
-
-  // === Network port (brt_port unsupported on U-series) ===
-  [ACTION_ID.PORTOUT_SET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.PORTOUT_GET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.ALLPORTS_SET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.ALLPORTS_GET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.BRT_PORT_SET]: { protocols: AB, except: ['U', 'V', 'VX'] },
-  [ACTION_ID.BRT_PORT_GET]: { protocols: AB, except: ['U', 'V', 'VX'] },
-  [ACTION_ID.C_DEPTH_SET]: AB,
-  [ACTION_ID.C_DEPTH_GET]: AB,
-  [ACTION_ID.NET_BRT_EN]: { protocols: [B], except: ['V', 'VX'] },
-
-  // === Color / gain (grp_gain unsupported on U-series) ===
-  [ACTION_ID.COLORSPACE_SET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.COLORSPACE_GET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.PREC_MGR_SET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.PREC_MGR_GET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.CT_R_SET]: AB,
-  [ACTION_ID.CT_R_GET]: AB,
-  [ACTION_ID.CT_G_SET]: AB,
-  [ACTION_ID.CT_G_GET]: AB,
-  [ACTION_ID.CT_B_SET]: AB,
-  [ACTION_ID.CT_B_GET]: AB,
-  [ACTION_ID.GRP_GAIN_SET]: { protocols: AB, except: ['U', 'V', 'VX'] },
-  [ACTION_ID.GRP_GAIN_GET]: { protocols: AB, except: ['U', 'V', 'VX'] },
-  [ACTION_ID.VIRTUAL_PIXEL_SET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.VIRTUAL_PIXEL_GET]: { protocols: AB, except: ['V', 'VX'] },
-
-  // === Audio / 3D ===
-  [ACTION_ID.EYE_SWITCH_SET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.EYE_SWITCH_GET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.MODE3D_SET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.MODE3D_GET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.DUAL_3D_SET]: { protocols: [B], except: ['V', 'VX'] },
-  [ACTION_ID.DUAL_3D_GET]: { protocols: [B], except: ['V', 'VX'] },
-  [ACTION_ID.STEREO_FMT_SET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.STEREO_FMT_GET]: { protocols: AB, except: ['V', 'VX'] },
-
-  // === Device (edid_set / brt_rela / ct_rela / brt_step unsupported on U-series) ===
-  [ACTION_ID.SN_SET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.SN_GET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.EDID_SET]: { protocols: AB, except: ['U', 'V', 'VX'] },
-  [ACTION_ID.BRT_RELA]: { protocols: AB, except: ['U', 'V', 'VX'] },
-  [ACTION_ID.CT_RELA]: { protocols: AB, except: ['U', 'V', 'VX'] },
-  [ACTION_ID.BRT_STEP]: { protocols: AB, except: ['U', 'V', 'VX'] },
-  [ACTION_ID.VSYNC_MUL_SET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.VSYNC_MUL_GET]: { protocols: AB, except: ['V', 'VX'] },
-
-  // === Frame rate / system (framerate & low_pwr unsupported on U-series) ===
-  [ACTION_ID.FRAMERATE_SET]: { protocols: AB, except: ['U', 'V', 'VX'] },
-  [ACTION_ID.FRAMERATE_GET]: { protocols: AB, except: ['U', 'V', 'VX'] },
-  [ACTION_ID.FPS_ADAPT]: { protocols: [B], except: ['V', 'VX'] },
-  [ACTION_ID.OSD_SET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.OSD_GET]: { protocols: AB, except: ['V', 'VX'] },
-  [ACTION_ID.LOW_PWR_SET]: { protocols: [B], except: ['U', 'V', 'VX'] },
-  [ACTION_ID.LOW_PWR_GET]: { protocols: [B], except: ['U', 'V', 'VX'] },
-
-  // === Probe (query-only; pr_video_count unsupported on U-series) ===
-  [ACTION_ID.SNDINFO_GET]: [],
-  [ACTION_ID.SND_ETH_GET]: [],
-  [ACTION_ID.PR_LAYER_GET]: [],
-  [ACTION_ID.PR_GROUP_GET]: [],
-  [ACTION_ID.PR_VIDEO_GET]: [],
-  [ACTION_ID.PR_VSYNC_GET]: [],
-  [ACTION_ID.PORT_AREA_GET]: [],
-  // [ACTION_ID.PR_VIDEO_COUNT_GET]: { protocols: AB, except: ['U'] },
-  [ACTION_ID.PR_VIDEO_COUNT_GET]: [],
-
-  // === Multi-function card (pr_rcv_state unsupported on U-series) ===
-  [ACTION_ID.MFC_PROBE_GET]: [],
-  [ACTION_ID.RCV_PROBE_GET]: [],
-  [ACTION_ID.MOD_PROBE_GET]: [],
-  [ACTION_ID.MFC_MANUAL]: { protocols: AB, except: ['V', 'VX'] },
-  // [ACTION_ID.PR_RCV_STATE_GET]: { protocols: AB, except: ['U'] },
-  [ACTION_ID.PR_RCV_STATE_GET]: [],
-
-  // === Audio preset ===
-  [ACTION_ID.LD_AUDPRESET_IDX]: { protocols: [B], except: ['V', 'VX'] },
-
-  // === Dangerous operations ===
-  [ACTION_ID.REBOOT]: { protocols: [B], except: ['V', 'VX'] },
-  [ACTION_ID.SHUTDOWN]: { protocols: [A, B], except: ['V', 'VX'] },
-
-  // === Custom (no device restriction) ===
-  [ACTION_ID.RAW_COMMAND]: 'always'
-}
-
-/**
- * Single judgment entry (global strict): an `'always'` rule is supported
- * on every device, including an unresolved model. Otherwise an unresolved
- * model supports nothing; a known model then evaluates its rule —
- * protocol baseline with optional family except, or a family-only
- * whitelist. Record-only models (no family) never match only/except,
- * i.e. they keep the plain protocol baseline.
- */
-export function isActionSupported(actionId: ACTION_ID, device: DeviceIdentity): boolean {
-  // `?? []`: runtime defense for keys outside ACTION_ID (misspelled string
-  // keys bypass the compile-time check) — degrades to "unsupported".
-  const rule: SupportRule = ACTION_SUPPORT[actionId] ?? []
-  if (rule === 'always') return true
-
-  const model = resolveDeviceModel(device.protocol, device.modelByte)
-  if (!model) return false
-
-  if (isProtocolBaseline(rule)) return rule.includes(device.protocol)
-  if ('only' in rule) {
-    return model.family !== undefined && rule.only.includes(model.family)
-  }
-  if (!rule.protocols.includes(device.protocol)) return false
-  if (!rule.except) return true
-  return model.family === undefined || !rule.except.includes(model.family)
-}
-
-/**
- * Filter a definitions object down to the actions supported by the device
- * identity. Logs removed ids at debug level ("why is my action missing
- * from the UI?"); warns when the model is unresolved. Global strict still
- * drops every restricted action, but `'always'` actions stay registered.
+ * An action is kept when `ACTION_CMD` maps it to `'always'`, or when
+ * `isCmdOpSupported(cmd, 'set', device)` is true. A missing map entry is
+ * dropped. `'always'` stays registered even when the model is unresolved.
  */
 export function filterActionsForDevice(
   actions: CompanionActionDefinitions,
@@ -232,7 +23,10 @@ export function filterActionsForDevice(
   const filtered: CompanionActionDefinitions = {}
   const removed: string[] = []
   for (const [id, def] of Object.entries(actions)) {
-    if (isActionSupported(id as ACTION_ID, device)) {
+    const mapped = ACTION_CMD[id as ACTION_ID]
+    const supported =
+      mapped === 'always' || (typeof mapped === 'string' && isCmdOpSupported(mapped, 'set', device))
+    if (supported) {
       filtered[id] = def
     } else {
       removed.push(id)

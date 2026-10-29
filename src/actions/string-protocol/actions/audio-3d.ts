@@ -1,7 +1,7 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { buildGetAction, deviceAndBroadcastFields, gidField, sidFromOptions } from './_shared'
+import { deviceAndBroadcastFields, gidField, sidFromOptions } from './_shared'
 import type { StringActionHost } from './_shared'
 
 /**
@@ -42,13 +42,6 @@ export function setupAudio3dActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.EYE_SWITCH, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.EYE_SWITCH_GET] = buildGetAction(host, {
-    name: 'Get Eye Switch',
-    description:
-      'Query the active eye (left/right) and write to the `3d_eye_priority` variable (0: left eye, 1: right eye).',
-    cmd: CMD.EYE_SWITCH,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   // ---- mode3d ----
   actions[ACTION_ID.MODE3D_SET] = {
@@ -76,12 +69,6 @@ export function setupAudio3dActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.MODE3D, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.MODE3D_GET] = buildGetAction(host, {
-    name: 'Get 3D Mode',
-    description: 'Query the 3D enable state and write to the `3d_enable` variable (0: off, 1: on).',
-    cmd: CMD.MODE3D,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   // ---- dual_3d ----
   actions[ACTION_ID.DUAL_3D_SET] = {
@@ -110,12 +97,6 @@ export function setupAudio3dActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.DUAL_3D, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.DUAL_3D_GET] = buildGetAction(host, {
-    name: 'Get Dual 3D Mode',
-    description: 'Query the dual-3D mode and write to the `dual_3d_mode` variable (0: single 3D, 1: dual 3D).',
-    cmd: CMD.DUAL_3D,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   // ---- stereo_fmt ----
   actions[ACTION_ID.STEREO_FMT_SET] = {
@@ -143,13 +124,6 @@ export function setupAudio3dActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.STEREO_FMT, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.STEREO_FMT_GET] = buildGetAction(host, {
-    name: 'Get Stereo 3D Source Format',
-    description:
-      'Query the 3D source format and write to the `3d_signal_format` variable (0: side-by-side / top-and-bottom, 1: frame sequential).',
-    cmd: CMD.STEREO_FMT,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   return actions as CompanionActionDefinitions
 }

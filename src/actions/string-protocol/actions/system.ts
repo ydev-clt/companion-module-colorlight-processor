@@ -1,7 +1,7 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { buildGetAction, deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
+import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
 import type { StringActionHost } from './_shared'
 
 /**
@@ -61,12 +61,6 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
       await conn.sendOnly(CMD.OSD, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.OSD_GET] = buildGetAction(host, {
-    name: 'Get OSD State',
-    description: 'Query the OSD state and write to the `osd_enable` variable (0: off, 1: on).',
-    cmd: CMD.OSD,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   // ---- framerate ----
   actions[ACTION_ID.FRAMERATE_SET] = {
@@ -97,13 +91,6 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
       await conn.sendOnly(CMD.FRAMERATE, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.FRAMERATE_GET] = buildGetAction(host, {
-    name: 'Get Screen Group Frame Rate',
-    description:
-      'Query the frame rate mode and write to the `framerate_mode` variable (0: off, 1: auto, 2: fixed, 3: scene fusion, 4: 3D).',
-    cmd: CMD.FRAMERATE,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   // ---- fps_adapt ----
   actions[ACTION_ID.FPS_ADAPT] = {
@@ -131,12 +118,6 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
       await conn.sendOnly(CMD.LOW_PWR, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.LOW_PWR_GET] = buildGetAction(host, {
-    name: 'Get Low Power Mode',
-    description: 'Query the low-power enable state and write to the `low_pwr_enable` variable (0: off, 1: on).',
-    cmd: CMD.LOW_PWR,
-    skipGid: true
-  })
 
   return actions as CompanionActionDefinitions
 }

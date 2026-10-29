@@ -1,12 +1,12 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { buildGetAction, deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
+import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
 import type { StringActionHost } from './_shared'
 
 /**
  * Device-related actions:
- *  - sn (§5.2.6)         Serial number read/write
+ *  - sn (§5.2.6)         Serial number
  *  - edid_set (§5.2.20)  EDID configuration
  *  - brt_rela (§5.2.48)  Relative brightness adjustment
  *  - ct_rela (§5.2.49)   Relative color temperature adjustment
@@ -32,12 +32,6 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
       await conn.sendOnly(CMD.SN, 'set', sid, { serial: o.serial })
     }
   }
-  actions[ACTION_ID.SN_GET] = buildGetAction<{ deviceId: number }>(host, {
-    name: 'Get Serial Number',
-    description: 'Query the device serial number and write to the `serial_number` variable.',
-    cmd: CMD.SN,
-    skipGid: true
-  })
 
   // ---- edid_set ----
   actions[ACTION_ID.EDID_SET] = {
@@ -202,13 +196,6 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
       await conn.sendOnly(CMD.VSYNC_MUL, 'set', sid, { ...data, mul: o.mul })
     }
   }
-  actions[ACTION_ID.VSYNC_MUL_GET] = buildGetAction(host, {
-    name: 'Get VSYNC Multiplier',
-    description:
-      'Query the VSYNC multiplier. Writes the result to the `vsync_multiplier` variable as a single object: `{ enable, method, multiplier }` — enable (0: off, 1: on); method (0: auto, 1: specify multiplier); multiplier (0: off, 1: 2x, 2: 3x, 3: 4x, 4: 5x, 5: 6x, 6: 7x, 7: 8x, 8: 9x, 9: 10x).',
-    cmd: CMD.VSYNC_MUL,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   return actions as CompanionActionDefinitions
 }

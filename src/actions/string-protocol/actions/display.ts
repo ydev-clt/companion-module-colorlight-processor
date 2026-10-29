@@ -3,7 +3,6 @@ import { logger } from '../../../log'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
 import {
-  buildGetAction,
   deviceAndBroadcastFields,
   gidField,
   openCloseField,
@@ -26,9 +25,9 @@ import { DeviceProtocolEnum } from '../../../types'
  *  - zero delay     zerodelay (§5.2.32)
  *  - UH5 status     uh5_st   (§5.2.38, A protocol only)
  *
- * Each set+get cmd has two actions: `<cmd>_set` (write) and `<cmd>_get`
- * (read & update variables). The split keeps set latency predictable
- * and lets users poll/refresh independently.
+ * Brightness step, color-temperature step, and freeze/blackout toggle
+ * read the current value with a protocol get before writing. Those reads
+ * do not publish variables.
  */
 
 async function sendOpenCloseOrToggle(
@@ -140,12 +139,6 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.BRIGHT, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.BRIGHT_GET] = buildGetAction(host, {
-    name: 'Get Brightness',
-    description: 'Query the sender brightness and write to the `brightness` variable.',
-    cmd: CMD.BRIGHT,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   // ---- colortemp ----
   actions[ACTION_ID.COLORTEMP_SET] = {
@@ -222,12 +215,6 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.COLORTEMP, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.COLORTEMP_GET] = buildGetAction(host, {
-    name: 'Get Color Temperature',
-    description: 'Query the sender color temperature and write to the `color_temperature` variable.',
-    cmd: CMD.COLORTEMP,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   // ---- freeze ----
   actions[ACTION_ID.FREEZE_SCREEN_SET] = {
@@ -239,21 +226,6 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       await sendOpenCloseOrToggle(conn, CMD.FREEZE, 'Freeze', o)
     }
   }
-  actions[ACTION_ID.FREEZE_SCREEN_GET] = buildGetAction<{ deviceId: number; isSelectAll: boolean; gid?: number }>(
-    host,
-    {
-      name: 'Get Freeze Screen Status',
-      description:
-        'Query the freeze status and update the `freeze_enable` variable (0: off, 1: freeze). Also updates the freeze feedback via state.',
-      cmd: CMD.FREEZE,
-      dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined),
-      afterResponse: (resp) => {
-        // host.ctx.checkFeedbacks(FEEDBACK_ID.FREEZE_SCREEN)
-        const data = resp.data as { en?: number } | undefined
-        logger.info(`Freeze screen state changed: ${data?.en}`)
-      }
-    }
-  )
 
   // ---- blackout ----
   actions[ACTION_ID.BLACKOUT_SET] = {
@@ -265,18 +237,6 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       await sendOpenCloseOrToggle(conn, CMD.BLACKOUT, 'Blackout', o)
     }
   }
-  actions[ACTION_ID.BLACKOUT_GET] = buildGetAction<{ deviceId: number; isSelectAll: boolean; gid?: number }>(host, {
-    name: 'Get Black Screen Status',
-    description:
-      'Query the blackout status and update the `blackout_enable` variable (0: off, 1: blackout). Also updates the blackout feedback via state.',
-    cmd: CMD.BLACKOUT,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined),
-    afterResponse: (resp) => {
-      // host.ctx.checkFeedbacks(FEEDBACK_ID.BLACKOUT)
-      const data = resp.data as { en?: number } | undefined
-      logger.info(`Black screen state changed: ${data?.en}`)
-    }
-  })
 
   // ---- testmode ----
   actions[ACTION_ID.TESTMODE_SET] = {
@@ -303,13 +263,6 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.TESTMODE, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.TESTMODE_GET] = buildGetAction(host, {
-    name: 'Get Test Pattern',
-    description:
-      'Query the active test pattern and write to the `testmode_pattern` variable (0: off, other: built-in test pattern index).',
-    cmd: CMD.TESTMODE,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   // ---- hdrmode ----
   actions[ACTION_ID.HDRMODE_SET] = {
@@ -343,13 +296,6 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.HDRMODE, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.HDRMODE_GET] = buildGetAction(host, {
-    name: 'Get HDR Mode',
-    description:
-      'Query the current HDR mode and write to the `hdrmode` variable (0: off, 1: auto, 2: HDR10 Rec.2020, 3: HDR10 DCI-P3, 4: HDR10 Rec.709, 5: HLG Rec.2020, 6: HLG DCI-P3, 7: HLG Rec.709).',
-    cmd: CMD.HDRMODE,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   // ---- mute ----
   actions[ACTION_ID.MUTE_SET] = {
@@ -364,12 +310,6 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.MUTE, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.MUTE_GET] = buildGetAction(host, {
-    name: 'Get Mute Status',
-    description: 'Query the mute state and write to the `mute_enable` variable (0: off, 1: muted).',
-    cmd: CMD.MUTE,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   // ---- fade ----
   actions[ACTION_ID.FADE_SET] = {
@@ -384,12 +324,6 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.FADE, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.FADE_GET] = buildGetAction(host, {
-    name: 'Get Fade In/Out Status',
-    description: 'Query the fade in/out state and write to the `fade_enable` variable (0: off, 1: on).',
-    cmd: CMD.FADE,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   // ---- fadetime ----
   actions[ACTION_ID.FADETIME_SET] = {
@@ -414,12 +348,6 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.FADETIME, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.FADETIME_GET] = buildGetAction(host, {
-    name: 'Get Fade Time',
-    description: 'Query the fade time and write to the `fadetime_ms` variable.',
-    cmd: CMD.FADETIME,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   // ---- zerodelay ----
   // A protocol only supports mode=1 (0-frame); B protocol also supports mode=2 (1-frame).
@@ -461,13 +389,6 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.ZERODELAY, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.ZERODELAY_GET] = buildGetAction(host, {
-    name: 'Get Zero Delay',
-    description:
-      'Query the zero-delay state and mode. Writes the result to the `zerodelay` variable as a single object: `{ enable, mode }` — enable (0: off, 1: on); mode (1: 0-frame, 2: 1-frame).',
-    cmd: CMD.ZERODELAY,
-    dataBuilder: ({ gid }) => (typeof gid === 'number' ? { gid } : undefined)
-  })
 
   // ---- uh5_st ----
   actions[ACTION_ID.UH5_ST_SET] = {
@@ -481,12 +402,6 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       await conn.sendOnly(CMD.UH5_ST, 'set', sid, data)
     }
   }
-  actions[ACTION_ID.UH5_ST_GET] = buildGetAction(host, {
-    name: 'Get UH5 Status',
-    description: 'Query the UH5 status and write to the `uh5_enable` variable (0: off, 1: on) (A protocol only).',
-    cmd: CMD.UH5_ST,
-    skipGid: true
-  })
 
   return actions as CompanionActionDefinitions
 }
