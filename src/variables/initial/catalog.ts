@@ -1,7 +1,6 @@
-import type { DeviceIdentity } from './cmd-support'
-import { isCmdOpSupported } from './cmd-support'
+import { isCmdOpSupported, type DeviceIdentity } from '../../actions/string-protocol/core/cmd-support'
+import { extractValuesForCmd } from '../core/registry'
 import { projectPortOutput } from './port-output'
-import { extractValuesForCmd } from '../../../variables/core/registry'
 
 export type PollPhase = 'initial' | 'reserved'
 export type PollScope = 'screen-group' | 'device'

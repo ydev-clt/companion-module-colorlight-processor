@@ -1,6 +1,6 @@
-import type { DeviceIdentity } from './cmd-support'
-import { selectPollRequests, projectPollData, type PollRequest } from './poll-catalog'
-import { publishVariableId } from '../../../variables/publish'
+import type { DeviceIdentity } from '../../actions/string-protocol/core/cmd-support'
+import { publishVariableId } from '../publish'
+import { selectPollRequests, projectPollData, type PollRequest } from './catalog'
 
 export interface InitialPollArgs {
   identity: DeviceIdentity

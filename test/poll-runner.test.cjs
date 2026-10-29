@@ -1,6 +1,6 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
-const { runInitialPoll } = require('../dist/actions/string-protocol/core/poll-runner')
+const { runInitialPoll } = require('../dist/variables/initial/runner')
 
 function harness(overrides) {
   const sent = []

@@ -1,6 +1,6 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
-const { POLL_CATALOG, selectPollRequests, projectPollData } = require('../dist/actions/string-protocol/core/poll-catalog')
+const { POLL_CATALOG, selectPollRequests, projectPollData } = require('../dist/variables/initial/catalog')
 
 const initialScreen = [
   'bright', 'colortemp', 'freeze', 'blackout', 'testmode', 'hdrmode', 'mute', 'fade', 'fadetime', 'zerodelay',
