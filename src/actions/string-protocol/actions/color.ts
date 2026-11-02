@@ -367,23 +367,30 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
         enableStatus: 0 | 1
         rate: number
         direction: number
-        rowOffset: number
-        colOffset: number
+        rowOffset: boolean
+        colOffset: boolean
         gid?: number
       }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { en: o.enableStatus }
-      if (o.enableStatus) {
-        const { rate, direction, rowOffset, colOffset } = o
-        Object.assign(data, {
-          rate,
-          direction,
-          rowOffset: rowOffset ? 1 : 0,
-          colOffset: colOffset ? 1 : 0
-        })
+      const gid = typeof o.gid === 'number' ? { gid: o.gid } : {}
+      if (!o.enableStatus) {
+        await conn.sendOnly(CMD.VIRTUAL_PIXEL, 'set', sid, { en: o.enableStatus, ...gid })
+        return
       }
-      if (typeof o.gid === 'number') data.gid = o.gid
-      await conn.sendOnly(CMD.VIRTUAL_PIXEL, 'set', sid, data)
+
+      // Offsets are applied only after the enable call finishes.
+      const enabled = await conn.sendOnly(CMD.VIRTUAL_PIXEL, 'set', sid, {
+        en: o.enableStatus,
+        rate: o.rate,
+        direction: o.direction,
+        ...gid
+      })
+      if (!enabled) return
+      await conn.sendOnly(CMD.VIRTUAL_PIXEL, 'set', sid, {
+        rowOffset: o.rowOffset ? 1 : 0,
+        colOffset: o.colOffset ? 1 : 0,
+        ...gid
+      })
     }
   }
 
