@@ -42,6 +42,7 @@ const AB_EXCEPT_U_V_VX: SupportRule = { protocols: AB, except: ['U', 'V', 'VX'] 
 const B_EXCEPT_V_VX: SupportRule = { protocols: [B], except: ['V', 'VX'] }
 const B_EXCEPT_U_V_VX: SupportRule = { protocols: [B], except: ['U', 'V', 'VX'] }
 const EMPTY_GET: SupportRule = []
+const V_VX_ONLY: SupportRule = { only: ['V', 'VX'] }
 
 /** Type guard separating the protocol-array shorthand from object rules. */
 function isProtocolBaseline(rule: SupportRule): rule is readonly DeviceProtocolEnum[] {
@@ -130,6 +131,15 @@ export const CMD_SUPPORT: Record<string, CmdSupport> = {
 
   // set only; both protocol names, matching ACTION_SUPPORT SHUTDOWN
   shutdown: { set: { protocols: [A, B], except: ['V', 'VX'] } },
+
+  // V/VX canvas sync (libsp 1.0.7). No set side means no action.
+  low_gray: { get: V_VX_ONLY, set: V_VX_ONLY },
+  canvas_switch_mode: { get: V_VX_ONLY, set: V_VX_ONLY },
+  vsync_src: { get: V_VX_ONLY, set: V_VX_ONLY },
+  take: { set: V_VX_ONLY },
+  cut: { set: V_VX_ONLY },
+  canvas_mode: { get: V_VX_ONLY },
+  out_fps: { get: V_VX_ONLY },
 
   // get: [] and no set (probe-only; not polled)
   sndinfo: { get: EMPTY_GET },
