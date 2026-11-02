@@ -50,7 +50,12 @@ const INITIAL_SCREEN: readonly string[] = [
   'stereo_fmt',
   'vsync_mul',
   'framerate',
-  'osd'
+  'osd',
+  'low_gray',
+  'canvas_mode',
+  'canvas_switch_mode',
+  'out_fps',
+  'vsync_src'
 ]
 
 const INITIAL_DEVICE: readonly string[] = ['sn', 'uh5_st', 'low_pwr', 'allports', 'portout']
@@ -105,11 +110,56 @@ export function selectPollRequests(device: DeviceIdentity, groupIds: readonly nu
   return requests
 }
 
+function finiteNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+}
+
+function projectCanvasSync(cmd: string, data: unknown): Record<string, number | string> | undefined {
+  if (
+    cmd !== 'low_gray' &&
+    cmd !== 'canvas_mode' &&
+    cmd !== 'canvas_switch_mode' &&
+    cmd !== 'out_fps' &&
+    cmd !== 'vsync_src'
+  ) {
+    return undefined
+  }
+  const obj = data !== null && typeof data === 'object' ? (data as Record<string, unknown>) : {}
+  if (cmd === 'low_gray') {
+    const en = finiteNumber(obj.en)
+    return en === 0 || en === 1 ? { low_gray_enable: en } : {}
+  }
+  if (cmd === 'canvas_mode') {
+    const mode = finiteNumber(obj.mode)
+    return obj.valid === 1 && mode !== undefined ? { canvas_mode: mode } : { canvas_mode: '' }
+  }
+  if (cmd === 'canvas_switch_mode') {
+    const switchMode = finiteNumber(obj.switchMode)
+    return obj.valid === 1 && switchMode !== undefined
+      ? { canvas_switch_mode: switchMode }
+      : { canvas_switch_mode: '' }
+  }
+  if (cmd === 'out_fps') {
+    const fps = finiteNumber(obj.fps10000)
+    return obj.valid === 1 && fps !== undefined
+      ? { output_frame_rate: Number((fps / 10000).toFixed(4)) }
+      : { output_frame_rate: '' }
+  }
+  const src = finiteNumber(obj.src)
+  const curSrc = finiteNumber(obj.curSrc)
+  return {
+    vsync_source: src === undefined ? '' : src,
+    vsync_current_source: curSrc === undefined ? '' : curSrc
+  }
+}
+
 export function projectPollData(cmd: string, data: unknown): Record<string, number | string | object> {
   if (cmd === 'portout') {
     const projected = projectPortOutput(data)
     if (projected === undefined) return {}
     return { port_output: projected }
   }
+  const canvas = projectCanvasSync(cmd, data)
+  if (canvas !== undefined) return canvas
   return extractValuesForCmd(cmd, data)
 }

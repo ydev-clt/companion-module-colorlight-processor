@@ -86,6 +86,12 @@ export enum VARIABLE_ID {
   FRAMERATE_MODE = 'framerate_mode',
   OSD_ENABLE = 'osd_enable',
   LOW_PWR_ENABLE = 'low_pwr_enable',
+  LOW_GRAY_ENABLE = 'low_gray_enable',
+  CANVAS_MODE = 'canvas_mode',
+  CANVAS_SWITCH_MODE = 'canvas_switch_mode',
+  OUTPUT_FRAME_RATE = 'output_frame_rate',
+  VSYNC_SOURCE = 'vsync_source',
+  VSYNC_CURRENT_SOURCE = 'vsync_current_source',
 
   // === Probe (query-only; composite) ===
   // `sender_info: { model, version, brightness, color_temp, temperature, blackout, freeze, test_pattern, ports }`

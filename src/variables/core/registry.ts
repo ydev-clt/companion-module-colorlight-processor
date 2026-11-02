@@ -309,6 +309,29 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
     cmd: 'low_pwr',
     entries: [{ field: 'en', variableId: VARIABLE_ID.LOW_PWR_ENABLE }]
   },
+  {
+    cmd: 'low_gray',
+    entries: [{ field: 'en', variableId: VARIABLE_ID.LOW_GRAY_ENABLE }]
+  },
+  {
+    cmd: 'canvas_mode',
+    entries: [{ field: 'mode', variableId: VARIABLE_ID.CANVAS_MODE }]
+  },
+  {
+    cmd: 'canvas_switch_mode',
+    entries: [{ field: 'switchMode', variableId: VARIABLE_ID.CANVAS_SWITCH_MODE }]
+  },
+  {
+    cmd: 'out_fps',
+    entries: [{ field: 'fps10000', variableId: VARIABLE_ID.OUTPUT_FRAME_RATE }]
+  },
+  {
+    cmd: 'vsync_src',
+    entries: [
+      { field: 'src', variableId: VARIABLE_ID.VSYNC_SOURCE, key: 'src', suffix: 'selected' },
+      { field: 'curSrc', variableId: VARIABLE_ID.VSYNC_CURRENT_SOURCE, key: 'curSrc', suffix: 'current' }
+    ]
+  },
 
   // === Probe (query-only) ===
   {
@@ -536,6 +559,17 @@ const CMD_DISPLAY: Record<string, CmdDisplay> = {
   },
   osd: { name: 'OSD', description: 'osd_enable (0: off, 1: on)' },
   low_pwr: { name: 'Low Power', description: 'low_pwr_enable (0: off, 1: on)' },
+  low_gray: { name: 'Low Gray', description: 'low_gray_enable (0: off, 1: on)' },
+  canvas_mode: { name: 'Canvas Mode', description: 'canvas_mode (0: normal, 1: switcher)' },
+  canvas_switch_mode: {
+    name: 'Canvas Switch Mode',
+    description: 'canvas_switch_mode (0: copy, 1: swap)'
+  },
+  out_fps: { name: 'Output Frame Rate', description: 'output_frame_rate (Hz)' },
+  vsync_src: {
+    name: 'Video Sync Source',
+    description: '0: input, 1: Genlock, 2: internal, 3: auto lock, 4: ODCK'
+  },
   sndinfo: {
     name: 'Sender Info',
     description:
