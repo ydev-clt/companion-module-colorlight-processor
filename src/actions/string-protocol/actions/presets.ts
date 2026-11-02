@@ -31,7 +31,7 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
         id: 'preset',
         min: 1,
         max: 64,
-        default: 1,
+        default: 1
       },
       gidField()
     ],
@@ -54,7 +54,7 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
         label: 'Preset name',
         id: 'name',
         default: 'preset1',
-        useVariables: true,
+        useVariables: true
       } as const)
 
   actions[ACTION_ID.SAVE_PRESET] = {
@@ -68,7 +68,7 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
         id: 'preset',
         min: 1,
         max: 64,
-        default: 1,
+        default: 1
       },
       ...(svpresetNameField ? [svpresetNameField] : []),
       gidField()
@@ -95,7 +95,7 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
         id: 'preset',
         min: 1,
         max: 64,
-        default: 1,
+        default: 1
       },
       gidField()
     ],
@@ -120,7 +120,7 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
         id: 'idx',
         min: 1,
         max: 64,
-        default: 1,
+        default: 1
       },
       {
         type: 'textinput',
@@ -128,13 +128,15 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
         id: 'name',
         default: 'preset1',
         minLength: 1,
-        useVariables: true,
-      }
+        useVariables: true
+      },
+      gidField()
     ],
     callback: async (event) => {
-      const o = event.options as { deviceId: number; isSelectAll: boolean; idx: number; name: string }
+      const o = event.options as { deviceId: number; isSelectAll: boolean; idx: number; name: string; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { idx: o.idx, name: o.name }
+      if (typeof o.gid === 'number') data.gid = o.gid
       await conn.sendOnly(CMD.RPNAME, 'set', sid, data)
     }
   }
