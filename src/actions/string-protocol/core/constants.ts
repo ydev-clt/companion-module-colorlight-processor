@@ -144,7 +144,14 @@ export const CMD = {
   OSD: 'osd',
   FRAMERATE: 'framerate',
   FPS_ADAPT: 'fps_adapt',
-  LD_AUDPRESET_IDX: 'ld_audpreset_idx'
+  LD_AUDPRESET_IDX: 'ld_audpreset_idx',
+  LOW_GRAY: 'low_gray',
+  TAKE: 'take',
+  CUT: 'cut',
+  CANVAS_SWITCH_MODE: 'canvas_switch_mode',
+  CANVAS_MODE: 'canvas_mode',
+  OUT_FPS: 'out_fps',
+  VSYNC_SRC: 'vsync_src'
 } as const
 
 /**

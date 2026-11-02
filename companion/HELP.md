@@ -82,3 +82,13 @@ System
 - Set screen group frame rate multiplication mode
 - Enable/disable frame rate adaptation (B protocol only)
 - Enable/disable low power mode (B protocol only)
+
+Canvas / Sync (V/VX only)
+
+- Set low gray on, off, or toggle
+- Take
+- Cut
+- Set canvas switch mode to copy, swap, or toggle
+- Set video sync source, input board, internal frame rate, or phase
+
+Take, Cut, and canvas switch mode require the screen group to already be in switcher mode.

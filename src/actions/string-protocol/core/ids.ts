@@ -91,6 +91,13 @@ export enum ACTION_ID {
   REBOOT = 'string_reboot',
   SHUTDOWN = 'string_shutdown',
 
+  // === Canvas / sync ===
+  LOW_GRAY_SET = 'string_low_gray_set',
+  TAKE = 'string_take',
+  CUT = 'string_cut',
+  CANVAS_SWITCH_MODE_SET = 'string_canvas_switch_mode_set',
+  VSYNC_SRC_SET = 'string_vsync_src_set',
+
   // === Custom ===
   RAW_COMMAND = 'string_raw_command'
 }

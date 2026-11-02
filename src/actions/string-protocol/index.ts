@@ -15,6 +15,7 @@ import { setupAudio3dActions } from './actions/audio-3d'
 import { setupColorActions } from './actions/color'
 import { setupDeviceActions } from './actions/device'
 import { setupSystemActions } from './actions/system'
+import { setupCanvasActions } from './actions/canvas'
 import { setupMfcActions } from './actions/mfc'
 import { setupCustomActions } from './actions/custom'
 
@@ -51,6 +52,7 @@ export function setupStringActions(
     ...setupColorActions(host),
     ...setupDeviceActions(host),
     ...setupSystemActions(host),
+    ...setupCanvasActions(host),
     ...setupMfcActions(host),
     ...setupCustomActions(host)
   }

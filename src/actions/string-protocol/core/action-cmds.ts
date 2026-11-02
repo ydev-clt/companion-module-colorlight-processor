@@ -86,6 +86,13 @@ export const ACTION_CMD: Record<ACTION_ID, string | 'always'> = {
   [ACTION_ID.REBOOT]: 'reboot',
   [ACTION_ID.SHUTDOWN]: 'shutdown',
 
+  // === Canvas / sync ===
+  [ACTION_ID.LOW_GRAY_SET]: 'low_gray',
+  [ACTION_ID.TAKE]: 'take',
+  [ACTION_ID.CUT]: 'cut',
+  [ACTION_ID.CANVAS_SWITCH_MODE_SET]: 'canvas_switch_mode',
+  [ACTION_ID.VSYNC_SRC_SET]: 'vsync_src',
+
   // === Custom ===
   [ACTION_ID.RAW_COMMAND]: 'always'
 }
