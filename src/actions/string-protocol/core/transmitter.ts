@@ -24,7 +24,7 @@ const SET_READBACK_DELAY_MS = 50
  *     the callback by `id` and remove it; clean up on timeout
  *
  * Not implemented here:
- *  - Does not manage UDP directly — `src/connection.ts` provides `socket.send`
+ *  - Does not manage the socket — `src/connection.ts` provides TCP `send`
  *  - Does not re-implement Status reporting — still driven by Connection
  */
 
@@ -35,7 +35,7 @@ interface PendingRequest {
   startedAt: number
 }
 
-/** Set whose UDP send has finished, waiting for the next queued request to observe it. */
+/** Set whose TCP send has finished, waiting for the next queued request to observe it. */
 interface PendingSetReadback {
   cmd: string
   sid: number
@@ -69,7 +69,7 @@ interface SPTransmitterOptions {
  * Inject the upper-layer send function + status update function.
  */
 export interface SPTransmitterHost {
-  /** Write binary Buffer converted by SpSession down to the device over UDP */
+  /** Write the binary Buffer from SpSession to the device over TCP */
   send: (bin: Buffer) => Promise<boolean>
 }
 
@@ -104,7 +104,7 @@ export class SPTransmitter {
   }
 
   /**
-   * Called by CltProcessor when the probe succeeds (UDP connection OK) to establish SpSession.
+   * Called by CltProcessor when the probe succeeds and TCP is up, to establish SpSession.
    *  - Multiple calls on the same SPTransmitter will release the old one first.
    *  - proto: PROTO_A=1 for A-Protocol, PROTO_B=2 for B-Protocol
    *
@@ -392,7 +392,7 @@ export class SPTransmitter {
   /**
    * Register handler, inbound, send. `release` is the GetGate slot:
    *  - get: held until response / timeout / encode-or-send failure (with drop)
-   *  - set: held until the UDP send finishes, then released (no pending get to drop)
+   *  - set: held until the TCP send finishes, then released (no pending get to drop)
    */
   private _dispatch(req: StringRequest, timeoutMs: number, release: () => void): Promise<StringResponse> {
     return new Promise<StringResponse>((resolve, reject) => {
@@ -481,7 +481,7 @@ export class SPTransmitter {
         .then((ok) => {
           if (!ok) {
             clearTimeout(timer)
-            // UDP send failed: reject immediately to avoid waiting forever
+            // TCP send failed: reject immediately to avoid waiting forever
             this._handlers.delete(req.id)
             if (isSetOpt) {
               releaseSlot()

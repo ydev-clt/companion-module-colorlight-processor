@@ -23,6 +23,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
   public connection: Connection
   // string-protocol supplementary layer
   public spTransmitter: SPTransmitter
+  /** Bumps on config change, destroy, and link loss so a late bind or poll cannot write the new session. */
   private _linkGeneration = 0
   // state cache
   public state: StateCache
@@ -293,7 +294,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
   }
 
   /**
-   * handle incoming UDP data (String-Protocol route)
+   * Handle incoming TCP bytes. SpSession turns them back into String-Protocol JSON.
    */
   public handleIncoming(data: Buffer): void {
     // After refactoring: unified through SPTransmitter (SpSession internally

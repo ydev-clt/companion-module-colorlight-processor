@@ -20,6 +20,7 @@ export interface PollRequest {
 
 const POLL_SID = 1 as const
 
+/** Screen-group commands read once per gid during the startup poll. */
 const INITIAL_SCREEN: readonly string[] = [
   'bright',
   'colortemp',
@@ -58,8 +59,13 @@ const INITIAL_SCREEN: readonly string[] = [
   'vsync_src'
 ]
 
+/** Device-wide commands read once, on sid 1, during the startup poll. */
 const INITIAL_DEVICE: readonly string[] = ['sn', 'uh5_st', 'low_pwr', 'allports', 'portout']
 
+/**
+ * Known commands that are not read at startup. They stay in the catalog so a
+ * later poll phase can opt in without a second command list.
+ */
 const RESERVED: readonly string[] = [
   'layer',
   'layer_border',
@@ -90,6 +96,11 @@ export const POLL_CATALOG: readonly PollEntry[] = [
   ...RESERVED.map((cmd) => entry(cmd, 'device', 'reserved'))
 ]
 
+/**
+ * Build the startup get list for this device.
+ * Unsupported commands are omitted. Screen-group commands repeat once per gid.
+ * `portout` requires a port in the request; startup samples port 1.
+ */
 export function selectPollRequests(device: DeviceIdentity, groupIds: readonly number[]): PollRequest[] {
   const requests: PollRequest[] = []
   for (const item of POLL_CATALOG) {
@@ -114,6 +125,13 @@ function finiteNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
+/**
+ * `canvas_mode`, `canvas_switch_mode`, and `out_fps` publish a blank string
+ * when `valid` is not 1, so Companion shows an empty value instead of a stale
+ * mode. `low_gray` has no valid flag and is kept only for en 0 or 1.
+ * `out_fps` arrives as fps×10000. `vsync_src` publishes each source, or a
+ * blank string when that field is missing.
+ */
 function projectCanvasSync(cmd: string, data: unknown): Record<string, number | string> | undefined {
   if (
     cmd !== 'low_gray' &&
@@ -153,6 +171,10 @@ function projectCanvasSync(cmd: string, data: unknown): Record<string, number | 
   }
 }
 
+/**
+ * Turn one get payload into variable leaves. `portout` and the canvas
+ * commands have their own shapes; every other command uses the variable registry.
+ */
 export function projectPollData(cmd: string, data: unknown): Record<string, number | string | object> {
   if (cmd === 'portout') {
     const projected = projectPortOutput(data)

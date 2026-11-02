@@ -36,6 +36,19 @@ type Phase = 'closed' | 'discovering' | 'tcp-connecting' | 'holding' | 'business
 /**
  * UDP discovery on port 9099, then a TCP session for commands.
  * TCPHelper auto-reconnect stays off. A later reconnect starts at UDP discovery again.
+ *
+ * Phases:
+ *  - closed: no session
+ *  - discovering: waiting for a probe result
+ *  - tcp-connecting: probe succeeded, TCP handshake in progress
+ *  - holding: TCP is up, but inbound bytes are ignored until SpSession is bound
+ *  - business: commands and device push may flow
+ *
+ * `generation` drops TCP callbacks and the start-sync continuation from a
+ * session that close() already replaced. The reconnect timer is cleared
+ * directly in close().
+ * `delivered` is set when TCP connects. A drop before that restarts discovery.
+ * A drop after that tells the module once and lets it own the reconnect.
  */
 class Connection {
   private context: ConnectionContext
@@ -45,14 +58,18 @@ class Connection {
   private readonly retryDelayMs: number
 
   private reconnectTimer: NodeJS.Timeout | null = null
+  /** Bumps on close so TCP callbacks and the start-sync continuation from the previous session are ignored. */
   private generation = 0
   private closed = true
   private host = ''
   private tcpPort = 0
   private onProbeResult: ((result: ProbeResult | null) => void) | null = null
   private onLinkLost: (() => void) | null = null
+  /** True once TCP has connected, before start-sync finishes and before the probe callback runs. */
   private delivered = false
+  /** Link-loss callback fires once per delivered session. */
   private linkLossNotified = false
+  /** Probe payload held until TCP connects, then passed to the module. */
   private pendingResult: ProbeResult | null = null
   private phase: Phase = 'closed'
   private publishedStatus: Status | null = null
@@ -70,6 +87,7 @@ class Connection {
     this.udpProbe.setOnResult((result) => this.onUdpResult(result))
   }
 
+  /** Replace any current session and start UDP discovery. TCP opens only after a probe result. */
   public open(host: string, port: number): void {
     this.close()
     this.host = host
@@ -99,6 +117,7 @@ class Connection {
     if (noisy) logger.info('Connection closed')
   }
 
+  /** Tear the session down and start discovery again after retryDelayMs. A second call while the timer is pending is ignored. */
   public reconnect(): void {
     if (this.reconnectTimer) return
     const host = this.host
@@ -112,6 +131,10 @@ class Connection {
     }, this.retryDelayMs)
   }
 
+  /**
+   * Open the receive path. Called only after SpSession is bound, so bytes that
+   * arrive during discovery, connect, or start-sync are not parsed.
+   */
   public beginReceiving(): void {
     if (this.phase !== 'holding') return
     this.phase = 'business'
@@ -119,6 +142,8 @@ class Connection {
   }
 
   public async send(data: Buffer): Promise<boolean> {
+    // Start-sync uses the socket directly. Every other frame waits until the
+    // module has bound SpSession and called beginReceiving().
     if (!this.tcp || !this.tcp.isConnected || this.phase !== 'business') return false
     try {
       logger.debug(`TCP send:${data.toString('hex')}`)
@@ -147,6 +172,11 @@ class Connection {
     logger.info(`TCP connection opening, host=${this.host}:${this.tcpPort}`)
   }
 
+  /**
+   * TCP is up. Publish OK, send the one-shot start-sync frame, then hand the
+   * probe result to the module. The module binds SpSession and calls
+   * beginReceiving(); until then inbound data is dropped.
+   */
   private onTcpConnect(): void {
     if (this.phase !== 'tcp-connecting' || !this.pendingResult) return
     const result = this.pendingResult
@@ -200,6 +230,8 @@ class Connection {
     socket.on('data', (buf: Buffer) => {
       logger.debug(`TCP received data: ${buf.toString('hex')}`)
       if (!current()) return
+      // Drop bytes until beginReceiving(). SpSession does not exist yet in
+      // the connecting and holding phases.
       if (this.phase !== 'business') return
       this.context.handleIncoming(buf)
     })
@@ -219,6 +251,12 @@ class Connection {
     })
   }
 
+  /**
+   * A TCP failure before the socket connects restarts discovery.
+   * After connect, notify the module once and let it own the reconnect, so
+   * two timers cannot race. This includes a drop during start-sync, before
+   * the probe callback has run.
+   */
   private handleTcpDown(): void {
     if (this.closed) return
     if (this.delivered) {

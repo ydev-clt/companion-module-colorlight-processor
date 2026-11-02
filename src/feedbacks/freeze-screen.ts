@@ -3,6 +3,7 @@ import { combineRgb } from '@companion-module/base'
 import type { CltProcessorType } from '../common/types'
 import { publishVariableId } from '../variables/publish'
 
+/** Companion may return the gid option as a non-integer. Fall back to screen group 1. */
 function screenGroupId(value: unknown): number {
   if (typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 128) {
     return value
@@ -31,6 +32,7 @@ export function setupFreezeScreenFeedback(context: CltProcessorType): CompanionA
     ],
     callback: (feedback) => {
       const freeze = context.getVariableValue(publishVariableId('screen-group', 'freeze_enable', screenGroupId(feedback.options.gid)))
+      // A poll writes a number. Companion can surface the same variable as a string.
       if (freeze === 1 || freeze === '1') {
         return {
           bgcolor: feedback.options.bg as number,

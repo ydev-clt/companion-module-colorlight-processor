@@ -31,6 +31,11 @@ import { isCmdOpSupported, type DeviceIdentity } from '../../../common/cmd-suppo
  * do not publish variables.
  */
 
+/**
+ * enableStatus 2 is Toggle: read `en`, then write the opposite.
+ * 0 and 1 are written directly. A get that is unsupported or does not return
+ * 0/1 is skipped, so the button does not force an unknown state.
+ */
 async function sendOpenCloseOrToggle(
   conn: StringActionHost['conn'],
   identity: DeviceIdentity,
@@ -124,6 +129,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const requestData = typeof o.gid === 'number' ? { gid: o.gid } : undefined
 
+      // Protocol brightness is percent × 100, so 100% is 10000 and a 1% step is 100.
       let brt: number
       if (o.operation === 'step') {
         if (!isCmdOpSupported(CMD.BRIGHT, 'get', identity)) {

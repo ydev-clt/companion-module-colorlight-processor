@@ -33,6 +33,7 @@ const PIC_ADJ_MODE_HELP: Record<number, { min: number; max: number; default: num
   }
 }
 
+/** One number field per mode. Companion shows only the field for the selected mode, so each channel keeps its own range. */
 function buildPicAdjValueFields(): CompanionInputFieldNumber[] {
   return [0, 1, 2, 3, 4].map((mode) => {
     const spec = PIC_ADJ_MODE_HELP[mode]
@@ -49,6 +50,7 @@ function buildPicAdjValueFields(): CompanionInputFieldNumber[] {
   })
 }
 
+/** Read only the number field for the selected mode. Hidden mode fields are not sent. A missing selected field uses that mode's default. */
 function readPicAdjVal(opts: { mode: number; [k: string]: unknown }): number {
   const spec = PIC_ADJ_MODE_HELP[opts.mode]
   if (!spec) return 0

@@ -998,6 +998,10 @@ const Z_PROTOCOL_DEVICE_SIGNAL_MAP: Record<string, Record<string, number>> = {
   }
 }
 
+/**
+ * Legacy signal-routing action. V and Z each build a different frame.
+ * After the signal frame, the callback sends an apply frame and a save frame.
+ */
 export function setupLayerSignalAction(context: CltProcessorType) {
   // preset action for the V protocol
   const vProtocolAction: CompanionActionDefinition = {
@@ -1036,6 +1040,8 @@ export function setupLayerSignalAction(context: CltProcessorType) {
     ],
     callback: (action) => {
       const { deviceId = 1, isSelectAll = false, deviceType = '', interfaceName = '' } = action.options as OptionValues
+      // UI deviceId is 1-based. The frame carries deviceId - 1 as little-endian
+      // uint16. 0xFFFF means broadcast.
       const deviceIndex = deviceId - 1
       let deviceIndexBuf: Buffer = Buffer.from([0xff, 0xff])
       if (deviceIndex >= 0 && !isSelectAll) {
@@ -1092,7 +1098,7 @@ export function setupLayerSignalAction(context: CltProcessorType) {
       const actionSendBuf = Buffer.from(actionCommand)
       context.send(actionSendBuf)
 
-      // parameter command
+      // Follow the signal frame with an apply frame, then a save frame.
       const efficientCommand = [0x52, 0x00, 0x10, 0x00, 0x00, 0x00, deviceIndexBuf[0], deviceIndexBuf[1], 0x00]
       const efficientSendBuf = Buffer.from(efficientCommand)
       context.send(efficientSendBuf)
@@ -1142,6 +1148,8 @@ export function setupLayerSignalAction(context: CltProcessorType) {
     ],
     callback: (action) => {
       const { deviceId = 1, isSelectAll = false, deviceType = '', interfaceName = '' } = action.options as OptionValues
+      // UI deviceId is 1-based. The frame carries deviceId - 1 as little-endian
+      // uint16. 0xFFFF means broadcast.
       const deviceIndex = deviceId - 1
       let deviceIndexBuf: Buffer = Buffer.from([0xff, 0xff])
       if (deviceIndex >= 0 && !isSelectAll) {
@@ -1187,7 +1195,7 @@ export function setupLayerSignalAction(context: CltProcessorType) {
       const actionSendBuf = Buffer.from(actionCommand)
       context.send(actionSendBuf)
 
-      // parameter command
+      // Follow the signal frame with an apply frame, then a save frame.
       const efficientCommand = [
         0x6f,
         0x00,
@@ -1234,5 +1242,6 @@ export function setupLayerSignalAction(context: CltProcessorType) {
     }
   }
 
+  // B-Protocol (processor) uses the V frame. A-Protocol uses the Z frame.
   return context.config.protocol === DeviceProtocolEnum.B ? vProtocolAction : zProtocolAction
 }

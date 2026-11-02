@@ -46,6 +46,8 @@ export function setupSwitchPresetAction(context: CltProcessorType) {
     ],
     callback: (action) => {
       const { deviceId = 1, presetId = 1, isSelectAll = false } = action.options as OptionValues
+      // UI deviceId is 1-based. The frame carries deviceId - 1 as little-endian
+      // uint16. 0xFFFF means broadcast.
       const deviceIndex = deviceId - 1
       let deviceIndexBuf: Buffer = Buffer.from([0xff, 0xff])
       const presetIndex = presetId - 1

@@ -1,3 +1,8 @@
+/**
+ * Project `portout` ports into a map keyed by 1-based port number.
+ * Protocol `idx` is 0-based; Companion uses the same 1-based numbers as
+ * Set Network Port Output.
+ */
 export function projectPortOutput(data: unknown): Record<string, number> | undefined {
   if (!data || typeof data !== 'object') return undefined
   const ports = (data as { ports?: unknown }).ports

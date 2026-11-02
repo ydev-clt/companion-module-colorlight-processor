@@ -99,6 +99,8 @@ export function setupVariables(context: CltProcessorType): {
       logger.warn(`setVariableValues failed: ${(err as Error).message ?? String(err)}`)
     }
     const keys = Object.keys(values)
+    // Freeze and blackout feedbacks read these variables. Refresh the button
+    // style when a poll or get writes the enable flag.
     if (keys.some((key) => FREEZE_ENABLE_KEY.test(key))) {
       context.checkFeedbacks(FEEDBACK_ID.FREEZE_SCREEN)
     }

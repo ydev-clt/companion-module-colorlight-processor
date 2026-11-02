@@ -11,6 +11,12 @@ export interface InitialPollArgs {
   log: (message: string) => void
 }
 
+/**
+ * Walk the startup catalog in order. One failed get is logged and skipped;
+ * it does not abort the rest of the poll or drop the link.
+ * `isCurrent` stops the walk when the link generation changes, so a late
+ * response is not written onto the new session.
+ */
 export async function runInitialPoll(args: InitialPollArgs): Promise<void> {
   const requests = selectPollRequests(args.identity, args.groupIds)
   for (const request of requests) {

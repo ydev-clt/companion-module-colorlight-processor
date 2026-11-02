@@ -50,6 +50,8 @@ export function generateConfigFields(): SomeCompanionConfigField[] {
           label: 'None'
         }
       ],
+      // The UDP probe writes the protocol after connect. The field stays in
+      // the saved config, but it is not shown in the connection UI.
       isVisibleExpression: 'false',
       default: DeviceProtocolEnum.None
     }

@@ -13,7 +13,7 @@ type OptionValues = {
 /**
  * Raw hex command.
  *
- * The payload is written straight to the UDP socket and is not encoded by
+ * The payload is written straight to the TCP session and is not encoded by
  * SpSession. Use it when the frame is already a device binary command.
  */
 export function setupCustomActions(host: StringActionHost): CompanionActionDefinitions {

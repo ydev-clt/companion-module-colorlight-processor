@@ -22,6 +22,10 @@ export interface ProbeResult {
   raw: Buffer
 }
 
+/**
+ * Processors (deviceType 2) speak B-Protocol. Sender cards and player boxes
+ * speak A-Protocol. Any other byte is also treated as A.
+ */
 export function getProtocolForDeviceType(deviceType: number): DeviceConfig['protocol'] | undefined {
   return deviceType === 2 ? DeviceProtocolEnum.B : DeviceProtocolEnum.A
 }
@@ -129,7 +133,9 @@ export class UdpProbe {
   private onResult: ((result: ProbeResult) => void) | null = null
   private host = ''
   private running = false
+  /** Bumps on stop, success, and socket failure so late datagrams and timers are ignored. */
   private generation = 0
+  /** Bumps on every send and whenever an in-flight send must not change the phase. */
   private sendTicket = 0
   private phase: ProbePhase = 'idle'
   private pendingProbe: ProbeResult | null = null
@@ -227,6 +233,8 @@ export class UdpProbe {
 
   private onDatagram(buf: Buffer): void {
     if (buf.length === 0) return
+    // A late 0xEA can arrive after this round already timed out. Accept it
+    // during retry-wait and cancel the scheduled retry.
     if ((this.phase === 'await-ea' || this.phase === 'retry-wait') && buf[0] === 0xea) {
       const parsed = parseProbeResponse(buf)
       if (!parsed) {
@@ -270,6 +278,7 @@ export class UdpProbe {
     }
   }
 
+  /** This probe round failed. Keep the socket and send 0xEB again. */
   private failRound(): void {
     if (!this.running) return
     if (this.phase !== 'await-ea' && this.phase !== 'await-model') return
@@ -281,6 +290,7 @@ export class UdpProbe {
     this.scheduleRetry(false)
   }
 
+  /** The UDP socket itself failed. Destroy it and open a new one on retry. */
   private failSocket(message: string): void {
     if (!this.running) return
     logger.error(`UDP probe socket error: ${message}`)
@@ -293,6 +303,7 @@ export class UdpProbe {
     this.scheduleRetry(true)
   }
 
+  /** Wait retryDelayMs, then either reopen the socket or resend 0xEB on the current one. */
   private scheduleRetry(replaceSocket: boolean): void {
     if (!this.running || this.timer) return
     const generation = this.generation

@@ -1,6 +1,12 @@
 import type { InstanceBase, InstanceTypes, JsonObject } from '@companion-module/base'
 import type { StateCache } from '../state'
 
+/**
+ * Runtime device identity, filled by the UDP probe.
+ * None: the device is not identified yet, so no actions are registered.
+ * A: sender card or player box (probe deviceType 0 or 1).
+ * B: processor (probe deviceType 2).
+ */
 export enum DeviceProtocolEnum {
   A = 'A-Protocol',
   B = 'B-Protocol',

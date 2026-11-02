@@ -8,11 +8,17 @@ import type { StringActionHost } from './_shared'
 
 type Addressed = { deviceId: number; isSelectAll: boolean; gid?: number }
 
+/** Attach gid only when the button supplied one. Omitting it lets the device use its default screen group. */
 function withGid(gid: number | undefined, data: Record<string, unknown>): Record<string, unknown> {
   if (typeof gid === 'number') data.gid = gid
   return data
 }
 
+/**
+ * Take, Cut, and canvas switch mode are legal only in switcher mode:
+ * canvas_mode.valid === 1 and mode === 1. A failed or unsupported read skips
+ * the set instead of sending a command the device would reject.
+ */
 async function inSwitcherMode(
   conn: StringActionHost['conn'],
   identity: DeviceIdentity,
@@ -40,6 +46,11 @@ async function inSwitcherMode(
   return true
 }
 
+/**
+ * V/VX canvas actions. An option value of 2 means toggle: read the current
+ * value, then write the opposite. Open/close and copy/swap write the chosen
+ * value directly.
+ */
 export function setupCanvasActions(host: StringActionHost): CompanionActionDefinitions {
   const { conn } = host
   const identity: DeviceIdentity = {
@@ -259,6 +270,8 @@ export function setupCanvasActions(host: StringActionHost): CompanionActionDefin
         phaseUs: number
       }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
+      // The protocol accepts a partial object. Send only the fields for the
+      // selected operation so the other sync settings stay unchanged.
       const data: Record<string, unknown> = {}
       if (o.operation === 'board') {
         data.boardSlot = o.boardSlot

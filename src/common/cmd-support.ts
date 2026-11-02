@@ -156,6 +156,13 @@ export const CMD_SUPPORT: Record<string, CmdSupport> = {
   pr_rcv_state: { get: EMPTY_GET }
 }
 
+/**
+ * Whether this device may run `cmd` as get or set.
+ * An unresolved model fails closed, except for the `'always'` rule.
+ * A model with no family still matches a protocol baseline. An `except` rule
+ * only removes known families, so a family-less model stays supported when
+ * its protocol matches. An `only` rule requires a listed family.
+ */
 export function isCmdOpSupported(cmd: string, op: CmdOp, device: DeviceIdentity): boolean {
   const rule = CMD_SUPPORT[cmd]?.[op]
   if (rule === undefined) return false

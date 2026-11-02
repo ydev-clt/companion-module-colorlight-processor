@@ -52,6 +52,8 @@ export function setupBlackScreenAction(context: CltProcessorType) {
     ],
     callback: (action) => {
       const { deviceId = 1, openStatus = 1, isSelectAll = false } = action.options as OptionValues
+      // UI deviceId is 1-based. The frame carries deviceId - 1 as little-endian
+      // uint16. 0xFFFF means broadcast.
       const deviceIndex = deviceId - 1
       let deviceIndexBuf: Buffer = Buffer.from([0xff, 0xff])
 
@@ -106,6 +108,8 @@ export function setupBlackScreenAction(context: CltProcessorType) {
           0x00,
           0x00,
           0x00,
+          // A-Protocol blackout uses the opposite polarity from the dropdown:
+          // UI open (1) is sent as 0, UI close (0) is sent as 1.
           openStatus === 0 ? 1 : 0
         ]
       }

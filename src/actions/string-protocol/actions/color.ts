@@ -12,6 +12,8 @@ import type { StringActionHost } from './_shared'
  *  - ct_r/ct_g/ct_b (§5.2.35/36/37)
  *  - grp_gain   (§5.2.33)
  *  - virtual_pixel (§5.2.45)
+ *
+ * Red, green, and blue gain use percent × 100, so 100% is 10000 and a 1% step is 100.
  */
 
 export function setupColorActions(host: StringActionHost): CompanionActionDefinitions {

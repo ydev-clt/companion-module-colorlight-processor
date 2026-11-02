@@ -108,6 +108,8 @@ export function setupTestModeAction(context: CltProcessorType) {
     ],
     callback: (action) => {
       const { deviceId = 1, modeValue = 0, isSelectAll = false } = action.options as OptionValues
+      // UI deviceId is 1-based. The frame carries deviceId - 1 as little-endian
+      // uint16. 0xFFFF means broadcast.
       const deviceIndex = deviceId - 1
       let deviceIndexBuf: Buffer = Buffer.from([0xff, 0xff])
 

@@ -23,7 +23,12 @@ export enum ACTION_ID {
 }
 
 /**
- * init actions
+ * Legacy Z/V binary actions. Not registered.
+ * setupActions() only installs String-Protocol actions. These builders remain
+ * as a reference for the old frame layouts.
+ *
+ * Shared addressing: the UI device id is 1-based. The frame carries
+ * deviceId - 1 as a little-endian uint16. 0xFFFF means broadcast.
  */
 export function setupZVActions(context: CltProcessorType): CompanionActionDefinitions {
   // setup actions

@@ -46,6 +46,8 @@ export function setupSetBrightnessAction(context: CltProcessorType) {
     ],
     callback: async (action) => {
       const { deviceId = 1, brightness = 50, isSelectAll = false } = action.options as OptionValues
+      // UI deviceId is 1-based. The frame carries deviceId - 1 as little-endian
+      // uint16. 0xFFFF means broadcast.
       const deviceIndex = deviceId - 1
       let deviceIndexBuf: Buffer = Buffer.from([0xff, 0xff])
 
@@ -60,6 +62,7 @@ export function setupSetBrightnessAction(context: CltProcessorType) {
       let command: number[] = []
 
       if (context.config.protocol === DeviceProtocolEnum.B) {
+        // B-Protocol stores percent × 100 as a little-endian uint16 (50% → 5000).
         const transBrightness = brightness * 100
         let brightnessBuf = Buffer.from([0x10, 0x27])
 
@@ -95,7 +98,8 @@ export function setupSetBrightnessAction(context: CltProcessorType) {
       }
 
       if (context.config.protocol === DeviceProtocolEnum.A) {
-        const transBrightness = Math.round(brightness * 100) / 100 // Keep two decimal places
+        // A-Protocol stores the percent as a little-endian float32, kept to two decimals.
+        const transBrightness = Math.round(brightness * 100) / 100
         let brightnessBuf = Buffer.from([0x00, 0x00, 0x00, 0x00])
 
         if (transBrightness >= 0) {

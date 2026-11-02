@@ -21,5 +21,7 @@ export function setupActions(
   setVariableValues: (values: Record<string, number | string | object>) => void
 ): CompanionActionDefinitions {
   logger.info('Actions setup start')
+  // None means the probe has not identified a device yet. Registering actions
+  // before that would show commands the device may not support.
   return context.config.protocol === 'None' ? {} : setupStringActions(context, spTransmitter, setVariableValues)
 }
