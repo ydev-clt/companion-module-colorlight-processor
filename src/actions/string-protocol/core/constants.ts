@@ -130,6 +130,7 @@ export const CMD = {
   SND_ETH: 'snd_eth',
   PR_LAYER: 'pr_layer',
   PR_GROUP: 'pr_group',
+  PR_CANVAS: 'pr_canvas',
   PR_VIDEO: 'pr_video',
   PR_VSYNC: 'pr_vsync',
   PORT_AREA: 'port_area',

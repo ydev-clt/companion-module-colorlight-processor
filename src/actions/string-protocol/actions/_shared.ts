@@ -38,10 +38,14 @@ export function sidFromOptions(isSelectAll: boolean | undefined, deviceId: numbe
 }
 
 /** Screen group gid field (used only when the protocol marks it as "optional", see §2) */
-export function gidField(defaultValue: number = GID_DEFAULT, max = 128): SomeCompanionActionInputField {
+export function gidField(
+  defaultValue: number = GID_DEFAULT,
+  max = 128,
+  label = 'Screen group ID (gid)'
+): SomeCompanionActionInputField {
   return {
     type: 'number',
-    label: 'Screen group ID (gid)',
+    label,
     id: 'gid',
     min: 1,
     max,

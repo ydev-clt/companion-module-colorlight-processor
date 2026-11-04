@@ -4,6 +4,9 @@ import { CMD } from '../core/constants'
 import { deviceAndBroadcastFields, gidField, sidFromOptions } from './_shared'
 import type { StringActionHost } from './_shared'
 import { DeviceProtocolEnum } from '../../../common/types'
+import { logger } from '../../../common/log'
+import { resolveDeviceModel } from '../../../common/device-models'
+import { parseCanvasMode, parseGroupIds, selectQuickPresetGid } from './quick-preset-target'
 
 /**
  * Preset actions:
@@ -17,12 +20,16 @@ import { DeviceProtocolEnum } from '../../../common/types'
 
 export function setupPresetActions(host: StringActionHost): CompanionActionDefinitions {
   const { conn } = host
+  const family = resolveDeviceModel(host.ctx.config.protocol, host.ctx.state.modelByte)?.family
+  const usesCanvasTarget = family === 'V' || family === 'VX'
   const actions: Record<string, CompanionActionDefinition> = {}
 
   // ---- qp ----
   actions[ACTION_ID.QUICK_PRESET] = {
     name: 'Switch Quick Preset',
-    description: 'Switch to the specified preset.',
+    description: usesCanvasTarget
+      ? 'Switch to the specified preset. The gid reads canvas mode; the preset is sent to PGM or PVW.'
+      : 'Switch to the specified preset.',
     options: [
       ...deviceAndBroadcastFields(),
       {
@@ -33,14 +40,57 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
         max: 64,
         default: 1
       },
-      gidField()
+      usesCanvasTarget ? gidField(1, 128, 'Canvas mode screen group (gid)') : gidField()
     ],
     callback: async (event) => {
       const o = event.options as { deviceId: number; isSelectAll: boolean; preset: number; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { preset: o.preset }
-      if (typeof o.gid === 'number') data.gid = o.gid
-      await conn.sendOnly(CMD.QP, 'set', sid, data)
+      if (!usesCanvasTarget) {
+        const data: Record<string, unknown> = { preset: o.preset }
+        if (typeof o.gid === 'number') data.gid = o.gid
+        await conn.sendOnly(CMD.QP, 'set', sid, data)
+        return
+      }
+      if (typeof o.gid !== 'number' || !Number.isInteger(o.gid) || o.gid < 1) {
+        logger.warn('Quick preset skipped: page gid is not an integer of at least 1.')
+        return
+      }
+      const modeResp = await conn.sendAndAwait<{ gid: number }, { mode?: unknown; valid?: unknown }>(
+        CMD.CANVAS_MODE,
+        'get',
+        sid,
+        { gid: o.gid }
+      )
+      const mode = parseCanvasMode(modeResp?.code === 0 ? modeResp.data : undefined)
+      if (mode === undefined) {
+        logger.warn('Quick preset skipped: canvas_mode did not return mode 0 or 1.')
+        return
+      }
+      const groupResp = await conn.sendAndAwait(CMD.PR_GROUP, 'get', sid)
+      const groupIds = parseGroupIds(groupResp?.code === 0 ? groupResp.data : undefined)
+      if (!groupIds) {
+        logger.warn('Quick preset skipped: pr_group did not return group ids.')
+        return
+      }
+      for (const gid of groupIds) {
+        const canvasResp = await conn.sendAndAwait<
+          { gid: number },
+          { gid?: unknown; canvasType?: unknown; fieldsValid?: unknown }
+        >(CMD.PR_CANVAS, 'get', sid, { gid })
+        const canvas = canvasResp?.code === 0 ? canvasResp.data : undefined
+        if (!canvas || canvas.gid !== gid) continue
+        const target = selectQuickPresetGid(mode, [
+          {
+            gid,
+            canvasType: typeof canvas.canvasType === 'number' ? canvas.canvasType : -1,
+            fieldsValid: typeof canvas.fieldsValid === 'number' ? canvas.fieldsValid : 0
+          }
+        ])
+        if (target === undefined) continue
+        await conn.sendOnly(CMD.QP, 'set', sid, { preset: o.preset, gid: target })
+        return
+      }
+      logger.warn(`Quick preset skipped: canvas mode ${mode} does not have a target canvas.`)
     }
   }
 
