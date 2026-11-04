@@ -19,6 +19,9 @@ export type GroupId = number
 /** op field literal */
 export type Op = (typeof OP)[keyof typeof OP]
 
+/** Outbound requests stay get or set. Push exists only on inbound notices. */
+export type RequestOp = 'get' | 'set'
+
 /**
  * Request object (§4.2.4)
  */
@@ -26,7 +29,7 @@ export interface StringRequest<TData = unknown> {
   id: TransactionId
   cmd: string
   sid: SenderId
-  op: Op
+  op: RequestOp
   data?: TData
 }
 

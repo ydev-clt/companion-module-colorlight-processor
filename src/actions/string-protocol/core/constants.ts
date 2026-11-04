@@ -36,7 +36,8 @@ export const GID_DEFAULT = 1
  */
 export const OP = {
   GET: 'get',
-  SET: 'set'
+  SET: 'set',
+  PUSH: 'push'
 } as const
 
 /**
@@ -151,7 +152,8 @@ export const CMD = {
   CANVAS_SWITCH_MODE: 'canvas_switch_mode',
   CANVAS_MODE: 'canvas_mode',
   OUT_FPS: 'out_fps',
-  VSYNC_SRC: 'vsync_src'
+  VSYNC_SRC: 'vsync_src',
+  COMM_OBJ: 'comm_obj'
 } as const
 
 /**

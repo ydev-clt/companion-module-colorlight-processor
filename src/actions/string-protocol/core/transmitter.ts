@@ -158,6 +158,7 @@ export class SPTransmitter {
    *  - Sets _spSession to null
    */
   public releaseSpSession(): void {
+    this._onPush = () => {}
     this.stopHeartbeat()
     this._pendingSetReadback = null
     this._gate.rejectAll(new Error('SpSession released'))
@@ -198,6 +199,15 @@ export class SPTransmitter {
   /** Replace the no-op default. Does not write variables. */
   public setOnUnsolicited(cb: (resp: StringResponse) => void): void {
     this._onUnsolicited = cb
+  }
+
+  public subscribePush(): Promise<boolean> {
+    return this.sendOnly(CMD.COMM_OBJ, 'set', 1, { obj: 0, pushEn: 1, alsoSelf: 1 })
+  }
+
+  /** Replace the no-op default. The callback sees the raw parsed push object. */
+  public setOnPush(cb: (item: Record<string, unknown>) => void): void {
+    this._onPush = cb
   }
 
   /** Destroy (called when connection is disconnected / instance is destroyed) */

@@ -1,6 +1,8 @@
+const fs = require('node:fs')
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
-const { deliverParsedResponse, dispatchInboundItems } = require('../dist/actions/string-protocol/core/transmitter')
+const { CMD, OP } = require('../dist/actions/string-protocol/core/constants')
+const { deliverParsedResponse, dispatchInboundItems, SPTransmitter } = require('../dist/actions/string-protocol/core/transmitter')
 
 test('a pending id resolves and does not become unsolicited', () => {
   const handlers = new Map()
@@ -41,4 +43,20 @@ test('push and get in one array take separate callbacks', () => {
 
 test('dispatchInboundItems does not accept a handler map', () => {
   assert.equal(dispatchInboundItems.length, 2)
+})
+
+test('comm_obj and push are named protocol values', () => {
+  assert.equal(CMD.COMM_OBJ, 'comm_obj')
+  assert.equal(OP.PUSH, 'push')
+})
+
+test('subscribePush before init returns false and encodes the documented payload', async () => {
+  const transmitter = new SPTransmitter()
+  assert.equal(await transmitter.subscribePush(), false)
+  const src = fs.readFileSync('dist/actions/string-protocol/core/transmitter.js', 'utf8')
+  assert.match(
+    src,
+    /subscribePush\(\) \{\s*return this\.sendOnly\(constants_1\.CMD\.COMM_OBJ,\s*'set',\s*1,\s*\{\s*obj:\s*0,\s*pushEn:\s*1,\s*alsoSelf:\s*1\s*\}\);/
+  )
+  assert.match(src, /releaseSpSession\(\) \{\s*this\._onPush = \(\) => \{ \};/)
 })
