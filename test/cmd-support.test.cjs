@@ -64,3 +64,18 @@ test('U9 and an unresolved model do not support canvas sync commands', () => {
     }
   }
 })
+
+test('qp set is available on V, VX, and U, but save and rename stay off V', () => {
+  const v10 = { protocol: 'B-Protocol', modelByte: 50 }
+  const vx20Device = { protocol: 'B-Protocol', modelByte: 34 }
+  const u9Max = { protocol: 'B-Protocol', modelByte: 35 }
+  const unknown = { protocol: 'B-Protocol', modelByte: null }
+  for (const device of [v10, vx20Device]) {
+    assert.equal(isCmdOpSupported('qp', 'set', device), true)
+    assert.equal(isCmdOpSupported('qp', 'get', device), false)
+  }
+  assert.equal(isCmdOpSupported('qp', 'set', u9Max), true)
+  assert.equal(isCmdOpSupported('qp', 'set', unknown), false)
+  assert.equal(isCmdOpSupported('svpreset', 'set', v10), false)
+  assert.equal(isCmdOpSupported('rpname', 'set', v10), false)
+})

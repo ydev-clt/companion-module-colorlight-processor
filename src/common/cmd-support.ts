@@ -107,8 +107,10 @@ export const CMD_SUPPORT: Record<string, CmdSupport> = {
   // Both sides B except U / V / VX
   low_pwr: { get: B_EXCEPT_U_V_VX, set: B_EXCEPT_U_V_VX },
 
+  // set only, AB
+  qp: { set: AB },
+
   // set only, AB except V / VX
-  qp: { set: AB_EXCEPT_V_VX },
   svpreset: { set: AB_EXCEPT_V_VX },
   rpname: { set: AB_EXCEPT_V_VX },
   mfc_manual: { set: AB_EXCEPT_V_VX },
