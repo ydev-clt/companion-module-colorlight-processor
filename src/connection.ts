@@ -7,12 +7,6 @@ import { UdpProbe, type ProbeResult, type UdpProbeSocket } from './udp-probe'
 const DEFAULT_PROBE_TIMEOUT_MS = 1500
 const DEFAULT_RETRY_DELAY_MS = 2000
 
-/** One frame per TCP session. Starts device push sync before heartbeat or commands. */
-const START_SYNC_FRAME = Buffer.from([
-  0x82, 0x00, 0x00, 0x15, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x9d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00, 0x03, 0x9d
-])
-
 export interface TcpSocket {
   readonly isConnected: boolean
   sendAsync(message: Buffer): Promise<boolean>
@@ -44,9 +38,8 @@ type Phase = 'closed' | 'discovering' | 'tcp-connecting' | 'holding' | 'business
  *  - holding: TCP is up, but inbound bytes are ignored until SpSession is bound
  *  - business: commands and device push may flow
  *
- * `generation` drops TCP callbacks and the start-sync continuation from a
- * session that close() already replaced. The reconnect timer is cleared
- * directly in close().
+ * `generation` drops TCP callbacks from a session that close() already replaced.
+ * The reconnect timer is cleared directly in close().
  * `delivered` is set when TCP connects. A drop before that restarts discovery.
  * A drop after that tells the module once and lets it own the reconnect.
  */
@@ -58,14 +51,14 @@ class Connection {
   private readonly retryDelayMs: number
 
   private reconnectTimer: NodeJS.Timeout | null = null
-  /** Bumps on close so TCP callbacks and the start-sync continuation from the previous session are ignored. */
+  /** Bumps on close so TCP callbacks from the previous session are ignored. */
   private generation = 0
   private closed = true
   private host = ''
   private tcpPort = 0
   private onProbeResult: ((result: ProbeResult | null) => void) | null = null
   private onLinkLost: (() => void) | null = null
-  /** True once TCP has connected, before start-sync finishes and before the probe callback runs. */
+  /** True once TCP has connected, before the probe callback runs. */
   private delivered = false
   /** Link-loss callback fires once per delivered session. */
   private linkLossNotified = false
@@ -133,7 +126,7 @@ class Connection {
 
   /**
    * Open the receive path. Called only after SpSession is bound, so bytes that
-   * arrive during discovery, connect, or start-sync are not parsed.
+   * arrive during discovery or connect are not parsed.
    */
   public beginReceiving(): void {
     if (this.phase !== 'holding') return
@@ -142,8 +135,7 @@ class Connection {
   }
 
   public async send(data: Buffer): Promise<boolean> {
-    // Start-sync uses the socket directly. Every other frame waits until the
-    // module has bound SpSession and called beginReceiving().
+    // Every frame waits until the module has bound SpSession and called beginReceiving().
     if (!this.tcp || !this.tcp.isConnected || this.phase !== 'business') return false
     try {
       logger.debug(`TCP send:${data.toString('hex')}`)
@@ -173,9 +165,8 @@ class Connection {
   }
 
   /**
-   * TCP is up. Publish OK, send the one-shot start-sync frame, then hand the
-   * probe result to the module. The module binds SpSession and calls
-   * beginReceiving(); until then inbound data is dropped.
+   * TCP is up. Publish OK, then hand the probe result to the module.
+   * The module binds SpSession and calls beginReceiving(); until then inbound data is dropped.
    */
   private onTcpConnect(): void {
     if (this.phase !== 'tcp-connecting' || !this.pendingResult) return
@@ -185,28 +176,11 @@ class Connection {
     this.delivered = true
     this.publishStatus(Status.Ok)
     const generation = this.generation
-    void this.sendStartSync(generation).then(() => {
-      if (generation !== this.generation || this.closed) return
-      try {
-        this.onProbeResult?.(result)
-      } catch (err) {
-        logger.error(`onProbeResult callback threw: ${(err as Error).message ?? String(err)}`)
-      }
-    })
-  }
-
-  /** First payload on this TCP session. */
-  private async sendStartSync(generation: number): Promise<void> {
-    const socket = this.tcp
-    if (!socket || generation !== this.generation) return
+    if (generation !== this.generation || this.closed) return
     try {
-      logger.info(`TCP send start-sync:${START_SYNC_FRAME.toString('hex')}`)
-      const ok = await socket.sendAsync(START_SYNC_FRAME)
-      if (generation !== this.generation) return
-      if (ok !== true) logger.warn('TCP start-sync was not sent')
+      this.onProbeResult?.(result)
     } catch (err) {
-      if (generation !== this.generation) return
-      logger.warn(`TCP start-sync failed: ${(err as Error).message ?? String(err)}`)
+      logger.error(`onProbeResult callback threw: ${(err as Error).message ?? String(err)}`)
     }
   }
 
@@ -254,8 +228,8 @@ class Connection {
   /**
    * A TCP failure before the socket connects restarts discovery.
    * After connect, notify the module once and let it own the reconnect, so
-   * two timers cannot race. This includes a drop during start-sync, before
-   * the probe callback has run.
+   * two timers cannot race. This includes a drop after TCP connects and before
+   * the probe callback runs.
    */
   private handleTcpDown(): void {
     if (this.closed) return
