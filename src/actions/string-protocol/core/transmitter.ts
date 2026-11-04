@@ -60,6 +60,27 @@ export function deliverParsedResponse(
   onUnsolicited(resp)
 }
 
+/**
+ * Split one parsed JSON array. Push items never enter the request map.
+ * Items without a string cmd and a string op are ignored.
+ */
+export function dispatchInboundItems(
+  items: unknown,
+  handlers: {
+    onPush: (item: Record<string, unknown>) => void
+    onResponse: (item: Record<string, unknown>) => void
+  }
+): void {
+  if (!Array.isArray(items)) return
+  for (const item of items) {
+    if (!item || typeof item !== 'object') continue
+    const record = item as Record<string, unknown>
+    if (typeof record.cmd !== 'string' || typeof record.op !== 'string') continue
+    if (record.op === 'push') handlers.onPush(record)
+    else handlers.onResponse(record)
+  }
+}
+
 interface SPTransmitterOptions {
   /** Custom response timeout (default 5s) */
   responseTimeoutMs?: number
@@ -89,6 +110,7 @@ export class SPTransmitter {
   // Proto used by the current SpSession (for logging only)
   private _spProto: 1 | 2 | null = null
   private _onUnsolicited: (resp: StringResponse) => void = () => {}
+  private _onPush: (item: Record<string, unknown>) => void = () => {}
 
   constructor(options: SPTransmitterOptions = {}) {
     this._allocator = new TransactionIdAllocator(1)
@@ -247,23 +269,20 @@ export class SPTransmitter {
       logger.warn(`SpSession JSON.parse failed: ${(err as Error).message ?? String(err)}; json=${json.slice(0, 200)}`)
       return
     }
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      return
-    }
-    for (const item of parsed) {
-      if (!item || typeof item !== 'object') continue
-      const r = item as Record<string, unknown>
-      if (typeof r.cmd !== 'string' || typeof r.op !== 'string') continue
-      const resp: StringResponse<unknown> = {
-        id: Number(r.id ?? 0),
-        cmd: r.cmd,
-        sid: Number(r.sid ?? 0),
-        op: r.op as StringResponse['op'],
-        code: Number(r.code ?? 0),
-        data: r.data ?? undefined
+    dispatchInboundItems(parsed, {
+      onPush: (item) => this._onPush(item),
+      onResponse: (item) => {
+        const resp: StringResponse<unknown> = {
+          id: Number(item.id ?? 0),
+          cmd: String(item.cmd),
+          sid: Number(item.sid ?? 0),
+          op: item.op as StringResponse['op'],
+          code: Number(item.code ?? 0),
+          data: item.data ?? undefined
+        }
+        this._handleResponse(resp)
       }
-      this._handleResponse(resp)
-    }
+    })
   }
 
   /**
