@@ -13,6 +13,7 @@ import { runInitialPoll } from './variables/initial'
 import { setupFeedbacks } from './feedbacks'
 import { setupVariables } from './variables'
 import { getScreenGroupIds } from './variables/screen-groups'
+import { valuesFromPush } from './variables/push'
 import { getProtocolForDeviceType, type ProbeResult } from './udp-probe'
 import { downlinkChecksumForFamily, resolveDeviceModel } from './common/device-models'
 
@@ -204,9 +205,31 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     const downlinkChecksum = downlinkChecksumForFamily(model?.family)
     this.spTransmitter
       .bindSpSession(proto, { downlinkChecksum })
-      .then(() => {
+      .then(async () => {
         if (generation !== this._linkGeneration) return
+        this.spTransmitter.setOnPush((item) => {
+          if (generation !== this._linkGeneration) return
+          const cmd = item.cmd
+          const code = item.code
+          if (typeof cmd !== 'string') return
+          if (typeof code === 'number' && code !== 0) {
+            logger.warn(`push ${cmd} code=${code} ignored`)
+            return
+          }
+          const values = valuesFromPush(
+            { cmd, code, data: item.data },
+            { protocol: this.config.protocol, modelByte: this.state.modelByte },
+            getScreenGroupIds()
+          )
+          if (Object.keys(values).length === 0) return
+          this.writebackVariableValues(values)
+        })
         this.connection.beginReceiving()
+        const subscribed = await this.spTransmitter.subscribePush()
+        if (!subscribed) {
+          logger.warn('comm_obj subscribe was not sent; continuing with heartbeat and initial poll')
+        }
+        if (generation !== this._linkGeneration) return
         this.spTransmitter.startHeartbeat(() => {
           logger.warn('Heartbeat lost.')
           this.failLink()
