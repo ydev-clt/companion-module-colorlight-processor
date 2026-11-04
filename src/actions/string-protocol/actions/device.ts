@@ -1,8 +1,27 @@
-import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
+import type { CompanionActionDefinition, CompanionActionDefinitions, DropdownChoice } from '@companion-module/base'
+import { logger } from '../../../common/log'
+import { resolveDeviceModel } from '../../../common/device-models'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
 import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
 import type { StringActionHost } from './_shared'
+
+/** U-series specify-multiplier only accepts 2x / 3x (ids 1–2). */
+const U_SERIES_VSYNC_MULTIPLIER_MIN = 1
+const U_SERIES_VSYNC_MULTIPLIER_MAX = 2
+
+const VSYNC_MULTIPLIER_CHOICES: DropdownChoice[] = [
+  { id: 0, label: 'None' },
+  { id: 1, label: '2x' },
+  { id: 2, label: '3x' },
+  { id: 3, label: '4x' },
+  { id: 4, label: '5x' },
+  { id: 5, label: '6x' },
+  { id: 6, label: '7x' },
+  { id: 7, label: '8x' },
+  { id: 8, label: '9x' },
+  { id: 9, label: '10x' }
+]
 
 /**
  * Device-related actions:
@@ -16,6 +35,13 @@ import type { StringActionHost } from './_shared'
 
 export function setupDeviceActions(host: StringActionHost): CompanionActionDefinitions {
   const { conn } = host
+  const isUSeries = resolveDeviceModel(host.ctx.config.protocol, host.ctx.state.modelByte)?.family === 'U'
+  const multiplierChoices = isUSeries
+    ? VSYNC_MULTIPLIER_CHOICES.filter((choice) => {
+        const id = Number(choice.id)
+        return id >= U_SERIES_VSYNC_MULTIPLIER_MIN && id <= U_SERIES_VSYNC_MULTIPLIER_MAX
+      })
+    : VSYNC_MULTIPLIER_CHOICES
   const actions: Record<string, CompanionActionDefinition> = {}
 
   // ---- sn ----
@@ -162,19 +188,8 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
         label: 'Multiplier',
         id: 'mul',
         tooltip: 'VSYNC multiplier. Only takes effect when method="specify multiplier".',
-        default: 0,
-        choices: [
-          { id: 0, label: 'None' },
-          { id: 1, label: '2x' },
-          { id: 2, label: '3x' },
-          { id: 3, label: '4x' },
-          { id: 4, label: '5x' },
-          { id: 5, label: '6x' },
-          { id: 6, label: '7x' },
-          { id: 7, label: '8x' },
-          { id: 8, label: '9x' },
-          { id: 9, label: '10x' }
-        ]
+        default: isUSeries ? U_SERIES_VSYNC_MULTIPLIER_MIN : 0,
+        choices: multiplierChoices
       },
       gidField()
     ],
@@ -190,10 +205,22 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = {}
       if (typeof o.gid === 'number') data.gid = o.gid
+      let mul = o.mul
+      // Stale buttons may still store None or 4x–10x from before the U-series list was limited.
+      if (isUSeries) {
+        const limited = Math.trunc(Number(mul))
+        const clamped = Number.isInteger(limited)
+          ? Math.min(U_SERIES_VSYNC_MULTIPLIER_MAX, Math.max(U_SERIES_VSYNC_MULTIPLIER_MIN, limited))
+          : U_SERIES_VSYNC_MULTIPLIER_MIN
+        if (clamped !== mul) {
+          logger.warn(`U-series multiplier does not support ${String(mul)}; sending ${clamped}.`)
+        }
+        mul = clamped
+      }
       // Divided into 3 API calls to set each parameter individually
       await conn.sendOnly(CMD.VSYNC_MUL, 'set', sid, { ...data, en: o.enableStatus })
       await conn.sendOnly(CMD.VSYNC_MUL, 'set', sid, { ...data, method: o.method })
-      await conn.sendOnly(CMD.VSYNC_MUL, 'set', sid, { ...data, mul: o.mul })
+      await conn.sendOnly(CMD.VSYNC_MUL, 'set', sid, { ...data, mul })
     }
   }
 
