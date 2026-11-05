@@ -1,12 +1,7 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
-const { getScreenGroupIds } = require('../dist/variables/screen-groups')
 const { publishVariableId } = require('../dist/variables/publish')
 const { projectPortOutput } = require('../dist/variables/initial/port-output')
-
-test('the screen-group list is gid 1', () => {
-  assert.deepEqual(getScreenGroupIds(), [1])
-})
 
 test('screen-group and device ids', () => {
   assert.equal(publishVariableId('screen-group', 'brightness', 1), 'sg_1_brightness')

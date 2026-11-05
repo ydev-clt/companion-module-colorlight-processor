@@ -5,7 +5,7 @@ import { FEEDBACK_ID } from '../common/feedback-ids'
 import { isCmdOpSupported, type DeviceIdentity } from '../common/cmd-support'
 import { POLL_CATALOG } from './initial'
 import { getSpecsByCmd } from './core/registry'
-import { getScreenGroupIds } from './screen-groups'
+import type { ScreenGroupSlot } from './screen-groups'
 import { publishVariableId } from './publish'
 
 /**
@@ -26,26 +26,37 @@ const BLACKOUT_ENABLE_KEY = /^sg_\d+_blackout_enable$/
 
 /**
  * Build the published variable-definition map for a device and screen-group
- * set. A definition exists only for an initial catalog entry whose get side
- * is supported.
+ * slots. A definition exists only for an initial catalog entry whose get side
+ * is supported. Once the screen-group list is known, the count variable is
+ * published even though `pr_group` itself is not polled.
  */
 export function listPublishedVariables(
   device: DeviceIdentity,
-  groupIds: readonly number[]
+  slots: readonly ScreenGroupSlot[],
+  groupListKnown: boolean
 ): Record<string, { name: string }> {
   const out: Record<string, { name: string }> = {}
   for (const entry of POLL_CATALOG) {
-    if (entry.phase !== 'initial') continue
+    if (entry.phase !== 'initial' || entry.scope !== 'device') continue
     if (!isCmdOpSupported(entry.cmd, 'get', device)) continue
     for (const spec of getSpecsByCmd(entry.cmd)) {
-      if (entry.scope === 'screen-group') {
-        for (const gid of groupIds) {
-          out[publishVariableId('screen-group', spec.variableId, gid)] = { name: spec.displayName }
-        }
-      } else {
-        out[publishVariableId('device', spec.variableId)] = { name: spec.displayName }
-      }
+      out[publishVariableId('device', spec.variableId)] = { name: spec.displayName }
     }
+  }
+  const screenCommands = new Set(
+    POLL_CATALOG.filter((entry) => entry.phase === 'initial' && entry.scope === 'screen-group').map(
+      (entry) => entry.cmd
+    )
+  )
+  for (const slot of slots) {
+    if (!screenCommands.has(slot.cmd) || !isCmdOpSupported(slot.cmd, 'get', device)) continue
+    for (const spec of getSpecsByCmd(slot.cmd)) {
+      out[publishVariableId('screen-group', spec.variableId, slot.gid)] = { name: spec.displayName }
+    }
+  }
+  if (groupListKnown) {
+    const spec = getSpecsByCmd('pr_group')[0]
+    if (spec) out[publishVariableId('device', spec.variableId)] = { name: spec.displayName }
   }
   return out
 }
@@ -59,7 +70,10 @@ export function listPublishedVariables(
  * Re-call this whenever the device identity changes (probe confirms a new
  * model, or the user re-configures the host) to refresh the definition set.
  */
-export function setupVariables(context: CltProcessorType): {
+export function setupVariables(
+  context: CltProcessorType,
+  readScreenGroups: () => { slots: readonly ScreenGroupSlot[]; groupListKnown: boolean }
+): {
   setVariableValues: (values: Record<string, number | string | boolean | object>) => void
   refresh: () => void
 } {
@@ -73,12 +87,11 @@ export function setupVariables(context: CltProcessorType): {
   }
 
   function applyDefinitions(): void {
+    const screen = readScreenGroups()
     const defs = listPublishedVariables(
-      {
-        protocol: context.config.protocol,
-        modelByte: context.state.modelByte
-      },
-      getScreenGroupIds()
+      { protocol: context.config.protocol, modelByte: context.state.modelByte },
+      screen.slots,
+      screen.groupListKnown
     )
     try {
       ib.setVariableDefinitions(defs)

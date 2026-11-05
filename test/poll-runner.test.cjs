@@ -9,7 +9,11 @@ function harness(overrides) {
   let current = true
   const args = {
     identity: { protocol: 'B-Protocol', modelByte: 35 },
-    groupIds: [1],
+    slots: [
+      { cmd: 'bright', gid: 1 },
+      { cmd: 'freeze', gid: 1 },
+      { cmd: 'blackout', gid: 1 }
+    ],
     isCurrent: () => current,
     send: async (request) => {
       sent.push(request.cmd)
@@ -57,4 +61,17 @@ test('a generation change stops the run and drops a late success', async () => {
   await runInitialPoll(args)
   assert.deepEqual(sent, ['bright'])
   assert.deepEqual(written, [])
+})
+
+test('a screen slot removed during the poll is not written', async () => {
+  const { args, written } = harness({
+    slots: [{ cmd: 'bright', gid: 1 }],
+    slotStillPublished: () => false,
+    send: async () => ({ code: 0, data: { brt: 5000, gid: 1 } })
+  })
+  await runInitialPoll(args)
+  assert.equal(
+    written.some((values) => Object.prototype.hasOwnProperty.call(values, 'sg_1_brightness')),
+    false
+  )
 })

@@ -1,6 +1,7 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { POLL_CATALOG, selectPollRequests, projectPollData } = require('../dist/variables/initial/catalog')
+const { buildScreenGroupPlan } = require('../dist/variables/screen-groups')
 
 const initialScreen = [
   'bright', 'colortemp', 'freeze', 'blackout', 'testmode', 'hdrmode', 'mute', 'fade', 'fadetime', 'zerodelay',
@@ -33,7 +34,8 @@ test('catalog order and phases', () => {
 })
 
 test('U9 selection skips reserved and unsupported gets', () => {
-  const requests = selectPollRequests({ protocol: 'B-Protocol', modelByte: 35 }, [1])
+  const u9 = { protocol: 'B-Protocol', modelByte: 35 }
+  const requests = selectPollRequests(u9, buildScreenGroupPlan(u9, [1]))
   assert.deepEqual(
     requests.map((request) => request.cmd),
     [
@@ -57,13 +59,14 @@ test('U9 selection skips reserved and unsupported gets', () => {
   })
 })
 
-test('multiple screen groups expand inside catalog order', () => {
-  const bright = selectPollRequests({ protocol: 'B-Protocol', modelByte: 35 }, [1, 2]).filter(
+test('multiple screen groups expand one group at a time', () => {
+  const u9 = { protocol: 'B-Protocol', modelByte: 35 }
+  const bright = selectPollRequests(u9, buildScreenGroupPlan(u9, [1, 2])).filter(
     (request) => request.cmd === 'bright' || request.cmd === 'colortemp'
   )
   assert.deepEqual(
     bright.map((request) => `${request.cmd}:${request.gid}`),
-    ['bright:1', 'bright:2', 'colortemp:1', 'colortemp:2']
+    ['bright:1', 'colortemp:1', 'bright:2', 'colortemp:2']
   )
 })
 
@@ -77,25 +80,23 @@ test('port and brightness projection', () => {
   assert.deepEqual(projectPollData('bright', { brt: 5000 }), { brightness: 50 })
 })
 
-test('V20 polls canvas sync commands for gid 1', () => {
-  const requests = selectPollRequests({ protocol: 'B-Protocol', modelByte: 50 }, [1])
-  for (const cmd of ['low_gray', 'canvas_mode', 'canvas_switch_mode', 'out_fps', 'vsync_src']) {
-    assert.deepEqual(requests.find((request) => request.cmd === cmd), {
-      cmd,
-      sid: 1,
-      gid: 1,
-      data: { gid: 1 }
-    })
-  }
-  const cmds = requests.map((request) => request.cmd)
-  const start = cmds.indexOf('low_gray')
-  assert.deepEqual(cmds.slice(start, start + 5), [
-    'low_gray',
-    'canvas_mode',
-    'canvas_switch_mode',
-    'out_fps',
-    'vsync_src'
-  ])
+test('V10 polls gid 1 display commands and gid 2 canvas commands', () => {
+  const v10 = { protocol: 'B-Protocol', modelByte: 50 }
+  const requests = selectPollRequests(v10, buildScreenGroupPlan(v10, [1, 2]))
+  assert.deepEqual(
+    requests.map((request) => `${request.cmd}:${request.gid}`),
+    [
+      'freeze:1', 'blackout:1', 'testmode:1',
+      'bright:2', 'colortemp:2', 'c_depth:2', 'ct_r:2', 'ct_g:2', 'ct_b:2',
+      'low_gray:2', 'canvas_mode:2', 'canvas_switch_mode:2', 'out_fps:2', 'vsync_src:2'
+    ]
+  )
+  assert.deepEqual(requests.find((request) => request.cmd === 'canvas_mode'), {
+    cmd: 'canvas_mode',
+    sid: 1,
+    gid: 2,
+    data: { gid: 2 }
+  })
 })
 
 test('canvas sync projection follows valid and numeric rules', () => {

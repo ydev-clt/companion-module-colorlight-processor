@@ -4,8 +4,9 @@ import { selectPollRequests, projectPollData, type PollRequest } from './catalog
 
 export interface InitialPollArgs {
   identity: DeviceIdentity
-  groupIds: readonly number[]
+  slots: readonly { cmd: string; gid: number }[]
   isCurrent: () => boolean
+  slotStillPublished?: (cmd: string, gid: number) => boolean
   send: (request: PollRequest) => Promise<{ code: number; data?: unknown } | undefined>
   write: (values: Record<string, number | string | object>) => void
   log: (message: string) => void
@@ -18,7 +19,7 @@ export interface InitialPollArgs {
  * response is not written onto the new session.
  */
 export async function runInitialPoll(args: InitialPollArgs): Promise<void> {
-  const requests = selectPollRequests(args.identity, args.groupIds)
+  const requests = selectPollRequests(args.identity, args.slots)
   for (const request of requests) {
     if (!args.isCurrent()) return
     let response: { code: number; data?: unknown } | undefined
@@ -40,6 +41,9 @@ export async function runInitialPoll(args: InitialPollArgs): Promise<void> {
     const values: Record<string, number | string | object> = {}
     for (const [leaf, value] of Object.entries(leaves)) {
       values[publishVariableId(scope, leaf, request.gid)] = value
+    }
+    if (request.gid !== undefined && args.slotStillPublished && !args.slotStillPublished(request.cmd, request.gid)) {
+      continue
     }
     args.write(values)
   }

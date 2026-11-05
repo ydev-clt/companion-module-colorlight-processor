@@ -9,10 +9,17 @@ import { StateCache } from './state'
 import { setupLogger, logger } from './common/log'
 import { setupActions } from './actions'
 import { SPTransmitter } from './actions/string-protocol/core/transmitter'
-import { runInitialPoll } from './variables/initial'
+import * as initialPoll from './variables/initial'
 import { setupFeedbacks } from './feedbacks'
 import { setupVariables } from './variables'
-import { getScreenGroupIds } from './variables/screen-groups'
+import {
+  buildScreenGroupPlan,
+  groupIdsFromPrGroup,
+  managedGroupIds,
+  pushedGroupToAdd,
+  screenGroupCountValue,
+  type ScreenGroupSlot
+} from './variables/screen-groups'
 import { valuesFromPush } from './variables/push'
 import { getProtocolForDeviceType, type ProbeResult } from './udp-probe'
 import { downlinkChecksumForFamily, resolveDeviceModel } from './common/device-models'
@@ -42,6 +49,9 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
   }
   /** Refresh hook installed by initVariables(); rebuilt on identity change. */
   private refreshVariableDefinitions: () => void = () => {}
+  /** null until pr_group or a qualifying push establishes the screen-group list. */
+  private managedGroupIds: number[] | null = null
+  private screenGroupPlan: ScreenGroupSlot[] = []
 
   constructor(internal: unknown) {
     super(internal)
@@ -112,7 +122,10 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
    */
   private initVariables(): void {
     logger.info('Init variables.')
-    const { setVariableValues, refresh } = setupVariables(this)
+    const { setVariableValues, refresh } = setupVariables(this, () => ({
+      slots: this.screenGroupPlan,
+      groupListKnown: this.managedGroupIds !== null
+    }))
     this.writebackVariableValues = setVariableValues
     this.refreshVariableDefinitions = refresh
   }
@@ -192,6 +205,8 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     logger.warn(`Probe lost device (host=${host}); clearing identity`)
     this.config.protocol = DeviceProtocolEnum.None
     this.state.modelByte = null
+    this.managedGroupIds = null
+    this.screenGroupPlan = []
     this.refreshVariableDefinitions()
     this.initActions()
     this.initFeedbacks()
@@ -216,11 +231,18 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
             logger.warn(`push ${cmd} code=${code} ignored`)
             return
           }
-          const values = valuesFromPush(
-            { cmd, code, data: item.data },
-            { protocol: this.config.protocol, modelByte: this.state.modelByte },
-            getScreenGroupIds()
-          )
+          const identity = { protocol: this.config.protocol, modelByte: this.state.modelByte }
+          if (cmd === 'pr_group') {
+            const parsed = groupIdsFromPrGroup({ code: typeof code === 'number' ? code : undefined, data: item.data })
+            if (parsed.length === 0) return
+            this.commitScreenGroups(managedGroupIds(identity, parsed))
+            return
+          }
+          const addGid = pushedGroupToAdd(identity, cmd, item.data, this.managedGroupIds)
+          if (addGid !== undefined) {
+            this.commitScreenGroups([...(this.managedGroupIds ?? []), addGid])
+          }
+          const values = valuesFromPush({ cmd, code, data: item.data }, identity, this.screenGroupPlan)
           if (Object.keys(values).length === 0) return
           this.writebackVariableValues(values)
         })
@@ -243,18 +265,69 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
       })
   }
 
-  /** Poll initial device state once the session can send commands. A failed get does not drop the link. */
+  private deviceIdentity(): { protocol: DeviceProtocolEnum; modelByte: number | null } {
+    return { protocol: this.config.protocol, modelByte: this.state.modelByte }
+  }
+
+  private commitScreenGroups(next: readonly number[]): void {
+    const previous = this.managedGroupIds
+    const changed = previous === null || !sameMembership(previous, next)
+    this.managedGroupIds = [...next]
+    this.screenGroupPlan = buildScreenGroupPlan(this.deviceIdentity(), this.managedGroupIds)
+    if (changed) this.refreshVariableDefinitions()
+    this.writebackVariableValues({ screen_group_count: screenGroupCountValue(this.managedGroupIds) })
+  }
+
+  private async _discoverScreenGroups(generation: number): Promise<readonly { cmd: string; gid: number }[]> {
+    if (generation !== this._linkGeneration) return this.screenGroupPlan
+    const identity = this.deviceIdentity()
+    let parsed: number[]
+    try {
+      const response = await this.spTransmitter.sendAndAwait('pr_group', 'get', 1)
+      if (generation !== this._linkGeneration) return this.screenGroupPlan
+      parsed = groupIdsFromPrGroup(response)
+    } catch (err) {
+      if (generation !== this._linkGeneration) return this.screenGroupPlan
+      const message = err instanceof Error ? err.message : String(err)
+      logger.warn(`screen groups skipped: pr_group failed: ${message}`)
+      this.refreshVariableDefinitions()
+      return this.screenGroupPlan
+    }
+    if (parsed.length === 0) {
+      logger.warn('screen groups skipped: pr_group did not return group ids.')
+      this.refreshVariableDefinitions()
+      return this.screenGroupPlan
+    }
+    const managed = managedGroupIds(identity, parsed)
+    const family = resolveDeviceModel(identity.protocol, identity.modelByte)?.family
+    if ((family === 'V' || family === 'VX') && managed.length === 0) {
+      logger.warn('screen groups skipped: pr_group returned no screen group 1 or 2.')
+      this.refreshVariableDefinitions()
+      return this.screenGroupPlan
+    }
+    if (generation !== this._linkGeneration) return this.screenGroupPlan
+    this.commitScreenGroups(managed)
+    return this.screenGroupPlan.map((slot) => ({ cmd: slot.cmd, gid: slot.gid }))
+  }
+
+  /** Discover screen groups, then poll. A failed get does not drop the link. */
   private _startInitialPoll(generation: number): void {
-    void runInitialPoll({
-      identity: { protocol: this.config.protocol, modelByte: this.state.modelByte },
-      groupIds: getScreenGroupIds(),
-      isCurrent: () => generation === this._linkGeneration,
-      send: (request) => this.spTransmitter.sendAndAwait(request.cmd, 'get', request.sid, request.data),
-      write: this.writebackVariableValues,
-      log: (message) => logger.warn(message)
-    }).catch((err: Error) => {
-      logger.error(`initial poll failed: ${err.message ?? String(err)}`)
-    })
+    void this._discoverScreenGroups(generation)
+      .then((slots) => {
+        if (generation !== this._linkGeneration) return
+        return initialPoll.runInitialPoll({
+          identity: this.deviceIdentity(),
+          slots,
+          isCurrent: () => generation === this._linkGeneration,
+          slotStillPublished: (cmd, gid) => this.screenGroupPlan.some((slot) => slot.cmd === cmd && slot.gid === gid),
+          send: (request) => this.spTransmitter.sendAndAwait(request.cmd, 'get', request.sid, request.data),
+          write: this.writebackVariableValues,
+          log: (message) => logger.warn(message)
+        })
+      })
+      .catch((err: Error) => {
+        logger.error(`initial poll failed: ${err.message ?? String(err)}`)
+      })
   }
 
   /** Probe already succeeded. Clear identity once and keep a single reconnect timer. */
@@ -291,6 +364,9 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
       : `unresolved (modelByte=${modelByte})`
 
     if (mapped === this.config.protocol && modelByte === this.state.modelByte) {
+      this.managedGroupIds = null
+      this.screenGroupPlan = []
+      this.refreshVariableDefinitions()
       logger.info(`Probe confirms identity: protocol=${mapped}, ${modelDesc}`)
       return
     }
@@ -301,6 +377,8 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     )
     this.config.protocol = mapped
     this.state.modelByte = modelByte
+    this.managedGroupIds = null
+    this.screenGroupPlan = []
     // Variables must refresh *before* actions so any user-triggered get on
     // the new identity doesn't reference stale definitions.
     this.refreshVariableDefinitions()
@@ -324,6 +402,13 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     // strips <...> and parses JSON)
     this.spTransmitter.handleIncoming(data)
   }
+}
+
+function sameMembership(left: readonly number[], right: readonly number[]): boolean {
+  if (left.length !== right.length) return false
+  const a = [...left].sort((x, y) => x - y)
+  const b = [...right].sort((x, y) => x - y)
+  return a.every((value, index) => value === b[index])
 }
 
 export = CltProcessor

@@ -1,5 +1,6 @@
 import { isCmdOpSupported, type DeviceIdentity } from '../../common/cmd-support'
 import { extractValuesForCmd } from '../core/registry'
+import type { ScreenGroupSlot } from '../screen-groups'
 import { projectPortOutput } from './port-output'
 
 export type PollPhase = 'initial' | 'reserved'
@@ -98,20 +99,21 @@ export const POLL_CATALOG: readonly PollEntry[] = [
 
 /**
  * Build the startup get list for this device.
- * Unsupported commands are omitted. Screen-group commands repeat once per gid.
- * `portout` requires a port in the request; startup samples port 1.
+ * Screen-group requests follow the published slots, one group at a time.
+ * Unsupported device commands are omitted. `portout` samples port 1.
  */
-export function selectPollRequests(device: DeviceIdentity, groupIds: readonly number[]): PollRequest[] {
+export function selectPollRequests(device: DeviceIdentity, slots: readonly ScreenGroupSlot[]): PollRequest[] {
   const requests: PollRequest[] = []
+  const screenCommands = new Set(
+    POLL_CATALOG.filter((item) => item.phase === 'initial' && item.scope === 'screen-group').map((item) => item.cmd)
+  )
+  for (const slot of slots) {
+    if (!screenCommands.has(slot.cmd)) continue
+    requests.push({ cmd: slot.cmd, sid: POLL_SID, gid: slot.gid, data: { gid: slot.gid } })
+  }
   for (const item of POLL_CATALOG) {
-    if (item.phase !== 'initial') continue
+    if (item.phase !== 'initial' || item.scope !== 'device') continue
     if (!isCmdOpSupported(item.cmd, 'get', device)) continue
-    if (item.scope === 'screen-group') {
-      for (const gid of groupIds) {
-        requests.push({ cmd: item.cmd, sid: POLL_SID, gid, data: { gid } })
-      }
-      continue
-    }
     if (item.cmd === 'portout') {
       requests.push({ cmd: item.cmd, sid: POLL_SID, data: { port: 1 } })
       continue

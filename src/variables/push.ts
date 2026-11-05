@@ -1,6 +1,7 @@
 import type { DeviceIdentity } from '../common/cmd-support'
 import { isCmdOpSupported } from '../common/cmd-support'
 import { POLL_CATALOG, projectPollData } from './initial'
+import type { ScreenGroupSlot } from './screen-groups'
 import { publishVariableId } from './publish'
 
 export interface PushNotice {
@@ -16,17 +17,17 @@ export interface PushNotice {
 export function valuesFromPush(
   item: PushNotice,
   device: DeviceIdentity,
-  publishedGroupIds: readonly number[]
+  slots: readonly ScreenGroupSlot[]
 ): Record<string, number | string | object> {
   if (typeof item.code === 'number' && item.code !== 0) return {}
-  return projectPushData(item.cmd, item.data, device, publishedGroupIds)
+  return projectPushData(item.cmd, item.data, device, slots)
 }
 
 function projectPushData(
   cmd: string,
   data: unknown,
   device: DeviceIdentity,
-  publishedGroupIds: readonly number[]
+  slots: readonly ScreenGroupSlot[]
 ): Record<string, number | string | object> {
   const entry = POLL_CATALOG.find((candidate) => candidate.cmd === cmd)
   if (!entry || entry.phase !== 'initial') return {}
@@ -41,7 +42,7 @@ function projectPushData(
     return out
   }
   const gid = screenGroupId(data)
-  if (!publishedGroupIds.includes(gid)) return {}
+  if (!slots.some((slot) => slot.cmd === cmd && slot.gid === gid)) return {}
   const out: Record<string, number | string | object> = {}
   for (const [leaf, value] of Object.entries(leaves)) {
     out[publishVariableId('screen-group', leaf, gid)] = value

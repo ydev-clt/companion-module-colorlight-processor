@@ -23,11 +23,6 @@ const V_GID_2 = [
   'vsync_src'
 ] as const
 
-/** @deprecated Task 2 removes this. Startup still calls it until discovery lands. */
-export function getScreenGroupIds(): readonly number[] {
-  return [1]
-}
-
 export function groupIdsFromPrGroup(response: { code?: unknown; data?: unknown } | undefined): number[] {
   if (response === undefined) return []
   if (typeof response.code === 'number' && response.code !== 0) return []
