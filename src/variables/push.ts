@@ -13,6 +13,9 @@ export interface PushNotice {
 /**
  * Map one push notice onto published Companion variable ids.
  * A missing code counts as success. A numeric non-zero code writes nothing.
+ * A screen-group leaf is written only when `(cmd, gid)` is already in `slots`.
+ * This does not add a gid; the caller appends one first when the push qualifies.
+ * `pr_group` is reserved, so it returns `{}` and the caller writes `screen_group_count`.
  */
 export function valuesFromPush(
   item: PushNotice,
@@ -23,6 +26,7 @@ export function valuesFromPush(
   return projectPushData(item.cmd, item.data, device, slots)
 }
 
+/** Project a push onto leaves, or `{}` when the command is not an initial published slot. */
 function projectPushData(
   cmd: string,
   data: unknown,
@@ -42,6 +46,8 @@ function projectPushData(
     return out
   }
   const gid = screenGroupId(data)
+  // Unpublished gid writes nothing. On V/VX a brightness push with no gid
+  // resolves to group 1 and therefore does not match.
   if (!slots.some((slot) => slot.cmd === cmd && slot.gid === gid)) return {}
   const out: Record<string, number | string | object> = {}
   for (const [leaf, value] of Object.entries(leaves)) {
@@ -50,6 +56,7 @@ function projectPushData(
   return out
 }
 
+/** Missing body or a missing, non-numeric, or non-finite `gid` is group 1. */
 function screenGroupId(data: unknown): number {
   if (data === null || typeof data !== 'object') return 1
   const gid = (data as Record<string, unknown>).gid

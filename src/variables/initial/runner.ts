@@ -13,10 +13,12 @@ export interface InitialPollArgs {
 }
 
 /**
- * Walk the startup catalog in order. One failed get is logged and skipped;
+ * Walk the startup requests in slot order. One failed get is logged and skipped;
  * it does not abort the rest of the poll or drop the link.
  * `isCurrent` stops the walk when the link generation changes, so a late
  * response is not written onto the new session.
+ * `slotStillPublished` drops a screen result whose gid left the live plan
+ * after this request was sent.
  */
 export async function runInitialPoll(args: InitialPollArgs): Promise<void> {
   const requests = selectPollRequests(args.identity, args.slots)
@@ -42,6 +44,8 @@ export async function runInitialPoll(args: InitialPollArgs): Promise<void> {
     for (const [leaf, value] of Object.entries(leaves)) {
       values[publishVariableId(scope, leaf, request.gid)] = value
     }
+    // The request list is this poll's snapshot. Recheck the live plan so a
+    // gid removed while the get was in flight is not written back.
     if (request.gid !== undefined && args.slotStillPublished && !args.slotStillPublished(request.cmd, request.gid)) {
       continue
     }
@@ -49,6 +53,7 @@ export async function runInitialPoll(args: InitialPollArgs): Promise<void> {
   }
 }
 
+/** One warning line for a skipped get. A thrown error appends its message. */
 function failureLine(request: PollRequest, err?: unknown): string {
   const reason = err instanceof Error ? `: ${err.message}` : ''
   const gid = request.gid === undefined ? '' : ` gid=${request.gid}`

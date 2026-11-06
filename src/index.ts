@@ -49,8 +49,12 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
   }
   /** Refresh hook installed by initVariables(); rebuilt on identity change. */
   private refreshVariableDefinitions: () => void = () => {}
-  /** null until pr_group or a qualifying push establishes the screen-group list. */
+  /**
+   * null until `pr_group` or a qualifying push establishes the list.
+   * `[]` is a known empty list and still publishes `screen_group_count`.
+   */
   private managedGroupIds: number[] | null = null
+  /** Slots derived from `managedGroupIds`. Empty while that list is unknown. */
   private screenGroupPlan: ScreenGroupSlot[] = []
 
   constructor(internal: unknown) {
@@ -205,6 +209,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     logger.warn(`Probe lost device (host=${host}); clearing identity`)
     this.config.protocol = DeviceProtocolEnum.None
     this.state.modelByte = null
+    // Unknown list: device variables stay, screen-group variables do not.
     this.managedGroupIds = null
     this.screenGroupPlan = []
     this.refreshVariableDefinitions()
@@ -233,11 +238,16 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
           }
           const identity = { protocol: this.config.protocol, modelByte: this.state.modelByte }
           if (cmd === 'pr_group') {
+            // Replace the whole list. An empty or unusable body is ignored so
+            // a bad push cannot wipe groups that are already managed.
             const parsed = groupIdsFromPrGroup({ code: typeof code === 'number' ? code : undefined, data: item.data })
             if (parsed.length === 0) return
             this.commitScreenGroups(managedGroupIds(identity, parsed))
             return
           }
+          // A command can append one missing gid only when that command belongs
+          // on that gid. The pushed leaves are written after the plan updates.
+          // Nothing here sends another get for the new group.
           const addGid = pushedGroupToAdd(identity, cmd, item.data, this.managedGroupIds)
           if (addGid !== undefined) {
             this.commitScreenGroups([...(this.managedGroupIds ?? []), addGid])
@@ -265,10 +275,16 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
       })
   }
 
+  /** Protocol and model byte the plan and support checks read. */
   private deviceIdentity(): { protocol: DeviceProtocolEnum; modelByte: number | null } {
     return { protocol: this.config.protocol, modelByte: this.state.modelByte }
   }
 
+  /**
+   * Install `next` as the managed gid list and rebuild the shared plan.
+   * Definitions change only when the set of gids changes, so a reorder does
+   * not republish them. `screen_group_count` is written either way.
+   */
   private commitScreenGroups(next: readonly number[]): void {
     const previous = this.managedGroupIds
     const changed = previous === null || !sameMembership(previous, next)
@@ -278,11 +294,24 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     this.writebackVariableValues({ screen_group_count: screenGroupCountValue(this.managedGroupIds) })
   }
 
+  /**
+   * GET `pr_group` directly. Its get rule is empty, so this does not go
+   * through `isCmdOpSupported`.
+   *
+   * Success replaces the managed list and returns a copy of the plan for
+   * this poll. Failure does not assign `managedGroupIds`: a push that
+   * arrived while the get was in flight keeps the list it created, and
+   * the returned array is that live plan. The link generation is checked
+   * again before any warning or commit, so a dead link neither logs a
+   * skip nor writes the new session.
+   */
   private async _discoverScreenGroups(generation: number): Promise<readonly { cmd: string; gid: number }[]> {
     if (generation !== this._linkGeneration) return this.screenGroupPlan
     const identity = this.deviceIdentity()
     let parsed: number[]
     try {
+      // Timeout and transport failure come back as undefined; this catch
+      // runs only when sendAndAwait actually throws.
       const response = await this.spTransmitter.sendAndAwait('pr_group', 'get', 1)
       if (generation !== this._linkGeneration) return this.screenGroupPlan
       parsed = groupIdsFromPrGroup(response)
@@ -300,6 +329,8 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     }
     const managed = managedGroupIds(identity, parsed)
     const family = resolveDeviceModel(identity.protocol, identity.modelByte)?.family
+    // A non-empty parse on any other family still has managed ids. V/VX can
+    // filter that parse down to nothing.
     if ((family === 'V' || family === 'VX') && managed.length === 0) {
       logger.warn('screen groups skipped: pr_group returned no screen group 1 or 2.')
       this.refreshVariableDefinitions()
@@ -307,10 +338,15 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     }
     if (generation !== this._linkGeneration) return this.screenGroupPlan
     this.commitScreenGroups(managed)
+    // Copy so a later plan replacement cannot change this poll's request list.
     return this.screenGroupPlan.map((slot) => ({ cmd: slot.cmd, gid: slot.gid }))
   }
 
-  /** Discover screen groups, then poll. A failed get does not drop the link. */
+  /**
+   * Discover groups, then poll that discovery's snapshot.
+   * `slotStillPublished` reads the live plan, so a gid removed after its
+   * get was sent is not written back. A failed discovery does not drop the link.
+   */
   private _startInitialPoll(generation: number): void {
     void this._discoverScreenGroups(generation)
       .then((slots) => {
@@ -364,6 +400,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
       : `unresolved (modelByte=${modelByte})`
 
     if (mapped === this.config.protocol && modelByte === this.state.modelByte) {
+      // Same device still drops the previous link's groups. This link discovers them again.
       this.managedGroupIds = null
       this.screenGroupPlan = []
       this.refreshVariableDefinitions()
@@ -377,6 +414,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     )
     this.config.protocol = mapped
     this.state.modelByte = modelByte
+    // The previous screen-group list belonged to the old identity.
     this.managedGroupIds = null
     this.screenGroupPlan = []
     // Variables must refresh *before* actions so any user-triggered get on
@@ -404,6 +442,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
   }
 }
 
+/** Set equality. Reordering the same gids is not a membership change. */
 function sameMembership(left: readonly number[], right: readonly number[]): boolean {
   if (left.length !== right.length) return false
   const a = [...left].sort((x, y) => x - y)
