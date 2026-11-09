@@ -1,4 +1,11 @@
-import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
+import type { CompanionActionDefinition, CompanionActionDefinitions, DropdownChoice } from '@companion-module/base'
+import { logger } from '../../../common/log'
+import { resolveDeviceModel } from '../../../common/device-models'
+import {
+  inputVideoSourceChoiceId,
+  inputVideoSourceChoices,
+  type InputVideoSource
+} from '../../../common/input-video-sources'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
 import { deviceAndBroadcastFields, gidField, sidFromOptions } from './_shared'
@@ -12,7 +19,41 @@ import type { StringActionHost } from './_shared'
  *  - layerorder     (§5.2.25.1)      Layer ordering (B protocol only)
  *  - dellayer       (§5.2.27)        Delete layer (B protocol only)
  *  - clear_layer    (§5.2.28)        Clear layers (B protocol only)
+ *  - videosrc       (§5.2.5.3)       Layer video source
  */
+
+/**
+ * Input-signal rows from the last successful probe. An empty list stays empty
+ * until `pr_vin_board` and `pr_video` return named signals.
+ */
+function inputSourceChoices(host: StringActionHost): DropdownChoice[] {
+  const modelLabel = resolveDeviceModel(host.ctx.config.protocol, host.ctx.state.modelByte)?.label
+  return inputVideoSourceChoices(host.ctx.state.inputVideoSources ?? [], modelLabel)
+}
+
+/**
+ * One `videosrc` set body.
+ * The button id must match a signal in the current probe list. `src` is that
+ * record's `srcIdx`, and `slotCode` is the probed slot, including 0. An id
+ * missing from the list returns undefined.
+ */
+function videosrcSetData(input: {
+  layer: number
+  gid?: number
+  /** Choice id stored on the button. */
+  inputSource: string
+  sources: readonly InputVideoSource[]
+}): Record<string, unknown> | undefined {
+  const source = input.sources.find((item) => inputVideoSourceChoiceId(item) === input.inputSource)
+  if (!source) return undefined
+  const data: Record<string, unknown> = {
+    layer: input.layer,
+    src: source.srcIdx,
+    slotCode: source.slotCode
+  }
+  if (typeof input.gid === 'number') data.gid = input.gid
+  return data
+}
 
 export function setupLayerActions(host: StringActionHost): CompanionActionDefinitions {
   const { conn } = host
@@ -236,6 +277,53 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
       const data: Record<string, unknown> = { clear: 1 }
       if (typeof o.gid === 'number') data.gid = o.gid
       await conn.sendOnly(CMD.CLEAR_LAYER, 'set', sid, data)
+    }
+  }
+
+  const inputChoices = inputSourceChoices(host)
+  actions[ACTION_ID.VIDEOSRC_SET] = {
+    name: 'Set Layer Video Source',
+    description: 'Switch the input signal bound to a layer.',
+    options: [
+      ...deviceAndBroadcastFields(),
+      {
+        type: 'number',
+        label: 'Layer index (1-based)',
+        id: 'layer',
+        min: 1,
+        max: 16,
+        default: 1
+      },
+      {
+        type: 'dropdown',
+        label: 'Input signal',
+        id: 'inputSource',
+        default: inputChoices[0]?.id ?? '',
+        choices: inputChoices,
+        minChoicesForSearch: 8
+      },
+      gidField()
+    ],
+    callback: async (event) => {
+      const o = event.options as {
+        deviceId: number
+        isSelectAll: boolean
+        layer: number
+        inputSource: string
+        gid?: number
+      }
+      const data = videosrcSetData({
+        layer: o.layer,
+        gid: o.gid,
+        inputSource: o.inputSource,
+        sources: host.ctx.state.inputVideoSources ?? []
+      })
+      if (!data) {
+        logger.warn('Layer video source skipped: the selected signal is not in the current list.')
+        return
+      }
+      const sid = sidFromOptions(o.isSelectAll, o.deviceId)
+      await conn.sendOnly(CMD.VIDEOSRC, 'set', sid, data)
     }
   }
 
