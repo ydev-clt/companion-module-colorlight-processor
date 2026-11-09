@@ -34,6 +34,7 @@ export const ACTION_CMD: Record<ACTION_ID, string | 'always'> = {
 
   // === Layer ===
   [ACTION_ID.LAYER_SET]: 'layer',
+  [ACTION_ID.VIDEOSRC_SET]: 'videosrc',
   [ACTION_ID.LAYER_BORDER_SET]: 'layer_border',
   [ACTION_ID.BG_BOX_SET]: 'bg_box',
   [ACTION_ID.LAYER_ORDER]: 'layerorder',

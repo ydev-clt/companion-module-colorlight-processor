@@ -39,6 +39,7 @@ export enum ACTION_ID {
 
   // === Layer ===
   LAYER_SET = 'string_layer_set',
+  VIDEOSRC_SET = 'string_videosrc_set',
   LAYER_BORDER_SET = 'string_layer_border_set',
   BG_BOX_SET = 'string_bg_box_set',
   LAYER_ORDER = 'string_layer_order',

@@ -95,6 +95,7 @@ export const CMD = {
   PORTOUT: 'portout',
   ALLPORTS: 'allports',
   LAYER: 'layer',
+  VIDEOSRC: 'videosrc',
   LAYER_BORDER: 'layer_border',
   BG_BOX: 'bg_box',
   BRT_PORT: 'brt_port',

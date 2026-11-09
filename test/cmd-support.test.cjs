@@ -79,3 +79,14 @@ test('qp set is available on V, VX, and U, but save and rename stay off V', () =
   assert.equal(isCmdOpSupported('svpreset', 'set', v10), false)
   assert.equal(isCmdOpSupported('rpname', 'set', v10), false)
 })
+
+test('videosrc set is supported on resolved A/B models and has no get', () => {
+  const v20Model = { protocol: 'B-Protocol', modelByte: 51 }
+  for (const device of [u9, v20Model]) {
+    assert.equal(isCmdOpSupported('videosrc', 'set', device), true)
+    assert.equal(isCmdOpSupported('videosrc', 'get', device), false)
+  }
+  assert.equal(isCmdOpSupported('videosrc', 'set', unresolved), false)
+  assert.equal(isCmdOpSupported('videosrc', 'get', unresolved), false)
+  assert.equal(isCmdOpSupported('videosrc', 'set', { protocol: 'A-Protocol', modelByte: 35 }), false)
+})
