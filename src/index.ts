@@ -23,6 +23,7 @@ import {
 import { valuesFromPush } from './variables/push'
 import { getProtocolForDeviceType, type ProbeResult } from './udp-probe'
 import { downlinkChecksumForFamily, resolveDeviceModel } from './common/device-models'
+import { isCmdOpSupported } from './common/cmd-support'
 import { discoverInputVideoSources } from './common/input-video-sources'
 
 class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
@@ -347,14 +348,13 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
 
   /**
    * Read installed input boards, then each board's signals, and keep the list
-   * for video sync and a later video-source action. U, V, and VX are the
-   * families that use this list. The dropdown stays empty until this probe
-   * returns at least one signal. A failed or empty read does not replace
+   * for video sync and layer video source. Discovery runs when this device
+   * supports `videosrc` set. The dropdown stays empty until this probe
+   * returns at least one named signal. A failed or empty read does not replace
    * signals already stored, and does not drop the link.
    */
   private _discoverInputVideoSources(generation: number): void {
-    const model = resolveDeviceModel(this.config.protocol, this.state.modelByte)
-    if (!model || (model.family !== 'U' && model.family !== 'V' && model.family !== 'VX')) return
+    if (!isCmdOpSupported('videosrc', 'set', this.deviceIdentity())) return
     void discoverInputVideoSources(
       (cmd, data) => this.spTransmitter.sendAndAwait(cmd, 'get', 1, data),
       (message) => logger.warn(message)

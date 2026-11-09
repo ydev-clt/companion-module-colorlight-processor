@@ -20,4 +20,6 @@ test('the instance subscribes before heartbeat and applies push values', () => {
   assert.match(src, /screen groups skipped: pr_group did not return group ids\./)
   assert.match(src, /screen groups skipped: pr_group returned no screen group 1 or 2\./)
   assert.match(src, /managedGroupIds = null;[\s\S]{0,120}screenGroupPlan = \[\];[\s\S]{0,120}refreshVariableDefinitions\(\)/)
+  assert.match(src, /isCmdOpSupported\)\('videosrc', 'set', this\.deviceIdentity\(\)\)/)
+  assert.equal(src.includes("model.family !== 'U' && model.family !== 'V' && model.family !== 'VX'"), false)
 })
