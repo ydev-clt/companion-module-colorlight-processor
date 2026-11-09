@@ -53,14 +53,14 @@ export function gidField(
   }
 }
 
-/** Open/Close dropdown */
+/** Enable/Disable dropdown */
 export function openCloseField(
   defaultValue: 0 | 1 = 1,
   opts: { disableAutoExpression?: boolean } = {}
 ): SomeCompanionActionInputField {
   return {
     type: 'dropdown',
-    label: 'enable/disable',
+    label: 'Operation',
     id: 'enableStatus',
     tooltip: 'enable/disable',
     default: defaultValue,
@@ -72,17 +72,17 @@ export function openCloseField(
   }
 }
 
-/** Open/Close/Toggle dropdown. Toggle id is numeric 2. */
+/** Enable/Disable/Toggle dropdown. Toggle id is numeric 2. */
 export function openCloseToggleField(defaultValue: 0 | 1 | 2 = 1): SomeCompanionActionInputField {
   return {
     type: 'dropdown',
-    label: 'enable/disable/toggle',
+    label: 'Operation',
     id: 'enableStatus',
-    tooltip: 'Open, close, or toggle the current state',
+    tooltip: 'Enable, disable, or toggle the current state',
     default: defaultValue,
     choices: [
-      { id: 1, label: 'Open' },
-      { id: 0, label: 'Close' },
+      { id: 1, label: 'Enable' },
+      { id: 0, label: 'Disable' },
       { id: 2, label: 'Toggle' }
     ]
   }
