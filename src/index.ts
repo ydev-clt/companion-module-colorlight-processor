@@ -23,6 +23,7 @@ import {
 import { valuesFromPush } from './variables/push'
 import { getProtocolForDeviceType, type ProbeResult } from './udp-probe'
 import { downlinkChecksumForFamily, resolveDeviceModel } from './common/device-models'
+import { discoverInputVideoSources } from './common/input-video-sources'
 
 class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
   // device config
@@ -209,6 +210,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     logger.warn(`Probe lost device (host=${host}); clearing identity`)
     this.config.protocol = DeviceProtocolEnum.None
     this.state.modelByte = null
+    this.state.inputVideoSources = []
     // Unknown list: device variables stay, screen-group variables do not.
     this.managedGroupIds = null
     this.screenGroupPlan = []
@@ -267,6 +269,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
           this.failLink()
         })
         this._startInitialPoll(generation)
+        this._discoverInputVideoSources(generation)
       })
       .catch((err: Error) => {
         if (generation !== this._linkGeneration) return
@@ -343,6 +346,33 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
   }
 
   /**
+   * Read installed input boards, then each board's signals, and keep the list
+   * for video sync and a later video-source action. U, V, and VX are the
+   * families that use this list. The dropdown stays empty until this probe
+   * returns at least one signal. A failed or empty read does not replace
+   * signals already stored, and does not drop the link.
+   */
+  private _discoverInputVideoSources(generation: number): void {
+    const model = resolveDeviceModel(this.config.protocol, this.state.modelByte)
+    if (!model || (model.family !== 'U' && model.family !== 'V' && model.family !== 'VX')) return
+    void discoverInputVideoSources(
+      (cmd, data) => this.spTransmitter.sendAndAwait(cmd, 'get', 1, data),
+      (message) => logger.warn(message)
+    )
+      .then((sources) => {
+        if (generation !== this._linkGeneration) return
+        // A failed or empty probe must not replace signals already shown.
+        if (sources.length === 0) return
+        this.state.inputVideoSources = sources
+        this.initActions()
+      })
+      .catch((err: Error) => {
+        if (generation !== this._linkGeneration) return
+        logger.warn(`input video sources skipped: ${err.message ?? String(err)}`)
+      })
+  }
+
+  /**
    * Discover groups, then poll that discovery's snapshot.
    * `slotStillPublished` reads the live plan, so a gid removed after its
    * get was sent is not written back. A failed discovery does not drop the link.
@@ -414,6 +444,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     )
     this.config.protocol = mapped
     this.state.modelByte = modelByte
+    this.state.inputVideoSources = []
     // The previous screen-group list belonged to the old identity.
     this.managedGroupIds = null
     this.screenGroupPlan = []

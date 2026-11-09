@@ -132,6 +132,7 @@ export const CMD = {
   PR_GROUP: 'pr_group',
   PR_CANVAS: 'pr_canvas',
   PR_VIDEO: 'pr_video',
+  PR_VIN_BOARD: 'pr_vin_board',
   PR_VSYNC: 'pr_vsync',
   PORT_AREA: 'port_area',
   PR_VIDEO_COUNT: 'pr_video_count',

@@ -149,6 +149,7 @@ export const CMD_SUPPORT: Record<string, CmdSupport> = {
   pr_layer: { get: EMPTY_GET },
   pr_group: { get: EMPTY_GET },
   pr_video: { get: EMPTY_GET },
+  pr_vin_board: { get: EMPTY_GET },
   pr_vsync: { get: EMPTY_GET },
   port_area: { get: EMPTY_GET },
   pr_video_count: { get: EMPTY_GET },

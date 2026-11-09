@@ -88,24 +88,39 @@ test('low gray toggle flips en and does not read canvas mode', async () => {
   assert.deepEqual(h.writes, [])
 })
 
-test('video sync sends one field group per operation', async () => {
+test('video sync keeps source, frame rate, and the selected input signal', async () => {
   const h = host({})
-  await h.actions.string_vsync_src_set.callback({ options: { ...device, operation: 'source', src: 1 } })
+  const options = h.actions.string_vsync_src_set.options.map((field) => field.id)
+  assert.equal(options.includes('operation'), false)
+  assert.equal(options.includes('phaseUs'), false)
+  const source = h.actions.string_vsync_src_set.options.find((field) => field.id === 'src')
+  assert.deepEqual(
+    source.choices.map((choice) => choice.id),
+    ['internal', 'input', 'genlock']
+  )
+  const fps = h.actions.string_vsync_src_set.options.find((field) => field.id === 'fps')
+  assert.equal(fps.isVisibleExpression, '$(options:src) == "internal"')
+  assert.equal(fps.default, 60)
+  const input = h.actions.string_vsync_src_set.options.find((field) => field.id === 'inputSource')
+  assert.deepEqual(input.choices, [])
+
+  await h.actions.string_vsync_src_set.callback({ options: { ...device, src: 'genlock' } })
+  await h.actions.string_vsync_src_set.callback({ options: { ...device, src: 'internal', fps: 59.94 } })
   await h.actions.string_vsync_src_set.callback({
-    options: { ...device, operation: 'board', boardSlot: 3, boardKind: 17, boardIdx: 0, srcType: 17, srcIdx: 2 }
+    options: { ...device, src: 'input', inputSource: '16:24:0:32:1' }
   })
-  await h.actions.string_vsync_src_set.callback({ options: { ...device, operation: 'fps', fps100: 6000 } })
-  await h.actions.string_vsync_src_set.callback({ options: { ...device, operation: 'phase', phaseUs: 100 } })
+  await h.actions.string_vsync_src_set.callback({ options: { ...device, src: 'input', inputSource: '' } })
   assert.deepEqual(h.sent, [
-    { cmd: 'vsync_src', op: 'set', sid: 1, data: { src: 1, gid: 1 } },
+    { cmd: 'vsync_src', op: 'set', sid: 1, data: { gid: 1, src: 1 } },
+    { cmd: 'vsync_src', op: 'set', sid: 1, data: { gid: 1, src: 2 } },
+    { cmd: 'vsync_src', op: 'set', sid: 1, data: { gid: 1, fps100: 5994 } },
+    { cmd: 'vsync_src', op: 'set', sid: 1, data: { gid: 1, src: 0 } },
     {
       cmd: 'vsync_src',
       op: 'set',
       sid: 1,
-      data: { boardSlot: 3, boardKind: 17, boardIdx: 0, srcType: 17, srcIdx: 2, gid: 1 }
-    },
-    { cmd: 'vsync_src', op: 'set', sid: 1, data: { fps100: 6000, gid: 1 } },
-    { cmd: 'vsync_src', op: 'set', sid: 1, data: { phaseUs: 100, gid: 1 } }
+      data: { gid: 1, boardSlot: 16, boardKind: 24, boardIdx: 0, srcType: 32, srcIdx: 1 }
+    }
   ])
   assert.deepEqual(h.writes, [])
 })

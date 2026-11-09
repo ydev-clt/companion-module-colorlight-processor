@@ -1,12 +1,23 @@
-import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
+import type { CompanionActionDefinition, CompanionActionDefinitions, DropdownChoice } from '@companion-module/base'
 import { logger } from '../../../common/log'
 import { isCmdOpSupported, type DeviceIdentity } from '../../../common/cmd-support'
+import { resolveDeviceModel } from '../../../common/device-models'
+import { inputVideoSourceChoices, type VsyncSourceChoice, vsyncSrcSetSteps } from '../../../common/input-video-sources'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
 import { deviceAndBroadcastFields, gidField, openCloseToggleField, sidFromOptions } from './_shared'
 import type { StringActionHost } from './_shared'
 
 type Addressed = { deviceId: number; isSelectAll: boolean; gid?: number }
+
+/**
+ * Input-signal rows from the last successful probe. An empty list stays empty
+ * until `pr_vin_board` and `pr_video` return signals.
+ */
+function inputSourceChoices(host: StringActionHost): DropdownChoice[] {
+  const modelLabel = resolveDeviceModel(host.ctx.config.protocol, host.ctx.state.modelByte)?.label
+  return inputVideoSourceChoices(host.ctx.state.inputVideoSources ?? [], modelLabel)
+}
 
 /** Attach gid only when the button supplied one. Omitting it lets the device use its default screen group. */
 function withGid(gid: number | undefined, data: Record<string, unknown>): Record<string, unknown> {
@@ -152,141 +163,64 @@ export function setupCanvasActions(host: StringActionHost): CompanionActionDefin
         logger.warn('Canvas switch mode skipped: current switchMode is not 0 or 1.')
         return
       }
-      await conn.sendOnly(
-        CMD.CANVAS_SWITCH_MODE,
-        'set',
-        sid,
-        withGid(o.gid, { switchMode: current === 0 ? 1 : 0 })
-      )
+      await conn.sendOnly(CMD.CANVAS_SWITCH_MODE, 'set', sid, withGid(o.gid, { switchMode: current === 0 ? 1 : 0 }))
     }
   }
 
+  const inputChoices = inputSourceChoices(host)
   actions[ACTION_ID.VSYNC_SRC_SET] = {
     name: 'Set Video Sync',
-    description: 'Set one video-sync field: source, input board, internal frame rate, or phase.',
+    description: 'Set the video-sync source to internal, an input signal, or GenLock.',
     options: [
       ...deviceAndBroadcastFields(),
       {
         type: 'dropdown',
-        label: 'Operation',
-        id: 'operation',
-        default: 'source',
+        label: 'Source',
+        id: 'src',
+        default: 'genlock',
+        disableAutoExpression: true,
         choices: [
-          { id: 'source', label: 'Set source' },
-          { id: 'board', label: 'Set input board' },
-          { id: 'fps', label: 'Set internal frame rate' },
-          { id: 'phase', label: 'Set phase' }
+          { id: 'internal', label: 'Internal' },
+          { id: 'input', label: 'Input signal' },
+          { id: 'genlock', label: 'GenLock' }
         ]
+      },
+      {
+        type: 'number',
+        label: 'Internal frame rate (Hz)',
+        id: 'fps',
+        min: 0,
+        max: 240,
+        step: 0.01,
+        default: 60,
+        isVisibleExpression: '$(options:src) == "internal"'
       },
       {
         type: 'dropdown',
-        label: 'Source',
-        id: 'src',
-        default: 1,
-        isVisibleExpression: '$(options:operation) == "source"',
-        choices: [
-          { id: 0, label: 'Input' },
-          { id: 1, label: 'Genlock' },
-          { id: 2, label: 'Internal' },
-          { id: 3, label: 'Auto lock' },
-          { id: 4, label: 'ODCK' }
-        ]
-      },
-      {
-        type: 'number',
-        label: 'Board slot',
-        id: 'boardSlot',
-        min: 0,
-        max: 255,
-        default: 0,
-        isVisibleExpression: '$(options:operation) == "board"'
-      },
-      {
-        type: 'number',
-        label: 'Board kind',
-        id: 'boardKind',
-        min: 0,
-        max: 255,
-        default: 0,
-        isVisibleExpression: '$(options:operation) == "board"'
-      },
-      {
-        type: 'number',
-        label: 'Board index',
-        id: 'boardIdx',
-        min: 0,
-        max: 255,
-        default: 0,
-        isVisibleExpression: '$(options:operation) == "board"'
-      },
-      {
-        type: 'number',
-        label: 'Source type',
-        id: 'srcType',
-        min: 0,
-        max: 255,
-        default: 0,
-        isVisibleExpression: '$(options:operation) == "board"'
-      },
-      {
-        type: 'number',
-        label: 'Source index',
-        id: 'srcIdx',
-        min: 0,
-        max: 255,
-        default: 0,
-        isVisibleExpression: '$(options:operation) == "board"'
-      },
-      {
-        type: 'number',
-        label: 'Internal frame rate x100',
-        id: 'fps100',
-        min: 0,
-        max: 100000,
-        default: 6000,
-        isVisibleExpression: '$(options:operation) == "fps"'
-      },
-      {
-        type: 'number',
-        label: 'Phase (us)',
-        id: 'phaseUs',
-        min: -1000000,
-        max: 1000000,
-        default: 0,
-        isVisibleExpression: '$(options:operation) == "phase"'
+        label: 'Input signal',
+        id: 'inputSource',
+        default: inputChoices[0]?.id ?? '',
+        choices: inputChoices,
+        minChoicesForSearch: 8,
+        isVisibleExpression: '$(options:src) == "input"'
       },
       gidField()
     ],
     callback: async (event) => {
       const o = event.options as Addressed & {
-        operation: 'source' | 'board' | 'fps' | 'phase'
-        src: number
-        boardSlot: number
-        boardKind: number
-        boardIdx: number
-        srcType: number
-        srcIdx: number
-        fps100: number
-        phaseUs: number
+        src: VsyncSourceChoice
+        fps: number
+        inputSource: string
+      }
+      const steps = vsyncSrcSetSteps({ src: o.src, fps: o.fps, inputSource: o.inputSource, gid: o.gid })
+      if (!steps) {
+        logger.warn('Video sync skipped: the selected source has no value to send.')
+        return
       }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      // The protocol accepts a partial object. Send only the fields for the
-      // selected operation so the other sync settings stay unchanged.
-      const data: Record<string, unknown> = {}
-      if (o.operation === 'board') {
-        data.boardSlot = o.boardSlot
-        data.boardKind = o.boardKind
-        data.boardIdx = o.boardIdx
-        data.srcType = o.srcType
-        data.srcIdx = o.srcIdx
-      } else if (o.operation === 'fps') {
-        data.fps100 = o.fps100
-      } else if (o.operation === 'phase') {
-        data.phaseUs = o.phaseUs
-      } else {
-        data.src = o.src
+      for (const data of steps) {
+        await conn.sendOnly(CMD.VSYNC_SRC, 'set', sid, data)
       }
-      await conn.sendOnly(CMD.VSYNC_SRC, 'set', sid, withGid(o.gid, data))
     }
   }
 
