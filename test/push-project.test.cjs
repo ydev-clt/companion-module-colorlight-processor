@@ -44,11 +44,21 @@ test('a device command ignores gid', () => {
   )
 })
 
-test('vsync_src on V gid 2 reuses the poll projection for missing sources', () => {
+test('vsync_src on V writes src only for the published screen group', () => {
   assert.deepEqual(
-    valuesFromPush({ cmd: 'vsync_src', code: 0, data: { gid: 2 } }, v10, vBoth),
-    { sg_2_vsync_source: '', sg_2_vsync_current_source: '' }
+    valuesFromPush(
+      {
+        cmd: 'vsync_src',
+        code: 0,
+        data: { gid: 1, src: 0, boardSlot: 16, boardKind: 24, boardIdx: 0, srcType: 32, srcIdx: 1, fpx100: 5994, phaseUs: 100 }
+      },
+      v10,
+      vBoth
+    ),
+    { sg_1_vsync_src: 0 }
   )
+  assert.deepEqual(valuesFromPush({ cmd: 'vsync_src', code: 0, data: { gid: 1 } }, v10, vBoth), {})
+  assert.deepEqual(valuesFromPush({ cmd: 'vsync_src', code: 0, data: { gid: 2, src: 1 } }, v10, vBoth), {})
 })
 
 test('reserved, unknown, unsupported, and failed pushes write nothing', () => {

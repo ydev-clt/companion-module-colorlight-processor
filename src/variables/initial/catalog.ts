@@ -131,17 +131,10 @@ function finiteNumber(value: unknown): number | undefined {
  * `canvas_mode`, `canvas_switch_mode`, and `out_fps` publish a blank string
  * when `valid` is not 1, so Companion shows an empty value instead of a stale
  * mode. `low_gray` has no valid flag and is kept only for en 0 or 1.
- * `out_fps` arrives as fps×10000. `vsync_src` publishes each source, or a
- * blank string when that field is missing.
+ * `out_fps` arrives as fps×10000. `vsync_src` keeps only `src`.
  */
 function projectCanvasSync(cmd: string, data: unknown): Record<string, number | string> | undefined {
-  if (
-    cmd !== 'low_gray' &&
-    cmd !== 'canvas_mode' &&
-    cmd !== 'canvas_switch_mode' &&
-    cmd !== 'out_fps' &&
-    cmd !== 'vsync_src'
-  ) {
+  if (cmd !== 'low_gray' && cmd !== 'canvas_mode' && cmd !== 'canvas_switch_mode' && cmd !== 'out_fps') {
     return undefined
   }
   const obj = data !== null && typeof data === 'object' ? (data as Record<string, unknown>) : {}
@@ -159,18 +152,10 @@ function projectCanvasSync(cmd: string, data: unknown): Record<string, number | 
       ? { canvas_switch_mode: switchMode }
       : { canvas_switch_mode: '' }
   }
-  if (cmd === 'out_fps') {
-    const fps = finiteNumber(obj.fps10000)
-    return obj.valid === 1 && fps !== undefined
-      ? { output_frame_rate: Number((fps / 10000).toFixed(4)) }
-      : { output_frame_rate: '' }
-  }
-  const src = finiteNumber(obj.src)
-  const curSrc = finiteNumber(obj.curSrc)
-  return {
-    vsync_source: src === undefined ? '' : src,
-    vsync_current_source: curSrc === undefined ? '' : curSrc
-  }
+  const fps = finiteNumber(obj.fps10000)
+  return obj.valid === 1 && fps !== undefined
+    ? { output_frame_rate: Number((fps / 10000).toFixed(4)) }
+    : { output_frame_rate: '' }
 }
 
 /**

@@ -17,6 +17,9 @@ test('U9 publishes sg_1 names and skips reserved and unsupported commands', () =
   assert.equal(defs.sg_1_hue, undefined)
   assert.equal(defs.layer, undefined)
   assert.equal(defs.sg_1_layer, undefined)
+  assert.equal(defs.sg_1_vsync_src !== undefined, true)
+  assert.equal(defs.sg_1_vsync_source, undefined)
+  assert.equal(defs.sg_1_vsync_current_source, undefined)
 })
 
 test('two screen groups publish two brightness variables', () => {
@@ -41,9 +44,13 @@ test('V10 publishes gid 1 freeze and gid 2 canvas variables', () => {
   assert.equal(defs.sg_2_canvas_switch_mode.name.includes('canvas_switch_mode (0: copy, 1: swap)'), true)
   assert.equal(defs.sg_2_output_frame_rate.name.includes('output_frame_rate (Hz)'), true)
   assert.equal(defs.sg_2_low_gray_enable.name.includes('low_gray_enable (0: off, 1: on)'), true)
-  assert.equal(defs.sg_2_vsync_source.name.includes('selected'), true)
-  assert.equal(defs.sg_2_vsync_current_source.name.includes('current'), true)
-  assert.equal(defs.sg_2_vsync_source.name.includes('0: input, 1: Genlock, 2: internal, 3: auto lock, 4: ODCK'), true)
+  assert.equal(
+    defs.sg_1_vsync_src.name.includes('vsync_src (0: input board/signal, 1: Genlock, 2: internal, 3: auto lock, 4: ODCK)'),
+    true
+  )
+  assert.equal(defs.sg_2_vsync_src, undefined)
+  assert.equal(defs.sg_1_vsync_source, undefined)
+  assert.equal(defs.sg_1_vsync_current_source, undefined)
   assert.equal(defs.screen_group_count !== undefined, true)
   assert.equal(defs.sg_1_brightness, undefined)
   assert.equal(defs.sg_1_canvas_mode, undefined)

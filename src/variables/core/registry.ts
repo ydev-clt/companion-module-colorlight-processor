@@ -327,10 +327,7 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
   },
   {
     cmd: 'vsync_src',
-    entries: [
-      { field: 'src', variableId: VARIABLE_ID.VSYNC_SOURCE, key: 'src', suffix: 'selected' },
-      { field: 'curSrc', variableId: VARIABLE_ID.VSYNC_CURRENT_SOURCE, key: 'curSrc', suffix: 'current' }
-    ]
+    entries: [{ field: 'src', variableId: VARIABLE_ID.VSYNC_SRC }]
   },
 
   // === Probe (query-only) ===
@@ -568,7 +565,7 @@ const CMD_DISPLAY: Record<string, CmdDisplay> = {
   out_fps: { name: 'Output Frame Rate', description: 'output_frame_rate (Hz)' },
   vsync_src: {
     name: 'Video Sync Source',
-    description: '0: input, 1: Genlock, 2: internal, 3: auto lock, 4: ODCK'
+    description: 'vsync_src (0: input board/signal, 1: Genlock, 2: internal, 3: auto lock, 4: ODCK)'
   },
   sndinfo: {
     name: 'Sender Info',

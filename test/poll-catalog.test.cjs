@@ -41,7 +41,7 @@ test('U9 selection skips reserved and unsupported gets', () => {
     [
       'bright', 'colortemp', 'freeze', 'blackout', 'testmode', 'hdrmode', 'mute', 'fade', 'fadetime', 'zerodelay',
       'bg_box', 'c_depth', 'colorspace', 'prec_mgr', 'ct_r', 'ct_g', 'ct_b', 'virtual_pixel', 'eye_switch',
-      'mode3d', 'dual_3d', 'stereo_fmt', 'vsync_mul', 'osd', 'sn', 'allports', 'portout'
+      'mode3d', 'dual_3d', 'stereo_fmt', 'vsync_mul', 'osd', 'vsync_src', 'sn', 'allports', 'portout'
     ]
   )
   assert.equal(requests.some((request) => request.cmd === 'layer'), false)
@@ -86,9 +86,9 @@ test('V10 polls gid 1 display commands and gid 2 canvas commands', () => {
   assert.deepEqual(
     requests.map((request) => `${request.cmd}:${request.gid}`),
     [
-      'freeze:1', 'blackout:1', 'testmode:1',
+      'freeze:1', 'blackout:1', 'testmode:1', 'vsync_src:1',
       'bright:2', 'colortemp:2', 'c_depth:2', 'ct_r:2', 'ct_g:2', 'ct_b:2',
-      'low_gray:2', 'canvas_mode:2', 'canvas_switch_mode:2', 'out_fps:2', 'vsync_src:2'
+      'low_gray:2', 'canvas_mode:2', 'canvas_switch_mode:2', 'out_fps:2'
     ]
   )
   assert.deepEqual(requests.find((request) => request.cmd === 'canvas_mode'), {
@@ -116,12 +116,20 @@ test('canvas sync projection follows valid and numeric rules', () => {
   assert.deepEqual(projectPollData('out_fps', { gid: 1, fps10000: 599400, valid: 0 }), {
     output_frame_rate: ''
   })
-  assert.deepEqual(projectPollData('vsync_src', { gid: 1, src: 1, curSrc: 1 }), {
-    vsync_source: 1,
-    vsync_current_source: 1
-  })
-  assert.deepEqual(projectPollData('vsync_src', { gid: 1, src: 2 }), {
-    vsync_source: 2,
-    vsync_current_source: ''
-  })
+  assert.deepEqual(
+    projectPollData('vsync_src', {
+      gid: 1,
+      src: 0,
+      curSrc: 1,
+      boardSlot: 16,
+      boardKind: 24,
+      boardIdx: 0,
+      srcType: 32,
+      srcIdx: 1,
+      fpx100: 5994,
+      phaseUs: 100
+    }),
+    { vsync_src: 0 }
+  )
+  assert.deepEqual(projectPollData('vsync_src', { gid: 1 }), {})
 })

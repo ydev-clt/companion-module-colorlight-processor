@@ -47,7 +47,7 @@ test('buildScreenGroupPlan repeats the current U9 screen commands per gid', () =
   assert.equal(one.includes('low_gray'), false)
   assert.equal(one.includes('canvas_mode'), false)
   assert.equal(one.includes('out_fps'), false)
-  assert.equal(one.includes('vsync_src'), false)
+  assert.equal(one.includes('vsync_src'), true)
   assert.equal(one.includes('layer'), false)
   assert.deepEqual(
     buildScreenGroupPlan(u9, [1, 2]).map((slot) => `${slot.cmd}:${slot.gid}`),
@@ -62,9 +62,9 @@ test('buildScreenGroupPlan repeats the current U9 screen commands per gid', () =
 
 test('buildScreenGroupPlan splits V and VX commands by gid', () => {
   const expected = [
-    'freeze:1', 'blackout:1', 'testmode:1',
+    'freeze:1', 'blackout:1', 'testmode:1', 'vsync_src:1',
     'bright:2', 'colortemp:2', 'c_depth:2', 'ct_r:2', 'ct_g:2', 'ct_b:2',
-    'low_gray:2', 'canvas_mode:2', 'canvas_switch_mode:2', 'out_fps:2', 'vsync_src:2'
+    'low_gray:2', 'canvas_mode:2', 'canvas_switch_mode:2', 'out_fps:2'
   ]
   assert.deepEqual(buildScreenGroupPlan(v10, [1, 2]).map((slot) => `${slot.cmd}:${slot.gid}`), expected)
   assert.deepEqual(buildScreenGroupPlan(vx20, [1, 2]).map((slot) => `${slot.cmd}:${slot.gid}`), expected)
@@ -72,7 +72,12 @@ test('buildScreenGroupPlan splits V and VX commands by gid', () => {
     ...expected.filter((item) => item.endsWith(':2')),
     ...expected.filter((item) => item.endsWith(':1'))
   ])
-  assert.deepEqual(buildScreenGroupPlan(v10, [1]).map((slot) => slot.cmd), ['freeze', 'blackout', 'testmode'])
+  assert.deepEqual(buildScreenGroupPlan(v10, [1]).map((slot) => slot.cmd), [
+    'freeze',
+    'blackout',
+    'testmode',
+    'vsync_src'
+  ])
   assert.deepEqual(buildScreenGroupPlan(v10, [2]).map((slot) => `${slot.cmd}:${slot.gid}`), expected.filter((item) => item.endsWith(':2')))
   assert.deepEqual(buildScreenGroupPlan(v10, [1, 2, 3]).map((slot) => `${slot.cmd}:${slot.gid}`), expected)
   assert.deepEqual(buildScreenGroupPlan(v10, [3]), [])

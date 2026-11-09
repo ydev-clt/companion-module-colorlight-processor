@@ -90,8 +90,8 @@ export enum VARIABLE_ID {
   CANVAS_MODE = 'canvas_mode',
   CANVAS_SWITCH_MODE = 'canvas_switch_mode',
   OUTPUT_FRAME_RATE = 'output_frame_rate',
-  VSYNC_SOURCE = 'vsync_source',
-  VSYNC_CURRENT_SOURCE = 'vsync_current_source',
+  // `vsync_src` is the selected sync source (`src` only).
+  VSYNC_SRC = 'vsync_src',
 
   // === Probe (query-only; composite) ===
   // `sender_info: { model, version, brightness, color_temp, temperature, blackout, freeze, test_pattern, ports }`

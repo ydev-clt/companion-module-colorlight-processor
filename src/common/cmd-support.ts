@@ -135,10 +135,12 @@ export const CMD_SUPPORT: Record<string, CmdSupport> = {
   // set only; both protocol names, matching ACTION_SUPPORT SHUTDOWN
   shutdown: { set: { protocols: [A, B], except: ['V', 'VX'] } },
 
+  // Both sides, every resolved B-protocol model.
+  vsync_src: { get: [B], set: [B] },
+
   // V/VX canvas sync (libsp 1.0.7). No set side means no action.
   low_gray: { get: V_VX_ONLY, set: V_VX_ONLY },
   canvas_switch_mode: { get: V_VX_ONLY, set: V_VX_ONLY },
-  vsync_src: { get: V_VX_ONLY, set: V_VX_ONLY },
   take: { set: V_VX_ONLY },
   cut: { set: V_VX_ONLY },
   canvas_mode: { get: V_VX_ONLY },

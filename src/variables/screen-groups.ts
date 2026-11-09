@@ -13,8 +13,8 @@ export interface ScreenGroupSlot {
   gid: number
 }
 
-/** V/VX screen group 1. Commands outside this list are not registered on that group. */
-const V_GID_1 = ['freeze', 'blackout', 'testmode'] as const
+/** V/VX screen group 1. Video sync is read and written on this group. */
+const V_GID_1 = ['freeze', 'blackout', 'testmode', 'vsync_src'] as const
 /** V/VX screen group 2. Brightness and canvas commands live here, not on group 1. */
 const V_GID_2 = [
   'bright',
@@ -26,8 +26,7 @@ const V_GID_2 = [
   'low_gray',
   'canvas_mode',
   'canvas_switch_mode',
-  'out_fps',
-  'vsync_src'
+  'out_fps'
 ] as const
 
 /**
