@@ -103,7 +103,7 @@ test('V10 and VX20 send the layer signal to the canvas selected by mode', async 
     assert.equal(gidOption(run.actions), undefined)
     assert.equal(
       run.actions.string_videosrc_set.description,
-      'Switch the input signal bound to a layer. Canvas mode comes from the lowest screen group; the signal is sent to PGM or PVW.'
+      'According to the current canvas mode, change the layer video source on PGM or PVW.'
     )
     await run.actions.string_videosrc_set.callback({
       options: { deviceId: 1, isSelectAll: false, layer: 2, inputSource: hdmiId, gid: 9 }

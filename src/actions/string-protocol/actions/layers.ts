@@ -120,7 +120,7 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
         id: 'layer',
         min: 1,
         max: 16,
-        default: 1,
+        default: 1
       },
       { type: 'number', label: 'X (left)', id: 'x', min: 0, max: 65535, default: 0 },
       { type: 'number', label: 'Y (top)', id: 'y', min: 0, max: 65535, default: 0 },
@@ -158,7 +158,7 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
         id: 'layer',
         min: 1,
         max: 16,
-        default: 1,
+        default: 1
       },
       {
         type: 'dropdown',
@@ -182,7 +182,7 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
         id: 'opacity',
         min: 0,
         max: 100,
-        default: 100,
+        default: 100
       },
       {
         type: 'number',
@@ -190,7 +190,7 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
         id: 'width',
         min: 1,
         max: 32,
-        default: 2,
+        default: 2
       },
       { type: 'number', label: 'R (0-255)', id: 'r', min: 0, max: 255, default: 0 },
       { type: 'number', label: 'G (0-255)', id: 'g', min: 0, max: 255, default: 0 },
@@ -259,7 +259,7 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
         id: 'layer',
         min: 1,
         max: Number.MAX_SAFE_INTEGER,
-        default: 1,
+        default: 1
       },
       {
         type: 'number',
@@ -267,7 +267,7 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
         id: 'target',
         min: 1,
         max: Number.MAX_SAFE_INTEGER,
-        default: 1,
+        default: 1
       },
       {
         type: 'dropdown',
@@ -336,7 +336,7 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
   actions[ACTION_ID.VIDEOSRC_SET] = {
     name: 'Set Layer Video Source',
     description: usesCanvasTarget
-      ? 'Switch the input signal bound to a layer. Canvas mode comes from the lowest screen group; the signal is sent to PGM or PVW.'
+      ? 'According to the current canvas mode, change the layer video source on PGM or PVW.'
       : 'Switch the input signal bound to a layer.',
     options: [
       ...deviceAndBroadcastFields(),

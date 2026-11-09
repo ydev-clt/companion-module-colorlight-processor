@@ -28,7 +28,7 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
   actions[ACTION_ID.QUICK_PRESET] = {
     name: 'Switch Quick Preset',
     description: usesCanvasTarget
-      ? 'Switch to the specified preset. Canvas mode comes from the lowest screen group; the preset is sent to PGM or PVW.'
+      ? 'According to the current canvas mode, change the preset on PGM or PVW.'
       : 'Switch to the specified preset.',
     options: [
       ...deviceAndBroadcastFields(),
