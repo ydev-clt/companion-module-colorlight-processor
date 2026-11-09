@@ -21,25 +21,25 @@ function host(modelByte, reply) {
   return { actions, sent }
 }
 
-function gidLabel(actions) {
-  return actions.string_quick_preset.options.find((option) => option.id === 'gid').label
+function gidOption(actions) {
+  return actions.string_quick_preset.options.find((option) => option.id === 'gid')
 }
 
 const pgm = { code: 0, data: { gid: 2, canvasType: 1, fieldsValid: 1 } }
 const pvw = { code: 0, data: { gid: 1, canvasType: 2, fieldsValid: 1 } }
 
-function replyFor(mode, canvases) {
+function replyFor(mode, canvases, groupIds = [1, 2]) {
   return (cmd, data) => {
-    if (cmd === 'canvas_mode') return { code: 0, data: { mode, valid: 1, gid: 1 } }
-    if (cmd === 'pr_group') return { code: 0, data: { groupCount: 2, groupIds: [1, 2] } }
+    if (cmd === 'pr_group') return { code: 0, data: { groupCount: groupIds.length, groupIds } }
+    if (cmd === 'canvas_mode') return { code: 0, data: { mode, valid: 1, gid: data.gid } }
     if (cmd === 'pr_canvas') return canvases[data.gid]
     return undefined
   }
 }
 
 const mode0Gets = [
-  { cmd: 'canvas_mode', op: 'get', sid: 1, data: { gid: 1 } },
   { cmd: 'pr_group', op: 'get', sid: 1, data: undefined },
+  { cmd: 'canvas_mode', op: 'get', sid: 1, data: { gid: 1 } },
   { cmd: 'pr_canvas', op: 'get', sid: 1, data: { gid: 1 } },
   { cmd: 'pr_canvas', op: 'get', sid: 1, data: { gid: 2 } }
 ]
@@ -56,9 +56,9 @@ test('V10 and VX20 send qp to the first PGM after a PVW', async () => {
     ])
     assert.equal(
       run.actions.string_quick_preset.description,
-      'Switch to the specified preset. The gid reads canvas mode; the preset is sent to PGM or PVW.'
+      'Switch to the specified preset. Canvas mode comes from the lowest screen group; the preset is sent to PGM or PVW.'
     )
-    assert.equal(gidLabel(run.actions), 'Canvas mode screen group (gid)')
+    assert.equal(gidOption(run.actions), undefined)
   }
 })
 
@@ -68,8 +68,8 @@ test('switcher mode stops at the first PVW', async () => {
     options: { deviceId: 1, isSelectAll: false, preset: 3, gid: 1 }
   })
   assert.deepEqual(run.sent, [
-    { cmd: 'canvas_mode', op: 'get', sid: 1, data: { gid: 1 } },
     { cmd: 'pr_group', op: 'get', sid: 1, data: undefined },
+    { cmd: 'canvas_mode', op: 'get', sid: 1, data: { gid: 1 } },
     { cmd: 'pr_canvas', op: 'get', sid: 1, data: { gid: 1 } },
     { cmd: 'qp', op: 'set', sid: 1, data: { preset: 3, gid: 1 } }
   ])
@@ -87,26 +87,20 @@ test('select all uses sid 255 for the mode 0 sequence', async () => {
   assert.deepEqual(run.sent.at(-1), { cmd: 'qp', op: 'set', sid: 255, data: { preset: 3, gid: 2 } })
 })
 
-test('the page gid is not required to be one of the group ids', async () => {
-  const run = host(50, replyFor(0, { 1: pvw, 2: pgm }))
+test('canvas mode uses the lowest group id, not the page gid or list order', async () => {
+  const higher = { code: 0, data: { gid: 4, canvasType: 2, fieldsValid: 1 } }
+  const lower = { code: 0, data: { gid: 2, canvasType: 1, fieldsValid: 1 } }
+  const run = host(50, replyFor(0, { 4: higher, 2: lower }, [4, 2]))
   await run.actions.string_quick_preset.callback({
-    options: { deviceId: 1, isSelectAll: false, preset: 3, gid: 5 }
+    options: { deviceId: 1, isSelectAll: false, preset: 3, gid: 9 }
   })
   assert.deepEqual(run.sent, [
-    { cmd: 'canvas_mode', op: 'get', sid: 1, data: { gid: 5 } },
     { cmd: 'pr_group', op: 'get', sid: 1, data: undefined },
-    { cmd: 'pr_canvas', op: 'get', sid: 1, data: { gid: 1 } },
+    { cmd: 'canvas_mode', op: 'get', sid: 1, data: { gid: 2 } },
+    { cmd: 'pr_canvas', op: 'get', sid: 1, data: { gid: 4 } },
     { cmd: 'pr_canvas', op: 'get', sid: 1, data: { gid: 2 } },
     { cmd: 'qp', op: 'set', sid: 1, data: { preset: 3, gid: 2 } }
   ])
-})
-
-test('a missing page gid sends nothing', async () => {
-  const run = host(50, replyFor(0, { 1: pvw, 2: pgm }))
-  await run.actions.string_quick_preset.callback({
-    options: { deviceId: 1, isSelectAll: false, preset: 3 }
-  })
-  assert.deepEqual(run.sent, [])
 })
 
 test('canvas mode and group failures stop before qp', async () => {
@@ -114,29 +108,29 @@ test('canvas mode and group failures stop before qp', async () => {
   await missing.actions.string_quick_preset.callback({
     options: { deviceId: 1, isSelectAll: false, preset: 3, gid: 1 }
   })
-  assert.deepEqual(missing.sent, [{ cmd: 'canvas_mode', op: 'get', sid: 1, data: { gid: 1 } }])
+  assert.deepEqual(missing.sent, [{ cmd: 'pr_group', op: 'get', sid: 1, data: undefined }])
 
   const invalid = host(50, (cmd) => {
+    if (cmd === 'pr_group') return { code: 0, data: { groupIds: [1, 2] } }
     if (cmd === 'canvas_mode') return { code: 0, data: { mode: 0, valid: 0, gid: 1 } }
     return undefined
   })
   await invalid.actions.string_quick_preset.callback({
     options: { deviceId: 1, isSelectAll: false, preset: 3, gid: 1 }
   })
-  assert.deepEqual(invalid.sent, [{ cmd: 'canvas_mode', op: 'get', sid: 1, data: { gid: 1 } }])
+  assert.deepEqual(invalid.sent, [
+    { cmd: 'pr_group', op: 'get', sid: 1, data: undefined },
+    { cmd: 'canvas_mode', op: 'get', sid: 1, data: { gid: 1 } }
+  ])
 
   const emptyGroups = host(50, (cmd) => {
-    if (cmd === 'canvas_mode') return { code: 0, data: { mode: 0, valid: 1, gid: 1 } }
     if (cmd === 'pr_group') return { code: 0, data: { groupIds: [] } }
     return undefined
   })
   await emptyGroups.actions.string_quick_preset.callback({
     options: { deviceId: 1, isSelectAll: false, preset: 3, gid: 1 }
   })
-  assert.deepEqual(emptyGroups.sent, [
-    { cmd: 'canvas_mode', op: 'get', sid: 1, data: { gid: 1 } },
-    { cmd: 'pr_group', op: 'get', sid: 1, data: undefined }
-  ])
+  assert.deepEqual(emptyGroups.sent, [{ cmd: 'pr_group', op: 'get', sid: 1, data: undefined }])
 })
 
 test('a bad first canvas is skipped when the next one is PGM', async () => {
@@ -170,8 +164,8 @@ test('the first of two PGMs is used and two PVWs send no qp', async () => {
     options: { deviceId: 1, isSelectAll: false, preset: 3, gid: 1 }
   })
   assert.deepEqual(twoPgm.sent, [
-    { cmd: 'canvas_mode', op: 'get', sid: 1, data: { gid: 1 } },
     { cmd: 'pr_group', op: 'get', sid: 1, data: undefined },
+    { cmd: 'canvas_mode', op: 'get', sid: 1, data: { gid: 1 } },
     { cmd: 'pr_canvas', op: 'get', sid: 1, data: { gid: 1 } },
     { cmd: 'qp', op: 'set', sid: 1, data: { preset: 3, gid: 1 } }
   ])
@@ -194,5 +188,5 @@ test('U9 Max still sends the page gid and keeps the old label', async () => {
   })
   assert.deepEqual(run.sent, [{ cmd: 'qp', op: 'set', sid: 1, data: { preset: 3, gid: 4 } }])
   assert.equal(run.actions.string_quick_preset.description, 'Switch to the specified preset.')
-  assert.equal(gidLabel(run.actions), 'Screen group ID (gid)')
+  assert.equal(gidOption(run.actions).label, 'Screen group ID (gid)')
 })

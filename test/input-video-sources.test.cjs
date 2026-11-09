@@ -3,11 +3,10 @@ const assert = require('node:assert/strict')
 const {
   boardsFromVinBoard,
   discoverInputVideoSources,
-  fpsToFps100,
   inputVideoSourceChoices,
-  sourcesFromPrVideo,
-  vsyncSrcSetSteps
+  sourcesFromPrVideo
 } = require('../dist/common/input-video-sources')
+const { fpsToFps100, vsyncSrcSetSteps } = require('../dist/actions/string-protocol/actions/canvas')
 
 const board = { slotCode: 16, boardKind: 0x18, boardIdx: 0 }
 
@@ -47,6 +46,13 @@ test('pr_video keeps the queried board index when the signal row omits it', () =
     ]
   )
   assert.deepEqual(sourcesFromPrVideo({ code: 0, data: { sources: [] } }, board), [])
+  assert.deepEqual(
+    sourcesFromPrVideo(
+      { code: 0, data: { sources: [{ videoType: 0x20, videoIdx: 1, boardSlot: 9, boardType: 1 }] } },
+      board
+    ),
+    []
+  )
 })
 
 test('discovery walks every board and skips a failed signal read', async () => {

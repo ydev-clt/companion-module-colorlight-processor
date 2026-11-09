@@ -143,4 +143,5 @@ test('V20 registers the five canvas actions and U9 does not', () => {
   )
   assert.equal(u9.includes('string_take'), false)
   assert.equal(u9.includes('string_low_gray_set'), false)
+  assert.equal(u9.includes('string_vsync_src_set'), true)
 })

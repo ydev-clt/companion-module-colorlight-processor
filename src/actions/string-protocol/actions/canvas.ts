@@ -2,13 +2,22 @@ import type { CompanionActionDefinition, CompanionActionDefinitions, DropdownCho
 import { logger } from '../../../common/log'
 import { isCmdOpSupported, type DeviceIdentity } from '../../../common/cmd-support'
 import { resolveDeviceModel } from '../../../common/device-models'
-import { inputVideoSourceChoices, type VsyncSourceChoice, vsyncSrcSetSteps } from '../../../common/input-video-sources'
+import { inputVideoSourceChoices, inputVideoSourceFromChoiceId } from '../../../common/input-video-sources'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
 import { deviceAndBroadcastFields, gidField, openCloseToggleField, sidFromOptions } from './_shared'
 import type { StringActionHost } from './_shared'
 
+type VsyncSourceChoice = 'internal' | 'input' | 'genlock'
+
 type Addressed = { deviceId: number; isSelectAll: boolean; gid?: number }
+
+/** `vsync_src` source values kept by the action. */
+export const VSYNC_SOURCE = {
+  INPUT: 0,
+  GENLOCK: 1,
+  INTERNAL: 2
+} as const
 
 /**
  * Input-signal rows from the last successful probe. An empty list stays empty
@@ -225,4 +234,66 @@ export function setupCanvasActions(host: StringActionHost): CompanionActionDefin
   }
 
   return actions as CompanionActionDefinitions
+}
+
+export interface VsyncSrcSetInput {
+  src: VsyncSourceChoice
+  /** Hertz shown in the button. Sent only for the internal source. */
+  fps?: number
+  /** Choice id of the selected input signal. */
+  inputSource?: string
+  /** Microseconds of phase. Sent as its own request after `src` when present. */
+  phaseUs?: number
+  gid?: number
+}
+
+/**
+ * Display hertz to the protocol's fps×100 integer. 59.94 becomes 5994.
+ * A non-finite or negative value cannot be sent.
+ */
+export function fpsToFps100(fps: number): number | undefined {
+  if (typeof fps !== 'number' || !Number.isFinite(fps) || fps < 0) return undefined
+  return Math.round(fps * 100)
+}
+
+/**
+ * Ordered `vsync_src` set bodies.
+ *
+ * The device applies one sub-item per request, so `src` is sent alone first.
+ * The matching detail follows in its own request: board fields when `src` is
+ * an input signal, `fps100` when it is internal. GenLock has no second body.
+ * `phaseUs` is its own sub-item and is appended only when a phase is given.
+ * Returns undefined when the chosen source has no usable value.
+ */
+export function vsyncSrcSetSteps(input: VsyncSrcSetInput): Record<string, unknown>[] | undefined {
+  const gid = typeof input.gid === 'number' ? { gid: input.gid } : {}
+  let steps: Record<string, unknown>[] | undefined
+  if (input.src === 'genlock') {
+    steps = [{ ...gid, src: VSYNC_SOURCE.GENLOCK }]
+  } else if (input.src === 'internal') {
+    const fps100 = fpsToFps100(input.fps ?? Number.NaN)
+    if (fps100 === undefined) return undefined
+    steps = [
+      { ...gid, src: VSYNC_SOURCE.INTERNAL },
+      { ...gid, fps100 }
+    ]
+  } else {
+    const source = inputVideoSourceFromChoiceId(input.inputSource ?? '')
+    if (!source) return undefined
+    steps = [
+      { ...gid, src: VSYNC_SOURCE.INPUT },
+      {
+        ...gid,
+        boardSlot: source.slotCode,
+        boardKind: source.boardKind,
+        boardIdx: source.boardIdx,
+        srcType: source.srcType,
+        srcIdx: source.srcIdx
+      }
+    ]
+  }
+  if (typeof input.phaseUs === 'number' && Number.isFinite(input.phaseUs)) {
+    steps.push({ ...gid, phaseUs: input.phaseUs })
+  }
+  return steps
 }

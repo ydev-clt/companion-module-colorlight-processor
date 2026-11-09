@@ -10,6 +10,7 @@ import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
 import { deviceAndBroadcastFields, gidField, sidFromOptions } from './_shared'
 import type { StringActionHost } from './_shared'
+import { parseCanvasMode, parseGroupIds, selectQuickPresetGid } from './quick-preset-target'
 
 /**
  * Layer management actions:
@@ -53,6 +54,54 @@ function videosrcSetData(input: {
   }
   if (typeof input.gid === 'number') data.gid = input.gid
   return data
+}
+
+/**
+ * Screen group for a V/VX layer signal, chosen the same way as quick preset.
+ * Canvas mode is read from the lowest group. Mode 0 selects the first valid
+ * PGM canvas; mode 1 selects the first valid PVW canvas. A missing group
+ * list, an unusable mode, or no matching canvas returns undefined.
+ */
+async function canvasTargetGid(conn: StringActionHost['conn'], sid: number): Promise<number | undefined> {
+  const groupResp = await conn.sendAndAwait(CMD.PR_GROUP, 'get', sid)
+  const groupIds = parseGroupIds(groupResp?.code === 0 ? groupResp.data : undefined)
+  if (!groupIds) {
+    logger.warn('Layer video source skipped: pr_group did not return group ids.')
+    return undefined
+  }
+  /** Lowest group carries canvas mode, independent of list order. */
+  const modeGid = Math.min(...groupIds)
+  const modeResp = await conn.sendAndAwait<{ gid: number }, { mode?: unknown; valid?: unknown }>(
+    CMD.CANVAS_MODE,
+    'get',
+    sid,
+    { gid: modeGid }
+  )
+  const mode = parseCanvasMode(modeResp?.code === 0 ? modeResp.data : undefined)
+  if (mode === undefined) {
+    logger.warn('Layer video source skipped: canvas_mode did not return mode 0 or 1.')
+    return undefined
+  }
+  for (const gid of groupIds) {
+    const canvasResp = await conn.sendAndAwait<
+      { gid: number },
+      { gid?: unknown; canvasType?: unknown; fieldsValid?: unknown }
+    >(CMD.PR_CANVAS, 'get', sid, { gid })
+    const canvas = canvasResp?.code === 0 ? canvasResp.data : undefined
+    // A failed read or a gid that does not match the request is not a candidate.
+    if (!canvas || canvas.gid !== gid) continue
+    const target = selectQuickPresetGid(mode, [
+      {
+        gid,
+        canvasType: typeof canvas.canvasType === 'number' ? canvas.canvasType : -1,
+        fieldsValid: typeof canvas.fieldsValid === 'number' ? canvas.fieldsValid : 0
+      }
+    ])
+    if (target === undefined) continue
+    return target
+  }
+  logger.warn(`Layer video source skipped: canvas mode ${mode} does not have a target canvas.`)
+  return undefined
 }
 
 export function setupLayerActions(host: StringActionHost): CompanionActionDefinitions {
@@ -281,9 +330,14 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
   }
 
   const inputChoices = inputSourceChoices(host)
+  const family = resolveDeviceModel(host.ctx.config.protocol, host.ctx.state.modelByte)?.family
+  /** V and VX choose the screen group from canvas mode, the same way quick preset does. */
+  const usesCanvasTarget = family === 'V' || family === 'VX'
   actions[ACTION_ID.VIDEOSRC_SET] = {
     name: 'Set Layer Video Source',
-    description: 'Switch the input signal bound to a layer.',
+    description: usesCanvasTarget
+      ? 'Switch the input signal bound to a layer. Canvas mode comes from the lowest screen group; the signal is sent to PGM or PVW.'
+      : 'Switch the input signal bound to a layer.',
     options: [
       ...deviceAndBroadcastFields(),
       {
@@ -302,7 +356,7 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
         choices: inputChoices,
         minChoicesForSearch: 8
       },
-      gidField()
+      ...(usesCanvasTarget ? [] : [gidField()])
     ],
     callback: async (event) => {
       const o = event.options as {
@@ -314,7 +368,8 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
       }
       const data = videosrcSetData({
         layer: o.layer,
-        gid: o.gid,
+        // V/VX ignore a leftover button gid and replace it with the canvas target.
+        gid: usesCanvasTarget ? undefined : o.gid,
         inputSource: o.inputSource,
         sources: host.ctx.state.inputVideoSources ?? []
       })
@@ -323,6 +378,11 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
         return
       }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
+      if (usesCanvasTarget) {
+        const gid = await canvasTargetGid(conn, sid)
+        if (gid === undefined) return
+        data.gid = gid
+      }
       await conn.sendOnly(CMD.VIDEOSRC, 'set', sid, data)
     }
   }

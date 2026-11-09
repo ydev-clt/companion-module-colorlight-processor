@@ -20,15 +20,6 @@ export interface InputBoardRef {
   boardIdx: number
 }
 
-/** `vsync_src` source values kept by the action. */
-export const VSYNC_SOURCE = {
-  INPUT: 0,
-  GENLOCK: 1,
-  INTERNAL: 2
-} as const
-
-export type VsyncSourceChoice = 'internal' | 'input' | 'genlock'
-
 const BOARD_LIST_KEYS = ['boards', 'boardList', 'vinBoards', 'items', 'list'] as const
 
 /**
@@ -100,9 +91,10 @@ export function boardsFromVinBoard(response: { code?: unknown; data?: unknown } 
 }
 
 /**
- * Signals on one board from `pr_video`. Slot, kind, and board index fall back
- * to the board that was queried, because the signal row repeats the slot and
- * does not carry the board index.
+ * Signals on one board from `pr_video`. Each row uses the protocol fields
+ * `slotCode`, `boardKind`, `srcType`, and `srcIdx`. A missing slot or kind
+ * falls back to the board that was queried. The row does not carry a board
+ * index, so that value always comes from the queried board.
  */
 export function sourcesFromPrVideo(
   response: { code?: unknown; data?: unknown } | undefined,
@@ -116,13 +108,13 @@ export function sourcesFromPrVideo(
   for (const item of rows) {
     const record = asRecord(item)
     if (!record) continue
-    const srcType = firstInt(record, ['srcType', 'videoType'])
-    const srcIdx = firstInt(record, ['srcIdx', 'videoIdx'])
+    const srcType = nonNegativeInt(record.srcType)
+    const srcIdx = nonNegativeInt(record.srcIdx)
     if (srcType === undefined || srcIdx === undefined) continue
     sources.push({
-      slotCode: firstInt(record, ['slotCode', 'boardSlot']) ?? board.slotCode,
-      boardKind: firstInt(record, ['boardKind', 'boardType']) ?? board.boardKind,
-      boardIdx: firstInt(record, ['boardIdx', 'boardIndex']) ?? board.boardIdx,
+      slotCode: nonNegativeInt(record.slotCode) ?? board.slotCode,
+      boardKind: nonNegativeInt(record.boardKind) ?? board.boardKind,
+      boardIdx: board.boardIdx,
       srcType,
       srcIdx
     })
@@ -172,65 +164,6 @@ export function inputVideoSourceChoices(
     choices.push({ id: inputVideoSourceChoiceId(source), label: `${name} ${index}` })
   }
   return choices
-}
-
-/**
- * Display hertz to the protocol's fps×100 integer. 59.94 becomes 5994.
- * A non-finite or negative value cannot be sent.
- */
-export function fpsToFps100(fps: number): number | undefined {
-  if (typeof fps !== 'number' || !Number.isFinite(fps) || fps < 0) return undefined
-  return Math.round(fps * 100)
-}
-
-export interface VsyncSrcSetInput {
-  src: VsyncSourceChoice
-  /** Hertz shown in the button. Sent only for the internal source. */
-  fps?: number
-  /** Choice id of the selected input signal. */
-  inputSource?: string
-  /** Microseconds of phase. Sent as its own request after `src` when present. */
-  phaseUs?: number
-  gid?: number
-}
-
-/**
- * Ordered `vsync_src` set bodies.
- *
- * The device applies one sub-item per request, so `src` is sent alone first.
- * The matching detail follows in its own request: board fields when `src` is
- * an input signal, `fps100` when it is internal. GenLock has no second body.
- * `phaseUs` is its own sub-item and is appended only when a phase is given.
- * Returns undefined when the chosen source has no usable value.
- */
-export function vsyncSrcSetSteps(input: VsyncSrcSetInput): Record<string, unknown>[] | undefined {
-  const gid = typeof input.gid === 'number' ? { gid: input.gid } : {}
-  let steps: Record<string, unknown>[] | undefined
-  if (input.src === 'genlock') {
-    steps = [{ ...gid, src: VSYNC_SOURCE.GENLOCK }]
-  } else if (input.src === 'internal') {
-    const fps100 = fpsToFps100(input.fps ?? Number.NaN)
-    if (fps100 === undefined) return undefined
-    steps = [{ ...gid, src: VSYNC_SOURCE.INTERNAL }, { ...gid, fps100 }]
-  } else {
-    const source = inputVideoSourceFromChoiceId(input.inputSource ?? '')
-    if (!source) return undefined
-    steps = [
-      { ...gid, src: VSYNC_SOURCE.INPUT },
-      {
-        ...gid,
-        boardSlot: source.slotCode,
-        boardKind: source.boardKind,
-        boardIdx: source.boardIdx,
-        srcType: source.srcType,
-        srcIdx: source.srcIdx
-      }
-    ]
-  }
-  if (typeof input.phaseUs === 'number' && Number.isFinite(input.phaseUs)) {
-    steps.push({ ...gid, phaseUs: input.phaseUs })
-  }
-  return steps
 }
 
 type ProbeGet = (cmd: string, data?: Record<string, number>) => Promise<{ code?: unknown; data?: unknown } | undefined>

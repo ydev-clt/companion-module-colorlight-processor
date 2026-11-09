@@ -28,7 +28,7 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
   actions[ACTION_ID.QUICK_PRESET] = {
     name: 'Switch Quick Preset',
     description: usesCanvasTarget
-      ? 'Switch to the specified preset. The gid reads canvas mode; the preset is sent to PGM or PVW.'
+      ? 'Switch to the specified preset. Canvas mode comes from the lowest screen group; the preset is sent to PGM or PVW.'
       : 'Switch to the specified preset.',
     options: [
       ...deviceAndBroadcastFields(),
@@ -40,7 +40,7 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
         max: 64,
         default: 1
       },
-      usesCanvasTarget ? gidField(1, 128, 'Canvas mode screen group (gid)') : gidField()
+      ...(usesCanvasTarget ? [] : [gidField()])
     ],
     callback: async (event) => {
       const o = event.options as { deviceId: number; isSelectAll: boolean; preset: number; gid?: number }
@@ -51,25 +51,22 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
         await conn.sendOnly(CMD.QP, 'set', sid, data)
         return
       }
-      if (typeof o.gid !== 'number' || !Number.isInteger(o.gid) || o.gid < 1) {
-        logger.warn('Quick preset skipped: page gid is not an integer of at least 1.')
-        return
-      }
-      const modeResp = await conn.sendAndAwait<{ gid: number }, { mode?: unknown; valid?: unknown }>(
-        CMD.CANVAS_MODE,
-        'get',
-        sid,
-        { gid: o.gid }
-      )
-      const mode = parseCanvasMode(modeResp?.code === 0 ? modeResp.data : undefined)
-      if (mode === undefined) {
-        logger.warn('Quick preset skipped: canvas_mode did not return mode 0 or 1.')
-        return
-      }
       const groupResp = await conn.sendAndAwait(CMD.PR_GROUP, 'get', sid)
       const groupIds = parseGroupIds(groupResp?.code === 0 ? groupResp.data : undefined)
       if (!groupIds) {
         logger.warn('Quick preset skipped: pr_group did not return group ids.')
+        return
+      }
+      const modeGid = Math.min(...groupIds)
+      const modeResp = await conn.sendAndAwait<{ gid: number }, { mode?: unknown; valid?: unknown }>(
+        CMD.CANVAS_MODE,
+        'get',
+        sid,
+        { gid: modeGid }
+      )
+      const mode = parseCanvasMode(modeResp?.code === 0 ? modeResp.data : undefined)
+      if (mode === undefined) {
+        logger.warn('Quick preset skipped: canvas_mode did not return mode 0 or 1.')
         return
       }
       for (const gid of groupIds) {
