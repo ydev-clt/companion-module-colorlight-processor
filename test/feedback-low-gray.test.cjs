@@ -2,6 +2,7 @@ const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { combineRgb } = require('@companion-module/base')
 const { setupLowGrayFeedback } = require('../dist/feedbacks/low-gray')
+const { setupVariables } = require('../dist/variables/index')
 
 const white = combineRgb(255, 255, 255)
 const amber = combineRgb(180, 120, 0)
@@ -52,4 +53,35 @@ test('low gray feedback reads screen group 2 and has no gid option', () => {
     assert.equal(off.bgcolor, 22)
     assert.equal(off.color, 2)
   }
+})
+
+function variableHost() {
+  const checks = []
+  const context = {
+    config: { protocol: 'B-Protocol' },
+    state: { modelByte: 50 },
+    checkFeedbacks: (id) => checks.push(id),
+    setVariableDefinitions() {},
+    setVariableValues() {}
+  }
+  const installed = setupVariables(context, () => ({ slots: [], groupListKnown: false }))
+  return { checks, setVariableValues: installed.setVariableValues }
+}
+
+test('writing sg_2_low_gray_enable refreshes only the low gray feedback', () => {
+  const lowGray = variableHost()
+  lowGray.setVariableValues({ sg_2_low_gray_enable: 1 })
+  assert.deepEqual(lowGray.checks, ['string_low_gray_feedback'])
+
+  const otherGroup = variableHost()
+  otherGroup.setVariableValues({ sg_1_low_gray_enable: 1 })
+  assert.deepEqual(otherGroup.checks, [])
+
+  const freeze = variableHost()
+  freeze.setVariableValues({ sg_1_freeze_enable: 1 })
+  assert.deepEqual(freeze.checks, ['string_freeze_feedback'])
+
+  const blackout = variableHost()
+  blackout.setVariableValues({ sg_2_blackout_enable: 1 })
+  assert.deepEqual(blackout.checks, ['string_blackout_feedback'])
 })
