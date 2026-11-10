@@ -23,8 +23,8 @@ function option(definition, id) {
   return definition.options.find((item) => item.id === id)
 }
 
-test('low gray feedback reads screen group 2 and has no gid option', () => {
-  const ctx = context({ sg_2_low_gray_enable: 1 })
+test('low gray feedback reads screen group 1 and has no gid option', () => {
+  const ctx = context({ sg_1_low_gray_enable: 1 })
   const definition = setupLowGrayFeedback(ctx)
 
   assert.equal(definition.options.some((item) => item.id === 'gid'), false)
@@ -34,11 +34,11 @@ test('low gray feedback reads screen group 2 and has no gid option', () => {
   assert.equal(option(definition, 'bg_').default, dim)
 
   const on = definition.callback({ options: { gid: 1, bg: 11, bg_: 22, fg: 1, fg_: 2 } })
-  assert.deepEqual(ctx.seen, ['sg_2_low_gray_enable'])
+  assert.deepEqual(ctx.seen, ['sg_1_low_gray_enable'])
   assert.equal(on.bgcolor, 11)
   assert.equal(on.color, 1)
 
-  const onText = setupLowGrayFeedback(context({ sg_2_low_gray_enable: '1' })).callback({
+  const onText = setupLowGrayFeedback(context({ sg_1_low_gray_enable: '1' })).callback({
     options: { bg: 11, bg_: 22, fg: 1, fg_: 2 }
   })
   assert.equal(onText.bgcolor, 11)
@@ -46,7 +46,7 @@ test('low gray feedback reads screen group 2 and has no gid option', () => {
 
   for (const value of [0, '0', undefined]) {
     const store = {}
-    if (value !== undefined) store.sg_2_low_gray_enable = value
+    if (value !== undefined) store.sg_1_low_gray_enable = value
     const off = setupLowGrayFeedback(context(store)).callback({
       options: { bg: 11, bg_: 22, fg: 1, fg_: 2 }
     })
@@ -68,13 +68,13 @@ function variableHost() {
   return { checks, setVariableValues: installed.setVariableValues }
 }
 
-test('writing sg_2_low_gray_enable refreshes only the low gray feedback', () => {
+test('writing sg_1_low_gray_enable refreshes only the low gray feedback', () => {
   const lowGray = variableHost()
-  lowGray.setVariableValues({ sg_2_low_gray_enable: 1 })
+  lowGray.setVariableValues({ sg_1_low_gray_enable: 1 })
   assert.deepEqual(lowGray.checks, ['string_low_gray_feedback'])
 
   const otherGroup = variableHost()
-  otherGroup.setVariableValues({ sg_1_low_gray_enable: 1 })
+  otherGroup.setVariableValues({ sg_2_low_gray_enable: 1 })
   assert.deepEqual(otherGroup.checks, [])
 
   const freeze = variableHost()

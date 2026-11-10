@@ -36,26 +36,28 @@ test('dropping a gid removes that gid and keeps the list variable', () => {
   assert.equal(defs.screen_group_count !== undefined, true)
 })
 
-test('V10 publishes gid 1 freeze and gid 2 canvas variables', () => {
+test('V10 publishes every screen-group variable on gid 1', () => {
   const defs = listPublishedVariables(v10, buildScreenGroupPlan(v10, [1, 2]), true)
   assert.equal(defs.sg_1_freeze_enable !== undefined, true)
-  assert.equal(defs.sg_2_brightness !== undefined, true)
-  assert.equal(defs.sg_2_canvas_mode.name.includes('canvas_mode (0: normal, 1: switcher)'), true)
-  assert.equal(defs.sg_2_canvas_switch_mode.name.includes('canvas_switch_mode (0: copy, 1: swap)'), true)
-  assert.equal(defs.sg_2_output_frame_rate.name.includes('output_frame_rate (Hz)'), true)
-  assert.equal(defs.sg_2_low_gray_enable.name.includes('low_gray_enable (0: off, 1: on)'), true)
+  assert.equal(defs.sg_1_brightness !== undefined, true)
+  assert.equal(defs.sg_1_canvas_mode.name.includes('canvas_mode (0: normal, 1: switcher)'), true)
+  assert.equal(defs.sg_1_canvas_switch_mode.name.includes('canvas_switch_mode (0: copy, 1: swap)'), true)
+  assert.equal(defs.sg_1_output_frame_rate.name.includes('output_frame_rate (Hz)'), true)
+  assert.equal(defs.sg_1_low_gray_enable.name.includes('low_gray_enable (0: off, 1: on)'), true)
   assert.equal(
     defs.sg_1_vsync_src.name.includes('vsync_src (0: input board/signal, 1: Genlock, 2: internal, 3: auto lock, 4: ODCK)'),
     true
   )
+  assert.equal(defs.sg_2_brightness, undefined)
+  assert.equal(defs.sg_2_canvas_mode, undefined)
+  assert.equal(defs.sg_2_canvas_switch_mode, undefined)
+  assert.equal(defs.sg_2_output_frame_rate, undefined)
+  assert.equal(defs.sg_2_low_gray_enable, undefined)
   assert.equal(defs.sg_2_vsync_src, undefined)
+  assert.equal(defs.sg_2_freeze_enable, undefined)
   assert.equal(defs.sg_1_vsync_source, undefined)
   assert.equal(defs.sg_1_vsync_current_source, undefined)
   assert.equal(defs.screen_group_count !== undefined, true)
-  assert.equal(defs.sg_1_brightness, undefined)
-  assert.equal(defs.sg_1_canvas_mode, undefined)
-  assert.equal(defs.sg_1_low_gray_enable, undefined)
-  assert.equal(defs.sg_2_freeze_enable, undefined)
   assert.equal(defs.sg_1_layer, undefined)
 })
 

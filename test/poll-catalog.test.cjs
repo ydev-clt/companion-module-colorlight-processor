@@ -80,22 +80,22 @@ test('port and brightness projection', () => {
   assert.deepEqual(projectPollData('bright', { brt: 5000 }), { brightness: 50 })
 })
 
-test('V10 polls gid 1 display commands and gid 2 canvas commands', () => {
+test('V10 polls every screen-group command on gid 1', () => {
   const v10 = { protocol: 'B-Protocol', modelByte: 50 }
   const requests = selectPollRequests(v10, buildScreenGroupPlan(v10, [1, 2]))
   assert.deepEqual(
     requests.map((request) => `${request.cmd}:${request.gid}`),
     [
-      'freeze:1', 'blackout:1', 'testmode:1', 'vsync_src:1',
-      'bright:2', 'colortemp:2', 'c_depth:2', 'ct_r:2', 'ct_g:2', 'ct_b:2',
-      'low_gray:2', 'canvas_mode:2', 'canvas_switch_mode:2', 'out_fps:2'
+      'bright:1', 'colortemp:1', 'freeze:1', 'blackout:1', 'testmode:1',
+      'c_depth:1', 'ct_r:1', 'ct_g:1', 'ct_b:1',
+      'low_gray:1', 'canvas_mode:1', 'canvas_switch_mode:1', 'out_fps:1', 'vsync_src:1'
     ]
   )
   assert.deepEqual(requests.find((request) => request.cmd === 'canvas_mode'), {
     cmd: 'canvas_mode',
     sid: 1,
-    gid: 2,
-    data: { gid: 2 }
+    gid: 1,
+    data: { gid: 1 }
   })
 })
 

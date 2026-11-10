@@ -1,7 +1,7 @@
 import type { DeviceIdentity } from '../common/cmd-support'
 import { isCmdOpSupported } from '../common/cmd-support'
 import { POLL_CATALOG, projectPollData } from './initial'
-import type { ScreenGroupSlot } from './screen-groups'
+import { isVvxDevice, type ScreenGroupSlot } from './screen-groups'
 import { publishVariableId } from './publish'
 
 export interface PushNotice {
@@ -13,7 +13,9 @@ export interface PushNotice {
 /**
  * Map one push notice onto published Companion variable ids.
  * A missing code counts as success. A numeric non-zero code writes nothing.
- * A screen-group leaf is written only when `(cmd, gid)` is already in `slots`.
+ * A screen-group leaf is written only when the command is already in `slots`.
+ * Other families also require the payload gid to match that slot.
+ * Resolved V and VX ignore the payload gid and write the planned slot, which is screen group 1.
  * This does not add a gid; the caller appends one first when the push qualifies.
  * `pr_group` is reserved, so it returns `{}` and the caller writes `screen_group_count`.
  */
@@ -45,15 +47,29 @@ function projectPushData(
     }
     return out
   }
-  const gid = screenGroupId(data)
-  // Unpublished gid writes nothing. On V/VX a brightness push with no gid
-  // resolves to group 1 and therefore does not match.
-  if (!slots.some((slot) => slot.cmd === cmd && slot.gid === gid)) return {}
+  const slot = slotForPush(device, cmd, data, slots)
+  if (!slot) return {}
   const out: Record<string, number | string | object> = {}
   for (const [leaf, value] of Object.entries(leaves)) {
-    out[publishVariableId('screen-group', leaf, gid)] = value
+    out[publishVariableId('screen-group', leaf, slot.gid)] = value
   }
   return out
+}
+
+/**
+ * Planned slot this push updates.
+ * V and VX keep a single slot per command, so any payload gid writes that slot.
+ * Other families write nothing unless `(cmd, gid)` is planned.
+ */
+function slotForPush(
+  device: DeviceIdentity,
+  cmd: string,
+  data: unknown,
+  slots: readonly ScreenGroupSlot[]
+): ScreenGroupSlot | undefined {
+  if (isVvxDevice(device)) return slots.find((slot) => slot.cmd === cmd)
+  const gid = screenGroupId(data)
+  return slots.find((slot) => slot.cmd === cmd && slot.gid === gid)
 }
 
 /** Missing body or a missing, non-numeric, or non-finite `gid` is group 1. */

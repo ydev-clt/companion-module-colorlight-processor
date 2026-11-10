@@ -5,20 +5,24 @@ import { POLL_CATALOG } from './initial/catalog'
 
 /**
  * One `(cmd, gid)` plan shared by variable definitions, the initial poll,
- * and push writes. Definitions, gets, and writes all follow this list
- * instead of assuming screen group 1.
+ * and push writes. Definitions, gets, and writes all follow this list.
+ * Resolved V and VX devices publish every command in the list once, on gid 1.
  */
 export interface ScreenGroupSlot {
   cmd: string
   gid: number
 }
 
-/** V/VX screen group 1. Video sync is read and written on this group. */
-const V_GID_1 = ['freeze', 'blackout', 'testmode', 'vsync_src'] as const
-/** V/VX screen group 2. Brightness and canvas commands live here, not on group 1. */
-const V_GID_2 = [
+/**
+ * Screen-group commands a resolved V or VX device publishes.
+ * Membership decides which commands enter the plan. Every slot uses gid 1.
+ */
+const V_VX_SCREEN_COMMANDS = [
   'bright',
   'colortemp',
+  'freeze',
+  'blackout',
+  'testmode',
   'c_depth',
   'ct_r',
   'ct_g',
@@ -26,7 +30,8 @@ const V_GID_2 = [
   'low_gray',
   'canvas_mode',
   'canvas_switch_mode',
-  'out_fps'
+  'out_fps',
+  'vsync_src'
 ] as const
 
 /**
@@ -48,7 +53,7 @@ export function groupIdsFromPrGroup(response: { code?: unknown; data?: unknown }
  */
 export function managedGroupIds(device: DeviceIdentity, parsedIds: readonly number[]): number[] {
   const ids = distinctGroupIds(parsedIds)
-  if (!isVvx(device)) return ids
+  if (!isVvxDevice(device)) return ids
   return ids.filter((gid) => gid === 1 || gid === 2)
 }
 
@@ -64,8 +69,9 @@ export function screenGroupCountValue(ids: readonly number[]): { count: number; 
 /**
  * Gid a non-`pr_group` push may append, or `undefined` when it must not.
  * `currentIds === null` means no list exists yet and is treated as empty.
- * The command has to appear in a one-gid plan, so on V/VX brightness cannot
- * create group 1, freeze cannot create group 2, and group 3 is never created.
+ * Resolved V and VX return `undefined`: their variables stay on screen group 1,
+ * and `screen_group_count` changes only when `pr_group` replaces the list.
+ * Other families require the command to appear on that gid in a one-gid plan.
  */
 export function pushedGroupToAdd(
   device: DeviceIdentity,
@@ -73,6 +79,7 @@ export function pushedGroupToAdd(
   data: unknown,
   currentIds: readonly number[] | null
 ): number | undefined {
+  if (isVvxDevice(device)) return undefined
   const gid = gidFromPush(data)
   if (gid === undefined) return undefined
   if ((currentIds ?? []).includes(gid)) return undefined
@@ -83,22 +90,20 @@ export function pushedGroupToAdd(
 
 /**
  * Slots in gid-major order: managed gids in list order, and within a gid the
- * initial screen-group commands in catalog order. V/VX slots are the
- * intersection of that catalog and the gid allowlist. A command whose get
- * side this device does not support is left out.
+ * initial screen-group commands in catalog order. A command whose get side
+ * this device does not support is left out.
+ * Resolved V and VX emit one gid-1 slot per supported command in
+ * {@link V_VX_SCREEN_COMMANDS} when the managed list contains 1 or 2.
  */
 export function buildScreenGroupPlan(device: DeviceIdentity, groupIds: readonly number[]): ScreenGroupSlot[] {
   const ids = managedGroupIds(device, groupIds)
   const commands = POLL_CATALOG.filter((entry) => entry.phase === 'initial' && entry.scope === 'screen-group').map(
     (entry) => entry.cmd
   )
+  if (isVvxDevice(device)) return vvxScreenGroupPlan(ids, commands, device)
   const slots: ScreenGroupSlot[] = []
   for (const gid of ids) {
-    // managedGroupIds already dropped every V/VX gid other than 1 and 2,
-    // so the else branch is group 2.
-    const allow = isVvx(device) ? (gid === 1 ? V_GID_1 : V_GID_2) : undefined
     for (const cmd of commands) {
-      if (allow !== undefined && !allow.some((item) => item === cmd)) continue
       if (!isCmdOpSupported(cmd, 'get', device)) continue
       slots.push({ cmd, gid })
     }
@@ -106,8 +111,33 @@ export function buildScreenGroupPlan(device: DeviceIdentity, groupIds: readonly 
   return slots
 }
 
-/** True only for a resolved family of `V` or `VX`. */
-function isVvx(device: DeviceIdentity): boolean {
+/**
+ * One gid-1 slot for each V/VX screen command whose get this device supports.
+ * An empty result means the managed list has neither screen group 1 nor 2.
+ * @param ids Managed gids, already limited to 1 and 2 for V/VX.
+ * @param commands Initial screen-group commands in catalog order.
+ */
+function vvxScreenGroupPlan(
+  ids: readonly number[],
+  commands: readonly string[],
+  device: DeviceIdentity
+): ScreenGroupSlot[] {
+  if (!ids.some((gid) => gid === 1 || gid === 2)) return []
+  const allow = new Set<string>(V_VX_SCREEN_COMMANDS)
+  const slots: ScreenGroupSlot[] = []
+  for (const cmd of commands) {
+    if (!allow.has(cmd)) continue
+    if (!isCmdOpSupported(cmd, 'get', device)) continue
+    slots.push({ cmd, gid: 1 })
+  }
+  return slots
+}
+
+/**
+ * True only for a resolved family of `V` or `VX`.
+ * An unresolved model is not V/VX and keeps one variable set per gid.
+ */
+export function isVvxDevice(device: DeviceIdentity): boolean {
   const family = resolveDeviceModel(device.protocol, device.modelByte)?.family
   return family === 'V' || family === 'VX'
 }

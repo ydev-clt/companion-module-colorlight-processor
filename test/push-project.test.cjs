@@ -58,7 +58,10 @@ test('vsync_src on V writes src only for the published screen group', () => {
     { sg_1_vsync_src: 0 }
   )
   assert.deepEqual(valuesFromPush({ cmd: 'vsync_src', code: 0, data: { gid: 1 } }, v10, vBoth), {})
-  assert.deepEqual(valuesFromPush({ cmd: 'vsync_src', code: 0, data: { gid: 2, src: 1 } }, v10, vBoth), {})
+  assert.deepEqual(
+    valuesFromPush({ cmd: 'vsync_src', code: 0, data: { gid: 2, src: 1 } }, v10, vBoth),
+    { sg_1_vsync_src: 1 }
+  )
 })
 
 test('reserved, unknown, unsupported, and failed pushes write nothing', () => {
@@ -77,18 +80,35 @@ test('reserved, unknown, unsupported, and failed pushes write nothing', () => {
   )
 })
 
-test('V brightness is written only for gid 2 and freeze only for gid 1', () => {
+test('V brightness and freeze land on screen group 1 for any gid', () => {
   assert.deepEqual(
     valuesFromPush({ cmd: 'bright', code: 0, data: { brt: 8000, gid: 2 } }, v10, vBoth),
-    { sg_2_brightness: 80 }
+    { sg_1_brightness: 80 }
   )
-  assert.deepEqual(valuesFromPush({ cmd: 'bright', code: 0, data: { brt: 8000, gid: 1 } }, v10, vBoth), {})
-  assert.deepEqual(valuesFromPush({ cmd: 'bright', code: 0, data: { brt: 8000 } }, v10, vBoth), {})
+  assert.deepEqual(
+    valuesFromPush({ cmd: 'bright', code: 0, data: { brt: 8000, gid: 1 } }, v10, vBoth),
+    { sg_1_brightness: 80 }
+  )
+  assert.deepEqual(
+    valuesFromPush({ cmd: 'bright', code: 0, data: { brt: 8000 } }, v10, vBoth),
+    { sg_1_brightness: 80 }
+  )
   assert.deepEqual(
     valuesFromPush({ cmd: 'freeze', code: 0, data: { en: 1, gid: 1 } }, v10, vBoth),
     { sg_1_freeze_enable: 1 }
   )
-  assert.deepEqual(valuesFromPush({ cmd: 'freeze', code: 0, data: { en: 1, gid: 2 } }, v10, vBoth), {})
+  assert.deepEqual(
+    valuesFromPush({ cmd: 'freeze', code: 0, data: { en: 1, gid: 2 } }, v10, vBoth),
+    { sg_1_freeze_enable: 1 }
+  )
+  assert.deepEqual(
+    valuesFromPush({ cmd: 'low_gray', code: 0, data: { en: 1, gid: 2 } }, v10, vBoth),
+    { sg_1_low_gray_enable: 1 }
+  )
+  assert.deepEqual(
+    valuesFromPush({ cmd: 'bright', code: 0, data: { brt: 8000, gid: 2 } }, v10, []),
+    {}
+  )
 })
 
 test('a published second U9 group accepts brightness', () => {

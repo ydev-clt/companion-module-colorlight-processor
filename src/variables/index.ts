@@ -23,7 +23,7 @@ import { publishVariableId } from './publish'
 
 const FREEZE_ENABLE_KEY = /^sg_\d+_freeze_enable$/
 const BLACKOUT_ENABLE_KEY = /^sg_\d+_blackout_enable$/
-const LOW_GRAY_ENABLE_KEY = publishVariableId('screen-group', 'low_gray_enable', 2)
+const LOW_GRAY_ENABLE_KEY = publishVariableId('screen-group', 'low_gray_enable', 1)
 
 /**
  * Build the published variable-definition map for a device and screen-group
@@ -115,7 +115,7 @@ export function setupVariables(
     const keys = Object.keys(values)
     // Freeze, blackout, and low gray feedbacks read these variables. Refresh the
     // button style when a poll or get writes the enable flag. Low gray is only
-    // published for screen group 2, so the key is exact.
+    // published for screen group 1, so the key is exact.
     if (keys.some((key) => FREEZE_ENABLE_KEY.test(key))) {
       context.checkFeedbacks(FEEDBACK_ID.FREEZE_SCREEN)
     }

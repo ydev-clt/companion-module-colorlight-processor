@@ -35,9 +35,12 @@ test('pushedGroupToAdd only returns a missing eligible gid', () => {
   assert.equal(pushedGroupToAdd(u9, 'bright', { gid: 1 }, [1]), undefined)
   assert.equal(pushedGroupToAdd(u9, 'bright', {}, null), 1)
   assert.equal(pushedGroupToAdd(u9, 'layer', { gid: 4 }, [1]), undefined)
-  assert.equal(pushedGroupToAdd(v10, 'freeze', { gid: 1 }, [2]), 1)
+  assert.equal(pushedGroupToAdd(v10, 'freeze', { gid: 1 }, [2]), undefined)
+  assert.equal(pushedGroupToAdd(v10, 'bright', { gid: 2 }, []), undefined)
+  assert.equal(pushedGroupToAdd(v10, 'bright', { gid: 2 }, null), undefined)
   assert.equal(pushedGroupToAdd(v10, 'bright', { gid: 1 }, [2]), undefined)
   assert.equal(pushedGroupToAdd(v10, 'freeze', { gid: 2 }, [1]), undefined)
+  assert.equal(pushedGroupToAdd(vx20, 'freeze', { gid: 1 }, null), undefined)
   assert.equal(pushedGroupToAdd(v10, 'bright', { gid: 3 }, [1, 2]), undefined)
   assert.equal(pushedGroupToAdd(u9, 'bright', { gid: 1.5 }, [1]), undefined)
 })
@@ -60,26 +63,16 @@ test('buildScreenGroupPlan repeats the current U9 screen commands per gid', () =
   assert.equal(buildScreenGroupPlan(u9, [1, 1]).length, one.length)
 })
 
-test('buildScreenGroupPlan splits V and VX commands by gid', () => {
+test('buildScreenGroupPlan publishes every V and VX command once on gid 1', () => {
   const expected = [
-    'freeze:1', 'blackout:1', 'testmode:1', 'vsync_src:1',
-    'bright:2', 'colortemp:2', 'c_depth:2', 'ct_r:2', 'ct_g:2', 'ct_b:2',
-    'low_gray:2', 'canvas_mode:2', 'canvas_switch_mode:2', 'out_fps:2'
+    'bright:1', 'colortemp:1', 'freeze:1', 'blackout:1', 'testmode:1',
+    'c_depth:1', 'ct_r:1', 'ct_g:1', 'ct_b:1',
+    'low_gray:1', 'canvas_mode:1', 'canvas_switch_mode:1', 'out_fps:1', 'vsync_src:1'
   ]
-  assert.deepEqual(buildScreenGroupPlan(v10, [1, 2]).map((slot) => `${slot.cmd}:${slot.gid}`), expected)
+  for (const ids of [[1, 2], [2, 1], [1], [2], [1, 2, 3]]) {
+    assert.deepEqual(buildScreenGroupPlan(v10, ids).map((slot) => `${slot.cmd}:${slot.gid}`), expected)
+  }
   assert.deepEqual(buildScreenGroupPlan(vx20, [1, 2]).map((slot) => `${slot.cmd}:${slot.gid}`), expected)
-  assert.deepEqual(buildScreenGroupPlan(v10, [2, 1]).map((slot) => `${slot.cmd}:${slot.gid}`), [
-    ...expected.filter((item) => item.endsWith(':2')),
-    ...expected.filter((item) => item.endsWith(':1'))
-  ])
-  assert.deepEqual(buildScreenGroupPlan(v10, [1]).map((slot) => slot.cmd), [
-    'freeze',
-    'blackout',
-    'testmode',
-    'vsync_src'
-  ])
-  assert.deepEqual(buildScreenGroupPlan(v10, [2]).map((slot) => `${slot.cmd}:${slot.gid}`), expected.filter((item) => item.endsWith(':2')))
-  assert.deepEqual(buildScreenGroupPlan(v10, [1, 2, 3]).map((slot) => `${slot.cmd}:${slot.gid}`), expected)
   assert.deepEqual(buildScreenGroupPlan(v10, [3]), [])
   assert.deepEqual(buildScreenGroupPlan(v10, []), [])
   for (const cmd of ['bg_box', 'grp_hue', 'grp_contrast', 'grp_brtcomp', 'layer', 'pr_layer', 'pic_adj', 'pr_canvas']) {

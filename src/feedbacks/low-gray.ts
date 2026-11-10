@@ -3,12 +3,12 @@ import { combineRgb } from '@companion-module/base'
 import type { CltProcessorType } from '../common/types'
 import { publishVariableId } from '../variables/publish'
 
-/** V/VX publishes low_gray on screen group 2 only. */
-const LOW_GRAY_SCREEN_GROUP = 2
+/** V/VX publishes low_gray on screen group 1 with the other screen variables. */
+const LOW_GRAY_SCREEN_GROUP = 1
 
 /**
  * Low gray feedback.
- * Reads sg_2_low_gray_enable and returns the on colors for 1 or '1'.
+ * Reads sg_1_low_gray_enable and returns the on colors for 1 or '1'.
  */
 export function setupLowGrayFeedback(context: CltProcessorType): CompanionAdvancedFeedbackDefinition {
   const ColorWhite = combineRgb(255, 255, 255)
