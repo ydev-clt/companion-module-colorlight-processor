@@ -1,45 +1,29 @@
 import type { CompanionAdvancedFeedbackDefinition } from '@companion-module/base'
 import { combineRgb } from '@companion-module/base'
 import type { CltProcessorType } from '../common/types'
-import { publishVariableId } from '../variables/publish'
-
-/** V/VX publishes low_gray on screen group 1 with the other screen variables. */
-const LOW_GRAY_SCREEN_GROUP = 1
+import { enableButtonStyle, readScreenGroupValue, screenGroupField } from './screen-group'
 
 /**
  * Low gray feedback.
- * Reads sg_1_low_gray_enable and returns the on colors for 1 or '1'.
+ * Reads sg_<gid>_low_gray_enable and returns the on colors for 1 or '1'.
  */
 export function setupLowGrayFeedback(context: CltProcessorType): CompanionAdvancedFeedbackDefinition {
   const ColorWhite = combineRgb(255, 255, 255)
-  const ColorAmber = combineRgb(180, 120, 0)
+  const ColorBlack = combineRgb(0, 0, 0)
   const ColorDim = combineRgb(70, 70, 70)
 
   return {
     type: 'advanced',
-    name: 'Low Gray Status',
-    description: 'If low gray status changes, change the style of the button',
+    name: 'Low-Brightness High-Gray Status',
+    description: 'If low-brightness high-gray status changes, change the style of the button',
     options: [
-      { type: 'colorpicker', label: 'Foreground color (Low gray)', id: 'fg', default: ColorWhite },
-      { type: 'colorpicker', label: 'Background color (Low gray)', id: 'bg', default: ColorAmber },
-      { type: 'colorpicker', label: 'Foreground color (Normal)', id: 'fg_', default: ColorWhite },
-      { type: 'colorpicker', label: 'Background color (Normal)', id: 'bg_', default: ColorDim }
+      { type: 'colorpicker', label: 'Foreground color (enable)', id: 'fg', default: ColorWhite },
+      { type: 'colorpicker', label: 'Background color (enable)', id: 'bg', default: ColorDim },
+      { type: 'colorpicker', label: 'Foreground color (disable)', id: 'fg_', default: ColorWhite },
+      { type: 'colorpicker', label: 'Background color (disable)', id: 'bg_', default: ColorBlack },
+      screenGroupField()
     ],
-    callback: (feedback) => {
-      const enabled = context.getVariableValue(
-        publishVariableId('screen-group', 'low_gray_enable', LOW_GRAY_SCREEN_GROUP)
-      )
-      // A poll writes a number. Companion can surface the same variable as a string.
-      if (enabled === 1 || enabled === '1') {
-        return {
-          bgcolor: feedback.options.bg as number,
-          color: feedback.options.fg as number
-        }
-      }
-      return {
-        bgcolor: feedback.options.bg_ as number,
-        color: feedback.options.fg_ as number
-      }
-    }
+    callback: (feedback) =>
+      enableButtonStyle(readScreenGroupValue(context, 'low_gray_enable', feedback.options.gid), feedback.options)
   }
 }

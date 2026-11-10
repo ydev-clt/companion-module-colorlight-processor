@@ -80,8 +80,8 @@ export function setupCanvasActions(host: StringActionHost): CompanionActionDefin
   const actions: Record<string, CompanionActionDefinition> = {}
 
   actions[ACTION_ID.LOW_GRAY_SET] = {
-    name: 'Set Low Gray',
-    description: 'Turn low-brightness high-gray on, off, or toggle it.',
+    name: 'Set Low-Brightness High-Gray',
+    description: 'Turn low-brightness high-gray enable, disable, or toggle it.',
     options: [...deviceAndBroadcastFields(), openCloseToggleField(1), gidField()],
     callback: async (event) => {
       const o = event.options as Addressed & { enableStatus: number }

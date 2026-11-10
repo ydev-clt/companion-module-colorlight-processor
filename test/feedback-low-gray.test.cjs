@@ -5,8 +5,8 @@ const { setupLowGrayFeedback } = require('../dist/feedbacks/low-gray')
 const { setupVariables } = require('../dist/variables/index')
 
 const white = combineRgb(255, 255, 255)
-const amber = combineRgb(180, 120, 0)
 const dim = combineRgb(70, 70, 70)
+const black = combineRgb(0, 0, 0)
 
 function context(store) {
   const seen = []
@@ -23,32 +23,39 @@ function option(definition, id) {
   return definition.options.find((item) => item.id === id)
 }
 
-test('low gray feedback reads screen group 1 and has no gid option', () => {
-  const ctx = context({ sg_1_low_gray_enable: 1 })
+test('low gray feedback reads the selected screen group and falls back to 1', () => {
+  const ctx = context({ sg_1_low_gray_enable: 1, sg_2_low_gray_enable: 1 })
   const definition = setupLowGrayFeedback(ctx)
+  const gid = option(definition, 'gid')
 
-  assert.equal(definition.options.some((item) => item.id === 'gid'), false)
+  assert.equal(gid.type, 'number')
+  assert.equal(gid.label, 'Screen group ID (gid)')
+  assert.equal(gid.min, 1)
+  assert.equal(gid.max, 128)
+  assert.equal(gid.default, 1)
   assert.equal(option(definition, 'fg').default, white)
-  assert.equal(option(definition, 'bg').default, amber)
+  assert.equal(option(definition, 'bg').default, dim)
   assert.equal(option(definition, 'fg_').default, white)
-  assert.equal(option(definition, 'bg_').default, dim)
+  assert.equal(option(definition, 'bg_').default, black)
 
-  const on = definition.callback({ options: { gid: 1, bg: 11, bg_: 22, fg: 1, fg_: 2 } })
-  assert.deepEqual(ctx.seen, ['sg_1_low_gray_enable'])
+  const on = definition.callback({ options: { gid: 2, bg: 11, bg_: 22, fg: 1, fg_: 2 } })
+  assert.deepEqual(ctx.seen, ['sg_2_low_gray_enable'])
   assert.equal(on.bgcolor, 11)
   assert.equal(on.color, 1)
 
-  const onText = setupLowGrayFeedback(context({ sg_1_low_gray_enable: '1' })).callback({
-    options: { bg: 11, bg_: 22, fg: 1, fg_: 2 }
+  const fallback = context({ sg_1_low_gray_enable: '1' })
+  const onText = setupLowGrayFeedback(fallback).callback({
+    options: { gid: 0, bg: 11, bg_: 22, fg: 1, fg_: 2 }
   })
+  assert.deepEqual(fallback.seen, ['sg_1_low_gray_enable'])
   assert.equal(onText.bgcolor, 11)
   assert.equal(onText.color, 1)
 
   for (const value of [0, '0', undefined]) {
     const store = {}
-    if (value !== undefined) store.sg_1_low_gray_enable = value
+    if (value !== undefined) store.sg_2_low_gray_enable = value
     const off = setupLowGrayFeedback(context(store)).callback({
-      options: { bg: 11, bg_: 22, fg: 1, fg_: 2 }
+      options: { gid: 2, bg: 11, bg_: 22, fg: 1, fg_: 2 }
     })
     assert.equal(off.bgcolor, 22)
     assert.equal(off.color, 2)
@@ -68,14 +75,14 @@ function variableHost() {
   return { checks, setVariableValues: installed.setVariableValues }
 }
 
-test('writing sg_1_low_gray_enable refreshes only the low gray feedback', () => {
+test('writing any screen group low_gray_enable refreshes only the low gray feedback', () => {
   const lowGray = variableHost()
   lowGray.setVariableValues({ sg_1_low_gray_enable: 1 })
   assert.deepEqual(lowGray.checks, ['string_low_gray_feedback'])
 
   const otherGroup = variableHost()
   otherGroup.setVariableValues({ sg_2_low_gray_enable: 1 })
-  assert.deepEqual(otherGroup.checks, [])
+  assert.deepEqual(otherGroup.checks, ['string_low_gray_feedback'])
 
   const freeze = variableHost()
   freeze.setVariableValues({ sg_1_freeze_enable: 1 })

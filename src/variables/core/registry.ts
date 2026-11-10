@@ -556,7 +556,7 @@ const CMD_DISPLAY: Record<string, CmdDisplay> = {
   },
   osd: { name: 'OSD', description: 'osd_enable (0: off, 1: on)' },
   low_pwr: { name: 'Low Power', description: 'low_pwr_enable (0: off, 1: on)' },
-  low_gray: { name: 'Low Gray', description: 'low_gray_enable (0: off, 1: on)' },
+  low_gray: { name: 'Low-Brightness High-Gray', description: 'low_gray_enable (0: off, 1: on)' },
   canvas_mode: { name: 'Canvas Mode', description: 'canvas_mode (0: normal, 1: switcher)' },
   canvas_switch_mode: {
     name: 'Canvas Switch Mode',

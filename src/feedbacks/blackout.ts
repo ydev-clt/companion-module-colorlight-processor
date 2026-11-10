@@ -1,15 +1,7 @@
 import type { CompanionAdvancedFeedbackDefinition } from '@companion-module/base'
 import { combineRgb } from '@companion-module/base'
 import type { CltProcessorType } from '../common/types'
-import { publishVariableId } from '../variables/publish'
-
-/** Companion may return the gid option as a non-integer. Fall back to screen group 1. */
-function screenGroupId(value: unknown): number {
-  if (typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 128) {
-    return value
-  }
-  return 1
-}
+import { enableButtonStyle, readScreenGroupValue, screenGroupField } from './screen-group'
 
 /**
  * String-Protocol blackout feedback.
@@ -28,21 +20,9 @@ export function setupBlackoutFeedback(context: CltProcessorType): CompanionAdvan
       { type: 'colorpicker', label: 'Background (Black)', id: 'bg', default: ColorBlack },
       { type: 'colorpicker', label: 'Foreground (Normal)', id: 'fg_', default: ColorWhite },
       { type: 'colorpicker', label: 'Background (Normal)', id: 'bg_', default: ColorBlue },
-      { type: 'number', label: 'Screen group ID (gid)', id: 'gid', min: 1, max: 128, default: 1 }
+      screenGroupField()
     ],
-    callback: (feedback) => {
-      const blackout = context.getVariableValue(publishVariableId('screen-group', 'blackout_enable', screenGroupId(feedback.options.gid)))
-      // A poll writes a number. Companion can surface the same variable as a string.
-      if (blackout === 1 || blackout === '1') {
-        return {
-          bgcolor: feedback.options.bg as number,
-          color: feedback.options.fg as number
-        }
-      }
-      return {
-        bgcolor: feedback.options.bg_ as number,
-        color: feedback.options.fg_ as number
-      }
-    }
+    callback: (feedback) =>
+      enableButtonStyle(readScreenGroupValue(context, 'blackout_enable', feedback.options.gid), feedback.options)
   }
 }
