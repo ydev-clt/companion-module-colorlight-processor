@@ -37,7 +37,8 @@ export { SPTransmitter } from './core/transmitter'
 export function setupStringActions(
   ctx: CltProcessorType,
   conn: SPTransmitter,
-  setVariableValues: (values: Record<string, number | string | object>) => void
+  setVariableValues: (values: Record<string, number | string | object>) => void,
+  mutex: ActionMutex = new ActionMutex()
 ): CompanionActionDefinitions {
   logger.info('String-Protocol actions setup start.')
 
@@ -65,8 +66,9 @@ export function setupStringActions(
   })
 
   // Companion may fire action callbacks in parallel; serialize every String
-  // action (including heartbeat / CMDLIST) so multi-step set→get stays atomic.
-  const mutex = new ActionMutex()
+  // action so multi-step set→get stays atomic. The mutex belongs to the
+  // instance, not to one registration pass, so re-registering actions does not
+  // create a second lock while a callback is still running.
   for (const def of Object.values(all)) {
     if (!def || typeof def.callback !== 'function') continue
     const original = def.callback as (...args: never[]) => Promise<unknown> | unknown

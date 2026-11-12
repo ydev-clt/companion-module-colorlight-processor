@@ -1,16 +1,19 @@
-import type { CompanionActionDefinition, CompanionActionDefinitions, DropdownChoice } from '@companion-module/base'
+import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { logger } from '../../../common/log'
 import { resolveDeviceModel } from '../../../common/device-models'
-import {
-  inputVideoSourceChoiceId,
-  inputVideoSourceChoices,
-  type InputVideoSource
-} from '../../../common/input-video-sources'
+import { inputVideoSourceChoiceId, type InputVideoSource } from '../../../common/input-video-sources'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { deviceAndBroadcastFields, gidField, sidFromOptions } from './_shared'
+import {
+  deviceAndBroadcastFields,
+  deviceIdentity,
+  gidField,
+  inputSourceChoices,
+  sidFromOptions,
+  withGid
+} from './_shared'
 import type { StringActionHost } from './_shared'
-import { parseCanvasMode, parseGroupIds, selectQuickPresetGid } from './quick-preset-target'
+import { resolveCanvasTargetGid } from './canvas-target'
 
 /**
  * Layer management actions:
@@ -22,15 +25,6 @@ import { parseCanvasMode, parseGroupIds, selectQuickPresetGid } from './quick-pr
  *  - clear_layer    (§5.2.28)        Clear layers (B protocol only)
  *  - videosrc       (§5.2.5.3)       Layer video source
  */
-
-/**
- * Input-signal rows from the last successful probe. An empty list stays empty
- * until `pr_vin_board` and `pr_video` return named signals.
- */
-function inputSourceChoices(host: StringActionHost): DropdownChoice[] {
-  const modelLabel = resolveDeviceModel(host.ctx.config.protocol, host.ctx.state.modelByte)?.label
-  return inputVideoSourceChoices(host.ctx.state.inputVideoSources ?? [], modelLabel)
-}
 
 /**
  * One `videosrc` set body.
@@ -47,61 +41,11 @@ function videosrcSetData(input: {
 }): Record<string, unknown> | undefined {
   const source = input.sources.find((item) => inputVideoSourceChoiceId(item) === input.inputSource)
   if (!source) return undefined
-  const data: Record<string, unknown> = {
+  return withGid(input.gid, {
     layer: input.layer,
     src: source.srcIdx,
     slotCode: source.slotCode
-  }
-  if (typeof input.gid === 'number') data.gid = input.gid
-  return data
-}
-
-/**
- * Screen group for a V/VX layer signal, chosen the same way as quick preset.
- * Canvas mode is read from the lowest group. Mode 0 selects the first valid
- * PGM canvas; mode 1 selects the first valid PVW canvas. A missing group
- * list, an unusable mode, or no matching canvas returns undefined.
- */
-async function canvasTargetGid(conn: StringActionHost['conn'], sid: number): Promise<number | undefined> {
-  const groupResp = await conn.sendAndAwait(CMD.PR_GROUP, 'get', sid)
-  const groupIds = parseGroupIds(groupResp?.code === 0 ? groupResp.data : undefined)
-  if (!groupIds) {
-    logger.warn('Layer video source skipped: pr_group did not return group ids.')
-    return undefined
-  }
-  /** Lowest group carries canvas mode, independent of list order. */
-  const modeGid = Math.min(...groupIds)
-  const modeResp = await conn.sendAndAwait<{ gid: number }, { mode?: unknown; valid?: unknown }>(
-    CMD.CANVAS_MODE,
-    'get',
-    sid,
-    { gid: modeGid }
-  )
-  const mode = parseCanvasMode(modeResp?.code === 0 ? modeResp.data : undefined)
-  if (mode === undefined) {
-    logger.warn('Layer video source skipped: canvas_mode did not return mode 0 or 1.')
-    return undefined
-  }
-  for (const gid of groupIds) {
-    const canvasResp = await conn.sendAndAwait<
-      { gid: number },
-      { gid?: unknown; canvasType?: unknown; fieldsValid?: unknown }
-    >(CMD.PR_CANVAS, 'get', sid, { gid })
-    const canvas = canvasResp?.code === 0 ? canvasResp.data : undefined
-    // A failed read or a gid that does not match the request is not a candidate.
-    if (!canvas || canvas.gid !== gid) continue
-    const target = selectQuickPresetGid(mode, [
-      {
-        gid,
-        canvasType: typeof canvas.canvasType === 'number' ? canvas.canvasType : -1,
-        fieldsValid: typeof canvas.fieldsValid === 'number' ? canvas.fieldsValid : 0
-      }
-    ])
-    if (target === undefined) continue
-    return target
-  }
-  logger.warn(`Layer video source skipped: canvas mode ${mode} does not have a target canvas.`)
-  return undefined
+  })
 }
 
 export function setupLayerActions(host: StringActionHost): CompanionActionDefinitions {
@@ -141,7 +85,7 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
       }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { layer: o.layer, x: o.x, y: o.y, w: o.w, h: o.h }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.LAYER, 'set', sid, data)
     }
   }
@@ -222,7 +166,7 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
         g: o.g,
         b: o.b
       }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.LAYER_BORDER, 'set', sid, data)
     }
   }
@@ -241,7 +185,7 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
       const o = event.options as { deviceId: number; isSelectAll: boolean; w: number; h: number; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { w: o.w, h: o.h }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.BG_BOX, 'set', sid, data)
     }
   }
@@ -292,7 +236,7 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
       }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { layer: o.layer, target: o.target, pos: o.pos }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.LAYERORDER, 'set', sid, data)
     }
   }
@@ -310,7 +254,7 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
       const o = event.options as { deviceId: number; isSelectAll: boolean; layer: number; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { layer: o.layer }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.DELLAYER, 'set', sid, data)
     }
   }
@@ -324,13 +268,14 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
       const o = event.options as { deviceId: number; isSelectAll: boolean; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { clear: 1 }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.CLEAR_LAYER, 'set', sid, data)
     }
   }
 
   const inputChoices = inputSourceChoices(host)
-  const family = resolveDeviceModel(host.ctx.config.protocol, host.ctx.state.modelByte)?.family
+  const identity = deviceIdentity(host)
+  const family = resolveDeviceModel(identity.protocol, identity.modelByte)?.family
   /** V and VX choose the screen group from canvas mode, the same way quick preset does. */
   const usesCanvasTarget = family === 'V' || family === 'VX'
   actions[ACTION_ID.VIDEOSRC_SET] = {
@@ -379,7 +324,7 @@ export function setupLayerActions(host: StringActionHost): CompanionActionDefini
       }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       if (usesCanvasTarget) {
-        const gid = await canvasTargetGid(conn, sid)
+        const gid = await resolveCanvasTargetGid(conn, sid, 'Layer video source')
         if (gid === undefined) return
         data.gid = gid
       }

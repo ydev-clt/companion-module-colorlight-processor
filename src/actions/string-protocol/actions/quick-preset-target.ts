@@ -12,18 +12,6 @@ export function parseCanvasMode(data: unknown): 0 | 1 | undefined {
   return undefined
 }
 
-export function parseGroupIds(data: unknown): number[] | undefined {
-  if (data === null || typeof data !== 'object') return undefined
-  const groupIds = (data as { groupIds?: unknown }).groupIds
-  if (!Array.isArray(groupIds) || groupIds.length === 0) return undefined
-  const ids: number[] = []
-  for (const id of groupIds) {
-    if (typeof id !== 'number' || !Number.isInteger(id) || id < 1) return undefined
-    if (!ids.includes(id)) ids.push(id)
-  }
-  return ids
-}
-
 export function selectQuickPresetGid(mode: 0 | 1, canvases: readonly QuickPresetCanvas[]): number | undefined {
   const canvasType = mode === 0 ? 1 : 2
   for (const canvas of canvases) {

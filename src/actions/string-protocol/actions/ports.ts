@@ -1,7 +1,7 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
+import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions, withGid } from './_shared'
 import type { StringActionHost } from './_shared'
 
 /**
@@ -37,7 +37,7 @@ export function setupPortActions(host: StringActionHost): CompanionActionDefinit
       }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { port: o.port, en: o.enableStatus }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.PORTOUT, 'set', sid, data)
     }
   }
@@ -51,7 +51,7 @@ export function setupPortActions(host: StringActionHost): CompanionActionDefinit
       const o = event.options as { deviceId: number; isSelectAll: boolean; enableStatus: 0 | 1; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { en: o.enableStatus }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.ALLPORTS, 'set', sid, data)
     }
   }
@@ -77,7 +77,7 @@ export function setupPortActions(host: StringActionHost): CompanionActionDefinit
       const o = event.options as { deviceId: number; isSelectAll: boolean; port: number; brt: number; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { port: o.port, brt: o.brt }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.BRT_PORT, 'set', sid, data)
     }
   }
@@ -105,7 +105,7 @@ export function setupPortActions(host: StringActionHost): CompanionActionDefinit
       const o = event.options as { deviceId: number; isSelectAll: boolean; depth: number; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { depth: o.depth }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.C_DEPTH, 'set', sid, data)
     }
   }
@@ -119,7 +119,7 @@ export function setupPortActions(host: StringActionHost): CompanionActionDefinit
       const o = event.options as { deviceId: number; enableStatus: 0 | 1; gid?: number }
       const sid = sidFromOptions(false, o.deviceId)
       const data: Record<string, unknown> = { en: o.enableStatus }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.NET_BRT_EN, 'set', sid, data)
     }
   }

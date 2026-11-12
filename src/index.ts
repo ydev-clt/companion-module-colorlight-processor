@@ -8,6 +8,7 @@ import { Connection } from './connection'
 import { StateCache } from './state'
 import { setupLogger, logger } from './common/log'
 import { setupActions } from './actions'
+import { ActionMutex } from './actions/string-protocol/core/action-mutex'
 import { SPTransmitter } from './actions/string-protocol/core/transmitter'
 import * as initialPoll from './variables/initial'
 import { setupFeedbacks } from './feedbacks'
@@ -35,6 +36,11 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
   public spTransmitter: SPTransmitter
   /** Bumps on config change, destroy, and link loss so a late bind or poll cannot write the new session. */
   private _linkGeneration = 0
+  /**
+   * One lock per instance. Re-registering actions on identity or input-source
+   * changes must not start a second lock while a callback is running.
+   */
+  private readonly actionMutex = new ActionMutex()
   // state cache
   public state: StateCache
 
@@ -108,7 +114,9 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
   private initActions(): void {
     logger.info('Init actions.')
     // After refactoring: actions unified to String-Protocol
-    this.setActionDefinitions(setupActions(this, this.spTransmitter, this.writebackVariableValues))
+    this.setActionDefinitions(
+      setupActions(this, this.spTransmitter, this.writebackVariableValues, this.actionMutex)
+    )
   }
 
   /**
@@ -265,10 +273,13 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
           logger.warn('comm_obj subscribe was not sent; continuing with heartbeat and initial poll')
         }
         if (generation !== this._linkGeneration) return
-        this.spTransmitter.startHeartbeat(() => {
-          logger.warn('Heartbeat lost.')
-          this.failLink()
-        })
+        this.spTransmitter.startHeartbeat(
+          () => {
+            logger.warn('Heartbeat lost.')
+            this.failLink()
+          },
+          (fn) => this.actionMutex.run(fn)
+        )
         this._startInitialPoll(generation)
         this._discoverInputVideoSources(generation)
       })

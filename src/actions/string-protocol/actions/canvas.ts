@@ -1,11 +1,20 @@
-import type { CompanionActionDefinition, CompanionActionDefinitions, DropdownChoice } from '@companion-module/base'
+import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { logger } from '../../../common/log'
 import { isCmdOpSupported, type DeviceIdentity } from '../../../common/cmd-support'
-import { resolveDeviceModel } from '../../../common/device-models'
-import { inputVideoSourceChoices, inputVideoSourceFromChoiceId } from '../../../common/input-video-sources'
+import { inputVideoSourceFromChoiceId } from '../../../common/input-video-sources'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { deviceAndBroadcastFields, gidField, openCloseToggleField, sidFromOptions } from './_shared'
+import {
+  deviceAndBroadcastFields,
+  deviceIdentity,
+  gidData,
+  gidField,
+  inputSourceChoices,
+  openCloseToggleField,
+  requestGid,
+  sidFromOptions,
+  withGid
+} from './_shared'
 import type { StringActionHost } from './_shared'
 
 type VsyncSourceChoice = 'internal' | 'input' | 'genlock'
@@ -18,21 +27,6 @@ export const VSYNC_SOURCE = {
   GENLOCK: 1,
   INTERNAL: 2
 } as const
-
-/**
- * Input-signal rows from the last successful probe. An empty list stays empty
- * until `pr_vin_board` and `pr_video` return signals.
- */
-function inputSourceChoices(host: StringActionHost): DropdownChoice[] {
-  const modelLabel = resolveDeviceModel(host.ctx.config.protocol, host.ctx.state.modelByte)?.label
-  return inputVideoSourceChoices(host.ctx.state.inputVideoSources ?? [], modelLabel)
-}
-
-/** Attach gid only when the button supplied one. Omitting it lets the device use its default screen group. */
-function withGid(gid: number | undefined, data: Record<string, unknown>): Record<string, unknown> {
-  if (typeof gid === 'number') data.gid = gid
-  return data
-}
 
 /**
  * Take, Cut, and canvas switch mode are legal only in switcher mode:
@@ -50,7 +44,7 @@ async function inSwitcherMode(
     logger.warn(`${featureName} skipped: GET canvas_mode is not supported on this device.`)
     return false
   }
-  const requestData = typeof options.gid === 'number' ? { gid: options.gid } : undefined
+  const requestData = requestGid(options.gid)
   const resp = await conn.sendAndAwait<unknown, { mode?: unknown; valid?: unknown }>(
     CMD.CANVAS_MODE,
     'get',
@@ -73,10 +67,7 @@ async function inSwitcherMode(
  */
 export function setupCanvasActions(host: StringActionHost): CompanionActionDefinitions {
   const { conn } = host
-  const identity: DeviceIdentity = {
-    protocol: host.ctx.config.protocol,
-    modelByte: host.ctx.state.modelByte
-  }
+  const identity: DeviceIdentity = deviceIdentity(host)
   const actions: Record<string, CompanionActionDefinition> = {}
 
   actions[ACTION_ID.LOW_GRAY_SET] = {
@@ -94,7 +85,7 @@ export function setupCanvasActions(host: StringActionHost): CompanionActionDefin
         logger.warn('Low gray skipped: GET low_gray is not supported on this device.')
         return
       }
-      const requestData = typeof o.gid === 'number' ? { gid: o.gid } : undefined
+      const requestData = requestGid(o.gid)
       const resp = await conn.sendAndAwait<unknown, { en?: unknown }>(CMD.LOW_GRAY, 'get', sid, requestData)
       const current = Number(resp?.data?.en)
       if (!resp || resp.code !== 0 || (current !== 0 && current !== 1)) {
@@ -159,7 +150,7 @@ export function setupCanvasActions(host: StringActionHost): CompanionActionDefin
         logger.warn('Canvas switch mode skipped: GET canvas_switch_mode is not supported on this device.')
         return
       }
-      const requestData = typeof o.gid === 'number' ? { gid: o.gid } : undefined
+      const requestData = requestGid(o.gid)
       const resp = await conn.sendAndAwait<unknown, { switchMode?: unknown; valid?: unknown }>(
         CMD.CANVAS_SWITCH_MODE,
         'get',
@@ -266,7 +257,7 @@ export function fpsToFps100(fps: number): number | undefined {
  * Returns undefined when the chosen source has no usable value.
  */
 export function vsyncSrcSetSteps(input: VsyncSrcSetInput): Record<string, unknown>[] | undefined {
-  const gid = typeof input.gid === 'number' ? { gid: input.gid } : {}
+  const gid = gidData(input.gid)
   let steps: Record<string, unknown>[] | undefined
   if (input.src === 'genlock') {
     steps = [{ ...gid, src: VSYNC_SOURCE.GENLOCK }]

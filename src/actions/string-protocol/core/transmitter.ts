@@ -180,11 +180,18 @@ export class SPTransmitter {
     logger.info(`SpSession released: proto=${proto} token=${this._token}`)
   }
 
-  /** Encode one heartbeat through the normal get queue. Call only after bindSpSession resolves. */
-  public startHeartbeat(onFailure: () => void): void {
+  /**
+   * Encode one heartbeat through the normal get queue. Call only after bindSpSession resolves.
+   * `runSerialized` lets the instance put the heartbeat behind the same
+   * action lock as button callbacks; the default keeps the old direct path.
+   */
+  public startHeartbeat(
+    onFailure: () => void,
+    runSerialized: (fn: () => Promise<unknown>) => Promise<unknown> = (fn) => fn()
+  ): void {
     this.stopHeartbeat()
     this._heartbeat = new HeartbeatRunner(
-      () => this.sendAndAwait(CMD.HEARTBEAT, 'get', 1),
+      () => runSerialized(() => this.sendAndAwait(CMD.HEARTBEAT, 'get', 1)),
       STRING_HEARTBEAT_DEFAULT_MS,
       onFailure
     )

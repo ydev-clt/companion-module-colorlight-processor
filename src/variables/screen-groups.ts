@@ -1,6 +1,6 @@
 import { isCmdOpSupported, type DeviceIdentity } from '../common/cmd-support'
 import { resolveDeviceModel } from '../common/device-models'
-import { parseGroupIds } from '../actions/string-protocol/actions/quick-preset-target'
+import { parseGroupIds } from '../common/protocol-data'
 import { POLL_CATALOG } from './initial/catalog'
 
 /**

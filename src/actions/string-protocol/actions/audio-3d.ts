@@ -1,7 +1,7 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { deviceAndBroadcastFields, gidField, sidFromOptions } from './_shared'
+import { deviceAndBroadcastFields, gidField, sidFromOptions, withGid } from './_shared'
 import type { StringActionHost } from './_shared'
 
 /**
@@ -38,7 +38,7 @@ export function setupAudio3dActions(host: StringActionHost): CompanionActionDefi
       const o = event.options as { deviceId: number; isSelectAll: boolean; eye: 0 | 1; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { eye: o.eye }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.EYE_SWITCH, 'set', sid, data)
     }
   }
@@ -65,7 +65,7 @@ export function setupAudio3dActions(host: StringActionHost): CompanionActionDefi
       const o = event.options as { deviceId: number; isSelectAll: boolean; openStatus: 0 | 1; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { en: o.openStatus }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.MODE3D, 'set', sid, data)
     }
   }
@@ -93,7 +93,7 @@ export function setupAudio3dActions(host: StringActionHost): CompanionActionDefi
       const o = event.options as { deviceId: number; isSelectAll: boolean; mode: 0 | 1; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { mode: o.mode }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.DUAL_3D, 'set', sid, data)
     }
   }
@@ -120,7 +120,7 @@ export function setupAudio3dActions(host: StringActionHost): CompanionActionDefi
       const o = event.options as { deviceId: number; isSelectAll: boolean; fmt: 0 | 1; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { fmt: o.fmt }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.STEREO_FMT, 'set', sid, data)
     }
   }

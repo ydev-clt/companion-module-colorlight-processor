@@ -1,12 +1,11 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { deviceAndBroadcastFields, gidField, sidFromOptions } from './_shared'
+import { deviceAndBroadcastFields, deviceIdentity, gidField, sidFromOptions, withGid } from './_shared'
 import type { StringActionHost } from './_shared'
 import { DeviceProtocolEnum } from '../../../common/types'
-import { logger } from '../../../common/log'
 import { resolveDeviceModel } from '../../../common/device-models'
-import { parseCanvasMode, parseGroupIds, selectQuickPresetGid } from './quick-preset-target'
+import { resolveCanvasTargetGid } from './canvas-target'
 
 /**
  * Preset actions:
@@ -20,7 +19,8 @@ import { parseCanvasMode, parseGroupIds, selectQuickPresetGid } from './quick-pr
 
 export function setupPresetActions(host: StringActionHost): CompanionActionDefinitions {
   const { conn } = host
-  const family = resolveDeviceModel(host.ctx.config.protocol, host.ctx.state.modelByte)?.family
+  const identity = deviceIdentity(host)
+  const family = resolveDeviceModel(identity.protocol, identity.modelByte)?.family
   const usesCanvasTarget = family === 'V' || family === 'VX'
   const actions: Record<string, CompanionActionDefinition> = {}
 
@@ -46,48 +46,12 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
       const o = event.options as { deviceId: number; isSelectAll: boolean; preset: number; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       if (!usesCanvasTarget) {
-        const data: Record<string, unknown> = { preset: o.preset }
-        if (typeof o.gid === 'number') data.gid = o.gid
-        await conn.sendOnly(CMD.QP, 'set', sid, data)
+        await conn.sendOnly(CMD.QP, 'set', sid, withGid(o.gid, { preset: o.preset }))
         return
       }
-      const groupResp = await conn.sendAndAwait(CMD.PR_GROUP, 'get', sid)
-      const groupIds = parseGroupIds(groupResp?.code === 0 ? groupResp.data : undefined)
-      if (!groupIds) {
-        logger.warn('Quick preset skipped: pr_group did not return group ids.')
-        return
-      }
-      const modeGid = Math.min(...groupIds)
-      const modeResp = await conn.sendAndAwait<{ gid: number }, { mode?: unknown; valid?: unknown }>(
-        CMD.CANVAS_MODE,
-        'get',
-        sid,
-        { gid: modeGid }
-      )
-      const mode = parseCanvasMode(modeResp?.code === 0 ? modeResp.data : undefined)
-      if (mode === undefined) {
-        logger.warn('Quick preset skipped: canvas_mode did not return mode 0 or 1.')
-        return
-      }
-      for (const gid of groupIds) {
-        const canvasResp = await conn.sendAndAwait<
-          { gid: number },
-          { gid?: unknown; canvasType?: unknown; fieldsValid?: unknown }
-        >(CMD.PR_CANVAS, 'get', sid, { gid })
-        const canvas = canvasResp?.code === 0 ? canvasResp.data : undefined
-        if (!canvas || canvas.gid !== gid) continue
-        const target = selectQuickPresetGid(mode, [
-          {
-            gid,
-            canvasType: typeof canvas.canvasType === 'number' ? canvas.canvasType : -1,
-            fieldsValid: typeof canvas.fieldsValid === 'number' ? canvas.fieldsValid : 0
-          }
-        ])
-        if (target === undefined) continue
-        await conn.sendOnly(CMD.QP, 'set', sid, { preset: o.preset, gid: target })
-        return
-      }
-      logger.warn(`Quick preset skipped: canvas mode ${mode} does not have a target canvas.`)
+      const target = await resolveCanvasTargetGid(conn, sid, 'Quick preset')
+      if (target === undefined) return
+      await conn.sendOnly(CMD.QP, 'set', sid, { preset: o.preset, gid: target })
     }
   }
 
@@ -125,7 +89,7 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { preset: o.preset }
       if (!isProtocolA && typeof o.name === 'string') data.name = o.name
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.SVPRESET, 'set', sid, data)
     }
   }
@@ -149,8 +113,7 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
     callback: async (event) => {
       const o = event.options as { deviceId: number; isSelectAll: boolean; preset: number; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { preset: o.preset }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      const data: Record<string, unknown> = withGid(o.gid, { preset: o.preset })
       await conn.sendOnly(CMD.LDPRESET, 'set', sid, data)
     }
   }
@@ -182,8 +145,7 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
     callback: async (event) => {
       const o = event.options as { deviceId: number; isSelectAll: boolean; idx: number; name: string; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { idx: o.idx, name: o.name }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      const data: Record<string, unknown> = withGid(o.gid, { idx: o.idx, name: o.name })
       await conn.sendOnly(CMD.RPNAME, 'set', sid, data)
     }
   }

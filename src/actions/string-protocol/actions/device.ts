@@ -3,7 +3,7 @@ import { logger } from '../../../common/log'
 import { resolveDeviceModel } from '../../../common/device-models'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
+import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions, withGid } from './_shared'
 import type { StringActionHost } from './_shared'
 
 /** U-series specify-multiplier only accepts 2x / 3x (ids 1–2). */
@@ -81,7 +81,7 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
       const o = event.options as { deviceId: number; isSelectAll: boolean; src: number; edid: string; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { src: o.src, edid: o.edid }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.EDID_SET, 'set', sid, data)
     }
   }
@@ -107,7 +107,7 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
       const o = event.options as { deviceId: number; isSelectAll: boolean; delta: number; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { delta: o.delta }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.BRT_RELA, 'set', sid, data)
     }
   }
@@ -133,7 +133,7 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
       const o = event.options as { deviceId: number; isSelectAll: boolean; delta: number; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { delta: o.delta }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.CT_RELA, 'set', sid, data)
     }
   }
@@ -159,7 +159,7 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
       const o = event.options as { deviceId: number; isSelectAll: boolean; step: number; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { step: o.step }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.BRT_STEP, 'set', sid, data)
     }
   }
@@ -204,7 +204,7 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
       }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = {}
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       let mul = o.mul
       // Stale buttons may still store None or 4x–10x from before the U-series list was limited.
       if (isUSeries) {

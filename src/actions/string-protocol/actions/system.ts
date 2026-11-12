@@ -1,7 +1,7 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
+import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions, withGid } from './_shared'
 import type { StringActionHost } from './_shared'
 
 /**
@@ -59,7 +59,7 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { en: o.enableStatus, type: o.type }
       if (o.type !== 2) data.osdId = o.osdId
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.OSD, 'set', sid, data)
     }
   }
@@ -89,7 +89,7 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
       const o = event.options as { deviceId: number; isSelectAll: boolean; mode: number; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { mode: o.mode }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.FRAMERATE, 'set', sid, data)
     }
   }
@@ -103,7 +103,7 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
       const o = event.options as { deviceId: number; isSelectAll: boolean; enableStatus: 0 | 1; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { en: o.enableStatus }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.FPS_ADAPT, 'set', sid, data)
     }
   }

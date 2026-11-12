@@ -1,8 +1,19 @@
 import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { logger } from '../../../common/log'
+import { isCmdOpSupported, type DeviceIdentity } from '../../../common/cmd-support'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
+import {
+  deviceAndBroadcastFields,
+  deviceIdentity,
+  finiteNumber,
+  gidData,
+  gidField,
+  openCloseField,
+  requestGid,
+  sidFromOptions,
+  withGid
+} from './_shared'
 import type { StringActionHost } from './_shared'
 
 /**
@@ -16,8 +27,144 @@ import type { StringActionHost } from './_shared'
  * Red, green, and blue gain use percent × 100, so 100% is 10000 and a 1% step is 100.
  */
 
+interface CtChannel {
+  id: (typeof ACTION_ID)[keyof typeof ACTION_ID]
+  cmd: string
+  field: string
+  stepField: string
+  letter: 'R' | 'G' | 'B'
+  colorName: 'Red' | 'Green' | 'Blue'
+  name: string
+  description: string
+}
+
+const CT_CHANNELS: readonly CtChannel[] = [
+  {
+    id: ACTION_ID.CT_R_SET,
+    cmd: CMD.CT_R,
+    field: 'r',
+    stepField: 'rStep',
+    letter: 'R',
+    colorName: 'Red',
+    name: 'Set Color Temp Red Gain',
+    description: 'Set the red component of the screen group color temperature.'
+  },
+  {
+    id: ACTION_ID.CT_G_SET,
+    cmd: CMD.CT_G,
+    field: 'g',
+    stepField: 'gStep',
+    letter: 'G',
+    colorName: 'Green',
+    name: 'Set Color Temp Green Gain',
+    description: 'Set the green component of the screen group color temperature.'
+  },
+  {
+    id: ACTION_ID.CT_B_SET,
+    cmd: CMD.CT_B,
+    field: 'b',
+    stepField: 'bStep',
+    letter: 'B',
+    colorName: 'Blue',
+    name: 'Set Color Temp Blue Gain',
+    description: 'Set the blue component of the screen group color temperature.'
+  }
+]
+
+function makeCtGainAction(
+  conn: StringActionHost['conn'],
+  identity: DeviceIdentity,
+  channel: CtChannel
+): CompanionActionDefinition {
+  return {
+    name: channel.name,
+    description: channel.description,
+    options: [
+      ...deviceAndBroadcastFields(),
+      {
+        type: 'dropdown',
+        label: 'Operation',
+        id: 'operation',
+        disableAutoExpression: true,
+        default: 'set',
+        choices: [
+          { id: 'set', label: 'Set percentage' },
+          { id: 'step', label: 'Adjust by signed step' }
+        ]
+      },
+      {
+        type: 'number',
+        label: `${channel.letter} gain (%)`,
+        id: channel.field,
+        min: 0,
+        max: 100,
+        default: 0,
+        isVisibleExpression: '$(options:operation) != "step"'
+      },
+      {
+        type: 'number',
+        label: `${channel.letter} gain step (%)`,
+        tooltip: 'Positive values increase gain; negative values decrease it.',
+        id: channel.stepField,
+        min: -100,
+        max: 100,
+        default: 0,
+        isVisibleExpression: '$(options:operation) == "step"'
+      },
+      gidField()
+    ],
+    callback: async (event) => {
+      const o = event.options as {
+        deviceId: number
+        isSelectAll: boolean
+        operation?: 'set' | 'step'
+        gid?: number
+        [key: string]: unknown
+      }
+      const sid = sidFromOptions(o.isSelectAll, o.deviceId)
+      const requestData = requestGid(o.gid)
+
+      let value: number
+      if (o.operation === 'step') {
+        if (!isCmdOpSupported(channel.cmd, 'get', identity)) {
+          logger.warn(`${channel.colorName}-gain step skipped: GET ${channel.cmd} is not supported on this device.`)
+          return
+        }
+        const resp = await conn.sendAndAwait<unknown, Record<string, unknown>>(
+          channel.cmd,
+          'get',
+          sid,
+          requestData
+        )
+        const rawCurrent = resp?.data?.[channel.field]
+        const current = finiteNumber(rawCurrent)
+        if (!resp || resp.code !== 0 || current === undefined) {
+          logger.warn(
+            `${channel.colorName}-gain step skipped: GET ${channel.cmd} did not return a valid ${channel.field} value.`
+          )
+          return
+        }
+        const step = Math.round(Math.max(-100, Math.min(100, Number(o[channel.stepField])))) * 100
+        value = Math.round(Math.max(0, Math.min(10000, current + step)))
+      } else {
+        const raw = Number(o[channel.field])
+        if (!Number.isFinite(raw)) {
+          logger.warn(`Set ${channel.cmd} skipped: field ${channel.field} must be a finite number.`)
+          return
+        }
+        value = Math.round(Math.max(0, Math.min(100, raw))) * 100
+      }
+
+      const data: Record<string, unknown> = { [channel.field]: value }
+      withGid(o.gid, data)
+      await conn.sendOnly(channel.cmd, 'set', sid, data)
+    }
+  }
+}
+
 export function setupColorActions(host: StringActionHost): CompanionActionDefinitions {
   const { conn } = host
+  const identity = deviceIdentity(host)
   const actions: Record<string, CompanionActionDefinition> = {}
 
   // ---- colorspace ----
@@ -48,9 +195,7 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
     callback: async (event) => {
       const o = event.options as { deviceId: number; isSelectAll: boolean; space: number; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { space: o.space }
-      if (typeof o.gid === 'number') data.gid = o.gid
-      await conn.sendOnly(CMD.COLORSPACE, 'set', sid, data)
+      await conn.sendOnly(CMD.COLORSPACE, 'set', sid, withGid(o.gid, { space: o.space }))
     }
   }
 
@@ -62,238 +207,12 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
     callback: async (event) => {
       const o = event.options as { deviceId: number; isSelectAll: boolean; enableStatus: 0 | 1; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { en: o.enableStatus }
-      if (typeof o.gid === 'number') data.gid = o.gid
-      await conn.sendOnly(CMD.PREC_MGR, 'set', sid, data)
+      await conn.sendOnly(CMD.PREC_MGR, 'set', sid, withGid(o.gid, { en: o.enableStatus }))
     }
   }
 
-  // ---- ct_r ----
-  actions[ACTION_ID.CT_R_SET] = {
-    name: 'Set Color Temp Red Gain',
-    description: 'Set the red component of the screen group color temperature.',
-    options: [
-      ...deviceAndBroadcastFields(),
-      {
-        type: 'dropdown',
-        label: 'Operation',
-        id: 'operation',
-        disableAutoExpression: true,
-        default: 'set',
-        choices: [
-          { id: 'set', label: 'Set percentage' },
-          { id: 'step', label: 'Adjust by signed step' }
-        ]
-      },
-      {
-        type: 'number',
-        label: 'R gain (%)',
-        id: 'r',
-        min: 0,
-        max: 100,
-        default: 0,
-        isVisibleExpression: '$(options:operation) != "step"'
-      },
-      {
-        type: 'number',
-        label: 'R gain step (%)',
-        tooltip: 'Positive values increase gain; negative values decrease it.',
-        id: 'rStep',
-        min: -100,
-        max: 100,
-        default: 0,
-        isVisibleExpression: '$(options:operation) == "step"'
-      },
-      gidField()
-    ],
-    callback: async (event) => {
-      const o = event.options as {
-        deviceId: number
-        isSelectAll: boolean
-        operation?: 'set' | 'step'
-        r: number
-        rStep: number
-        gid?: number
-      }
-      const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const requestData = typeof o.gid === 'number' ? { gid: o.gid } : undefined
-
-      let r: number
-      if (o.operation === 'step') {
-        const resp = await conn.sendAndAwait<unknown, { r?: unknown }>(CMD.CT_R, 'get', sid, requestData)
-        const rawCurrent = resp?.data?.r
-        const current = Number(rawCurrent)
-        if (!resp || resp.code !== 0 || rawCurrent === undefined || rawCurrent === null || !Number.isFinite(current)) {
-          logger.warn('Red-gain step skipped: GET ct_r did not return a valid r value.')
-          return
-        }
-        const step = Math.round(Math.max(-100, Math.min(100, Number(o.rStep)))) * 100
-        r = Math.round(Math.max(0, Math.min(10000, current + step)))
-      } else {
-        const rawR = Number(o.r)
-        if (!Number.isFinite(rawR)) {
-          logger.warn('Set ct_r skipped: field r must be a finite number.')
-          return
-        }
-        r = Math.round(Math.max(0, Math.min(100, rawR))) * 100
-      }
-
-      const data: Record<string, unknown> = { r }
-      if (typeof o.gid === 'number') data.gid = o.gid
-      await conn.sendOnly(CMD.CT_R, 'set', sid, data)
-    }
-  }
-
-  // ---- ct_g ----
-  actions[ACTION_ID.CT_G_SET] = {
-    name: 'Set Color Temp Green Gain',
-    description: 'Set the green component of the screen group color temperature.',
-    options: [
-      ...deviceAndBroadcastFields(),
-      {
-        type: 'dropdown',
-        label: 'Operation',
-        id: 'operation',
-        disableAutoExpression: true,
-        default: 'set',
-        choices: [
-          { id: 'set', label: 'Set percentage' },
-          { id: 'step', label: 'Adjust by signed step' }
-        ]
-      },
-      {
-        type: 'number',
-        label: 'G gain (%)',
-        id: 'g',
-        min: 0,
-        max: 100,
-        default: 0,
-        isVisibleExpression: '$(options:operation) != "step"'
-      },
-      {
-        type: 'number',
-        label: 'G gain step (%)',
-        tooltip: 'Positive values increase gain; negative values decrease it.',
-        id: 'gStep',
-        min: -100,
-        max: 100,
-        default: 0,
-        isVisibleExpression: '$(options:operation) == "step"'
-      },
-      gidField()
-    ],
-    callback: async (event) => {
-      const o = event.options as {
-        deviceId: number
-        isSelectAll: boolean
-        operation?: 'set' | 'step'
-        g: number
-        gStep: number
-        gid?: number
-      }
-      const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const requestData = typeof o.gid === 'number' ? { gid: o.gid } : undefined
-
-      let g: number
-      if (o.operation === 'step') {
-        const resp = await conn.sendAndAwait<unknown, { g?: unknown }>(CMD.CT_G, 'get', sid, requestData)
-        const rawCurrent = resp?.data?.g
-        const current = Number(rawCurrent)
-        if (!resp || resp.code !== 0 || rawCurrent === undefined || rawCurrent === null || !Number.isFinite(current)) {
-          logger.warn('Green-gain step skipped: GET ct_g did not return a valid g value.')
-          return
-        }
-        const step = Math.round(Math.max(-100, Math.min(100, Number(o.gStep)))) * 100
-        g = Math.round(Math.max(0, Math.min(10000, current + step)))
-      } else {
-        const rawG = Number(o.g)
-        if (!Number.isFinite(rawG)) {
-          logger.warn('Set ct_g skipped: field g must be a finite number.')
-          return
-        }
-        g = Math.round(Math.max(0, Math.min(100, rawG))) * 100
-      }
-
-      const data: Record<string, unknown> = { g }
-      if (typeof o.gid === 'number') data.gid = o.gid
-      await conn.sendOnly(CMD.CT_G, 'set', sid, data)
-    }
-  }
-
-  // ---- ct_b ----
-  actions[ACTION_ID.CT_B_SET] = {
-    name: 'Set Color Temp Blue Gain',
-    description: 'Set the blue component of the screen group color temperature.',
-    options: [
-      ...deviceAndBroadcastFields(),
-      {
-        type: 'dropdown',
-        label: 'Operation',
-        id: 'operation',
-        disableAutoExpression: true,
-        default: 'set',
-        choices: [
-          { id: 'set', label: 'Set percentage' },
-          { id: 'step', label: 'Adjust by signed step' }
-        ]
-      },
-      {
-        type: 'number',
-        label: 'B gain (%)',
-        id: 'b',
-        min: 0,
-        max: 100,
-        default: 0,
-        isVisibleExpression: '$(options:operation) != "step"'
-      },
-      {
-        type: 'number',
-        label: 'B gain step (%)',
-        tooltip: 'Positive values increase gain; negative values decrease it.',
-        id: 'bStep',
-        min: -100,
-        max: 100,
-        default: 0,
-        isVisibleExpression: '$(options:operation) == "step"'
-      },
-      gidField()
-    ],
-    callback: async (event) => {
-      const o = event.options as {
-        deviceId: number
-        isSelectAll: boolean
-        operation?: 'set' | 'step'
-        b: number
-        bStep: number
-        gid?: number
-      }
-      const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const requestData = typeof o.gid === 'number' ? { gid: o.gid } : undefined
-
-      let b: number
-      if (o.operation === 'step') {
-        const resp = await conn.sendAndAwait<unknown, { b?: unknown }>(CMD.CT_B, 'get', sid, requestData)
-        const rawCurrent = resp?.data?.b
-        const current = Number(rawCurrent)
-        if (!resp || resp.code !== 0 || rawCurrent === undefined || rawCurrent === null || !Number.isFinite(current)) {
-          logger.warn('Blue-gain step skipped: GET ct_b did not return a valid b value.')
-          return
-        }
-        const step = Math.round(Math.max(-100, Math.min(100, Number(o.bStep)))) * 100
-        b = Math.round(Math.max(0, Math.min(10000, current + step)))
-      } else {
-        const rawB = Number(o.b)
-        if (!Number.isFinite(rawB)) {
-          logger.warn('Set ct_b skipped: field b must be a finite number.')
-          return
-        }
-        b = Math.round(Math.max(0, Math.min(100, rawB))) * 100
-      }
-
-      const data: Record<string, unknown> = { b }
-      if (typeof o.gid === 'number') data.gid = o.gid
-      await conn.sendOnly(CMD.CT_B, 'set', sid, data)
-    }
+  for (const channel of CT_CHANNELS) {
+    actions[channel.id] = makeCtGainAction(conn, identity, channel)
   }
 
   // ---- grp_gain ----
@@ -308,9 +227,7 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
     callback: async (event) => {
       const o = event.options as { deviceId: number; isSelectAll: boolean; gain: number; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const data: Record<string, unknown> = { gain: o.gain }
-      if (typeof o.gid === 'number') data.gid = o.gid
-      await conn.sendOnly(CMD.GRP_GAIN, 'set', sid, data)
+      await conn.sendOnly(CMD.GRP_GAIN, 'set', sid, withGid(o.gid, { gain: o.gain }))
     }
   }
 
@@ -372,7 +289,7 @@ export function setupColorActions(host: StringActionHost): CompanionActionDefini
         gid?: number
       }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const gid = typeof o.gid === 'number' ? { gid: o.gid } : {}
+      const gid = gidData(o.gid)
       if (!o.enableStatus) {
         await conn.sendOnly(CMD.VIRTUAL_PIXEL, 'set', sid, { en: o.enableStatus, ...gid })
         return

@@ -2,6 +2,7 @@ import type { CompanionActionDefinitions } from '@companion-module/base'
 import type { CltProcessorType } from '../common/types'
 import { logger } from '../common/log'
 import { setupStringActions, type SPTransmitter } from './string-protocol'
+import type { ActionMutex } from './string-protocol/core/action-mutex'
 
 /**
  * Initialize actions.
@@ -17,10 +18,13 @@ import { setupStringActions, type SPTransmitter } from './string-protocol'
 export function setupActions(
   context: CltProcessorType,
   spTransmitter: SPTransmitter,
-  setVariableValues: (values: Record<string, number | string | object>) => void
+  setVariableValues: (values: Record<string, number | string | object>) => void,
+  mutex: ActionMutex
 ): CompanionActionDefinitions {
   logger.info('Actions setup start')
   // None means the probe has not identified a device yet. Registering actions
   // before that would show commands the device may not support.
-  return context.config.protocol === 'None' ? {} : setupStringActions(context, spTransmitter, setVariableValues)
+  return context.config.protocol === 'None'
+    ? {}
+    : setupStringActions(context, spTransmitter, setVariableValues, mutex)
 }

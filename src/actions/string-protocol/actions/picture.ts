@@ -5,7 +5,7 @@ import type {
 } from '@companion-module/base'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { deviceAndBroadcastFields, gidField, sidFromOptions } from './_shared'
+import { deviceAndBroadcastFields, gidField, sidFromOptions, withGid } from './_shared'
 import type { StringActionHost } from './_shared'
 
 /**
@@ -97,7 +97,7 @@ export function setupPictureActions(host: StringActionHost): CompanionActionDefi
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const val = readPicAdjVal(o)
       const data: Record<string, unknown> = { mode: o.mode, val }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.PIC_ADJ, 'set', sid, data)
     }
   }
@@ -122,7 +122,7 @@ export function setupPictureActions(host: StringActionHost): CompanionActionDefi
       const o = event.options as { deviceId: number; isSelectAll: boolean; hue: number; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { hue: o.hue }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.GRP_HUE, 'set', sid, data)
     }
   }
@@ -147,7 +147,7 @@ export function setupPictureActions(host: StringActionHost): CompanionActionDefi
       const o = event.options as { deviceId: number; isSelectAll: boolean; sat: number; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { sat: o.sat }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.GRP_SATURATION, 'set', sid, data)
     }
   }
@@ -172,7 +172,7 @@ export function setupPictureActions(host: StringActionHost): CompanionActionDefi
       const o = event.options as { deviceId: number; isSelectAll: boolean; con: number; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { con: o.con }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.GRP_CONTRAST, 'set', sid, data)
     }
   }
@@ -198,7 +198,7 @@ export function setupPictureActions(host: StringActionHost): CompanionActionDefi
       const o = event.options as { deviceId: number; isSelectAll: boolean; bc: number; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { bc: o.bc }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.GRP_BRTCOMP, 'set', sid, data)
     }
   }

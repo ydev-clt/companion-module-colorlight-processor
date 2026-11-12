@@ -4,10 +4,13 @@ import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
 import {
   deviceAndBroadcastFields,
+  deviceIdentity,
   gidField,
   openCloseField,
   openCloseToggleField,
-  sidFromOptions
+  requestGid,
+  sidFromOptions,
+  withGid
 } from './_shared'
 import type { StringActionHost } from './_shared'
 import { DeviceProtocolEnum } from '../../../common/types'
@@ -45,7 +48,7 @@ async function sendOpenCloseOrToggle(
 ): Promise<void> {
   const sid = sidFromOptions(options.isSelectAll, options.deviceId)
   const data: Record<string, unknown> = {}
-  if (typeof options.gid === 'number') data.gid = options.gid
+  withGid(options.gid, data)
 
   if (options.enableStatus !== 2) {
     data.en = options.enableStatus
@@ -58,7 +61,7 @@ async function sendOpenCloseOrToggle(
     return
   }
 
-  const requestData = typeof options.gid === 'number' ? { gid: options.gid } : undefined
+  const requestData = requestGid(options.gid)
   const resp = await conn.sendAndAwait<unknown, { en?: unknown }>(cmd, 'get', sid, requestData)
   const rawEn = resp?.data?.en
   const current = Number(rawEn)
@@ -73,10 +76,7 @@ async function sendOpenCloseOrToggle(
 
 export function setupDisplayActions(host: StringActionHost): CompanionActionDefinitions {
   const { conn } = host
-  const identity: DeviceIdentity = {
-    protocol: host.ctx.config.protocol,
-    modelByte: host.ctx.state.modelByte
-  }
+  const identity: DeviceIdentity = deviceIdentity(host)
   const actions: Record<string, CompanionActionDefinition> = {}
 
   // ---- bright (brightness) ----
@@ -127,7 +127,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
         gid?: number
       }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const requestData = typeof o.gid === 'number' ? { gid: o.gid } : undefined
+      const requestData = requestGid(o.gid)
 
       // Protocol brightness is percent × 100, so 100% is 10000 and a 1% step is 100.
       let brt: number
@@ -156,7 +156,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       }
 
       const data: Record<string, unknown> = { brt }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.BRIGHT, 'set', sid, data)
     }
   }
@@ -209,7 +209,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
         gid?: number
       }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
-      const requestData = typeof o.gid === 'number' ? { gid: o.gid } : undefined
+      const requestData = requestGid(o.gid)
 
       let ct: number
       if (o.operation === 'step') {
@@ -236,7 +236,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       }
 
       const data: Record<string, unknown> = { ct }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.COLORTEMP, 'set', sid, data)
     }
   }
@@ -284,7 +284,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       const o = event.options as { deviceId: number; isSelectAll: boolean; tp: number; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { tp: o.tp }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.TESTMODE, 'set', sid, data)
     }
   }
@@ -317,7 +317,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       const o = event.options as { deviceId: number; isSelectAll: boolean; mode: number; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { mode: o.mode }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.HDRMODE, 'set', sid, data)
     }
   }
@@ -331,7 +331,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       const o = event.options as { deviceId: number; isSelectAll: boolean; enableStatus: 0 | 1; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { en: o.enableStatus }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.MUTE, 'set', sid, data)
     }
   }
@@ -345,7 +345,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       const o = event.options as { deviceId: number; isSelectAll: boolean; enableStatus: 0 | 1; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { en: o.enableStatus }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.FADE, 'set', sid, data)
     }
   }
@@ -369,7 +369,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       const o = event.options as { deviceId: number; isSelectAll: boolean; ms: number; gid?: number }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { ms: o.ms }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.FADETIME, 'set', sid, data)
     }
   }
@@ -410,7 +410,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
       }
       const sid = sidFromOptions(o.isSelectAll, o.deviceId)
       const data: Record<string, unknown> = { en: o.enableStatus, mode: o.mode }
-      if (typeof o.gid === 'number') data.gid = o.gid
+      withGid(o.gid, data)
       await conn.sendOnly(CMD.ZERODELAY, 'set', sid, data)
     }
   }
