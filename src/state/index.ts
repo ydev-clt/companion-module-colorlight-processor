@@ -2,11 +2,10 @@
 import type { InputVideoSource } from '../common/input-video-sources'
 
 /**
- * state cache
+ * Runtime state cache.
  *
- * After refactoring: only triggers String-Protocol feedback ids.
- * The legacy V/Z feedback definitions (formerly src/feedbacks/) were
- * unregistered from Companion and the directory has been removed.
+ * Holds values discovered from the device (probe identity and input signals)
+ * and drives String-Protocol feedback refresh through the variable writeback.
  */
 class StateCache {
   /** Probe-resolved device model byte; null = not probed / unidentified (see common/device-models.ts) */

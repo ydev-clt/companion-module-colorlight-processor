@@ -17,7 +17,6 @@
   "devDependencies": {
     "@companion-module/tools": "2.7.2",
     "@types/node": "^20.14.9",
-    "rimraf": "^5.0.7",
     "typescript": "^5.5.2"
   }
 }

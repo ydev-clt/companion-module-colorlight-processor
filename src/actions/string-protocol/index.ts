@@ -76,8 +76,3 @@ export function setupStringActions(
   logger.info(`String-Protocol actions setup completed. (${Object.keys(all).length} actions registered)`)
   return all
 }
-
-/** Re-export types and constants */
-export { ACTION_ID as STRING_ACTION_ID } from './core/ids'
-export { CMD as STRING_CMD } from './core/constants'
-export { FEEDBACK_ID as STRING_FEEDBACK_ID } from '../../common/feedback-ids'

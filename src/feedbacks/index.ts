@@ -29,4 +29,3 @@ export function setupFeedbacks(context: CltProcessorType): CompanionFeedbackDefi
 }
 
 export { filterFeedbacksForDevice } from './feedback-support'
-export { FEEDBACK_ID as STRING_FEEDBACK_ID } from '../common/feedback-ids'

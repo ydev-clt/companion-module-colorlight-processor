@@ -5,7 +5,7 @@ import type {
 } from '@companion-module/base'
 import { ACTION_ID } from '../core/ids'
 import { CMD } from '../core/constants'
-import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions } from './_shared'
+import { deviceAndBroadcastFields, gidField, sidFromOptions } from './_shared'
 import type { StringActionHost } from './_shared'
 
 /**
@@ -205,6 +205,3 @@ export function setupPictureActions(host: StringActionHost): CompanionActionDefi
 
   return actions as CompanionActionDefinitions
 }
-
-// Silence unused-variable warning
-void openCloseField
