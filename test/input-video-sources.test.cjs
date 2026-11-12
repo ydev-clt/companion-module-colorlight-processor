@@ -14,7 +14,13 @@ test('pr_vin_board accepts the board list and skips a failed response', () => {
   assert.deepEqual(
     boardsFromVinBoard({
       code: 0,
-      data: { boards: [{ slotCode: 16, boardKind: 24, boardIdx: 1 }, { boardKind: 1 }, { slotCode: 3, boardSlot: 9, boardKind: 17 }] }
+      data: {
+        boards: [
+          { slotCode: 16, boardKind: 24, boardIdx: 1 },
+          { boardKind: 1 },
+          { slotCode: 3, boardSlot: 9, boardKind: 17 }
+        ]
+      }
     }),
     [
       { slotCode: 16, boardKind: 24, boardIdx: 1 },
@@ -60,7 +66,15 @@ test('discovery walks every board and skips a failed signal read', async () => {
   const sources = await discoverInputVideoSources(async (cmd, data) => {
     calls.push({ cmd, data })
     if (cmd === 'pr_vin_board') {
-      return { code: 0, data: { boards: [{ slotCode: 16, boardKind: 24 }, { boardSlot: 20, boardKind: 38, boardIdx: 1 }] } }
+      return {
+        code: 0,
+        data: {
+          boards: [
+            { slotCode: 16, boardKind: 24 },
+            { boardSlot: 20, boardKind: 38, boardIdx: 1 }
+          ]
+        }
+      }
     }
     if (data.slotCode === 20) return undefined
     return { code: 0, data: { sources: [{ srcType: 32, srcIdx: 1 }] } }

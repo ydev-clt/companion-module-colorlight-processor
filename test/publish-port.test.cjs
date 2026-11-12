@@ -19,14 +19,19 @@ test('port output maps idx+1 to en', () => {
         { idx: 1, en: 1 }
       ]
     }),
-    { '1': 0, '2': 1 }
+    { 1: 0, 2: 1 }
   )
 })
 
 test('a later duplicate port key wins', () => {
   assert.deepEqual(
-    projectPortOutput({ ports: [{ idx: 0, en: 0 }, { idx: 0, en: 1 }] }),
-    { '1': 1 }
+    projectPortOutput({
+      ports: [
+        { idx: 0, en: 0 },
+        { idx: 0, en: 1 }
+      ]
+    }),
+    { 1: 1 }
   )
 })
 

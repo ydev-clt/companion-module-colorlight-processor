@@ -3,11 +3,7 @@ const assert = require('node:assert/strict')
 const { ALL_CMDS, isCmd } = require('../dist/common/commands')
 const { ACTION_CMD } = require('../dist/actions/string-protocol/core/action-cmds')
 const { CMD_SUPPORT } = require('../dist/common/cmd-support')
-const {
-  INITIAL_DEVICE_COMMANDS,
-  INITIAL_SCREEN_COMMANDS,
-  POLL_CATALOG
-} = require('../dist/variables/initial/catalog')
+const { INITIAL_DEVICE_COMMANDS, INITIAL_SCREEN_COMMANDS, POLL_CATALOG } = require('../dist/variables/initial/catalog')
 const { VARIABLE_GROUPS } = require('../dist/variables/core/registry')
 const { V_VX_SCREEN_COMMANDS } = require('../dist/variables/screen-groups')
 

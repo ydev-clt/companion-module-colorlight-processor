@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// 入口脚本：清理 dist，把 src 下所有非 .ts 文件镜像到 dist 对应位置，
-// 然后按需调用 `tsc` 或 `tsc --watch`。
-// 用法：
-//   node scripts/dev.js          → 构建一次（等价 `rimraf dist && tsc`），可被 build 命令复用
-//   node scripts/dev.js --watch  → 监听 src 中所有非 .ts 文件 + 启动 `tsc --watch`（开发模式）
+// Clean dist, mirror the WASM assets declared in build-config.cjs, then run
+// the locally installed TypeScript compiler.
+//   node scripts/dev.js          -> one-shot build
+//   node scripts/dev.js --watch  -> copy assets + tsc --watch
 
 const { spawn } = require('child_process')
 const fs = require('fs')
 const path = require('path')
+const { extraFiles } = require('../build-config.cjs')
 
 const ROOT = path.resolve(__dirname, '..')
 const SRC_DIR = path.join(ROOT, 'src')
@@ -15,10 +15,8 @@ const DST_DIR = path.join(ROOT, 'dist')
 
 const watchMode = process.argv.includes('--watch')
 
-// 1) 清空 dist（等价于 `rimraf dist`）
 fs.rmSync(DST_DIR, { recursive: true, force: true })
 
-// 2) 把 src 下的单个文件镜像到 dist，保持目录结构（跳过 .ts）
 function mirrorFile(srcPath) {
   if (!srcPath || path.extname(srcPath) === '.ts') return
   const rel = path.relative(SRC_DIR, srcPath)
@@ -36,10 +34,19 @@ function mirrorDir(dir) {
   }
 }
 
-// 3) 初次全量镜像
-mirrorDir(SRC_DIR)
+function mirrorAssets() {
+  if (typeof fs.globSync !== 'function') {
+    // Older Node: the previous recursive mirror is a safe fallback.
+    mirrorDir(SRC_DIR)
+    return
+  }
+  for (const pattern of extraFiles) {
+    for (const rel of fs.globSync(pattern, { cwd: ROOT })) mirrorFile(path.join(ROOT, rel))
+  }
+}
 
-// 4) 监听模式：递归监听 src 下所有子目录
+mirrorAssets()
+
 function watchDir(dir, watchers) {
   if (watchers.has(dir)) return
   const watcher = fs.watch(dir, { persistent: true }, (_event, filename) => {
@@ -54,7 +61,7 @@ function watchDir(dir, watchers) {
       return
     }
     if (stat.isDirectory()) {
-      // 新建子目录：补上监听并把目录里的内容镜像过去
+      // New subdirectory: watch it and mirror its current contents.
       watchDir(full, watchers)
       mirrorDir(full)
     } else {
@@ -67,15 +74,9 @@ function watchDir(dir, watchers) {
 const watchers = new Map()
 if (watchMode) watchDir(SRC_DIR, watchers)
 
-// 5) 启动 tsc（监听模式下加 --watch）
-const isWin = process.platform === 'win32'
-const tscArgs = ['tsc']
-if (watchMode) tscArgs.push('--watch')
-
-const tsc = spawn(isWin ? 'npx.cmd' : 'npx', tscArgs, {
-  stdio: 'inherit',
-  shell: isWin,
-})
+const tscPath = path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc')
+const tscArgs = watchMode ? ['--watch'] : []
+const tsc = spawn(process.execPath, [tscPath, ...tscArgs], { stdio: 'inherit' })
 
 const shutdown = () => {
   tsc.kill()

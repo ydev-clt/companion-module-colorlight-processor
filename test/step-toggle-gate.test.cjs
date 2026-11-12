@@ -8,10 +8,12 @@ function host(modelByte, sendAndAwait) {
   const actions = setupDisplayActions({
     ctx: { config: {}, state: { protocol: 'B-Protocol', modelByte } },
     conn: {
-      sendAndAwait: sendAndAwait ?? (async (_cmd, op) => {
-        ops.push(op)
-        return { code: 0, data: { brt: 1000, ct: 6500, en: 1 } }
-      }),
+      sendAndAwait:
+        sendAndAwait ??
+        (async (_cmd, op) => {
+          ops.push(op)
+          return { code: 0, data: { brt: 1000, ct: 6500, en: 1 } }
+        }),
       sendOnly: async (_cmd, op) => {
         ops.push(op)
         return true

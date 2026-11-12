@@ -1,8 +1,8 @@
 {
   "id": "colorlight-processor",
-  "name": "colorlight-processor",
+  "name": "Colorlight Processor",
   "shortname": "colorlight",
-  "description": "colorlight-processor",
+  "description": "Control Colorlight LED processors over the String-Protocol",
   "version": "1.2.1",
   "license": "MIT",
   "repository": "git+https://github.com/bitfocus/companion-module-colorlight-processor.git",

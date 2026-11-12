@@ -147,9 +147,7 @@ function projectCanvasSync(cmd: string, data: unknown): Record<string, number | 
   }
   if (cmd === 'canvas_switch_mode') {
     const switchMode = finiteNumber(obj.switchMode)
-    return obj.valid === 1 && switchMode !== undefined
-      ? { canvas_switch_mode: switchMode }
-      : { canvas_switch_mode: '' }
+    return obj.valid === 1 && switchMode !== undefined ? { canvas_switch_mode: switchMode } : { canvas_switch_mode: '' }
   }
   const fps = finiteNumber(obj.fps10000)
   return obj.valid === 1 && fps !== undefined

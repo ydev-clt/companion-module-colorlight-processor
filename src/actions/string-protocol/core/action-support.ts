@@ -24,8 +24,7 @@ export function filterActionsForDevice(
   const removed: string[] = []
   for (const [id, def] of Object.entries(actions)) {
     const mapped = ACTION_CMD[id as ACTION_ID]
-    const supported =
-      mapped === 'always' || (typeof mapped === 'string' && isCmdOpSupported(mapped, 'set', device))
+    const supported = mapped === 'always' || (typeof mapped === 'string' && isCmdOpSupported(mapped, 'set', device))
     if (supported) {
       filtered[id] = def
     } else {

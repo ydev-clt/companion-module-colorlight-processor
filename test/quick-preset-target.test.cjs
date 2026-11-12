@@ -1,7 +1,6 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
-const { parseCanvasMode, selectQuickPresetGid } =
-  require('../dist/actions/string-protocol/actions/quick-preset-target')
+const { parseCanvasMode, selectQuickPresetGid } = require('../dist/actions/string-protocol/actions/quick-preset-target')
 const { parseGroupIds } = require('../dist/common/protocol-data')
 
 test('parseCanvasMode accepts only valid mode 0 or 1', () => {

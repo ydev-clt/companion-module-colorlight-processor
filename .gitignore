@@ -1,6 +1,7 @@
 node_modules
 dist
-docs
+docs/superpowers
+docs/string-protocol-design.md
 .worktrees/
 pkg
 colorlight-processor-*.tgz

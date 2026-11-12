@@ -24,7 +24,5 @@ export function setupActions(
   logger.info('Actions setup start')
   // None means the probe has not identified a device yet. Registering actions
   // before that would show commands the device may not support.
-  return context.state.protocol === 'None'
-    ? {}
-    : setupStringActions(context, spTransmitter, setVariableValues, mutex)
+  return context.state.protocol === 'None' ? {} : setupStringActions(context, spTransmitter, setVariableValues, mutex)
 }

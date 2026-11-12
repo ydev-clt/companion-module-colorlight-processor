@@ -50,10 +50,7 @@ test('V10 and VX20 send qp to the first PGM after a PVW', async () => {
     await run.actions.string_quick_preset.callback({
       options: { deviceId: 1, isSelectAll: false, preset: 3, gid: 1 }
     })
-    assert.deepEqual(run.sent, [
-      ...mode0Gets,
-      { cmd: 'qp', op: 'set', sid: 1, data: { preset: 3, gid: 2 } }
-    ])
+    assert.deepEqual(run.sent, [...mode0Gets, { cmd: 'qp', op: 'set', sid: 1, data: { preset: 3, gid: 2 } }])
     assert.equal(
       run.actions.string_quick_preset.description,
       'According to the current canvas mode, change the preset on PGM or PVW.'
@@ -134,26 +131,17 @@ test('canvas mode and group failures stop before qp', async () => {
 })
 
 test('a bad first canvas is skipped when the next one is PGM', async () => {
-  const badCode = host(
-    50,
-    replyFor(0, { 1: { code: 1, data: { gid: 1, canvasType: 1, fieldsValid: 1 } }, 2: pgm })
-  )
+  const badCode = host(50, replyFor(0, { 1: { code: 1, data: { gid: 1, canvasType: 1, fieldsValid: 1 } }, 2: pgm }))
   await badCode.actions.string_quick_preset.callback({
     options: { deviceId: 1, isSelectAll: false, preset: 3, gid: 1 }
   })
-  assert.deepEqual(badCode.sent, [
-    ...mode0Gets,
-    { cmd: 'qp', op: 'set', sid: 1, data: { preset: 3, gid: 2 } }
-  ])
+  assert.deepEqual(badCode.sent, [...mode0Gets, { cmd: 'qp', op: 'set', sid: 1, data: { preset: 3, gid: 2 } }])
 
   const badGid = host(50, replyFor(0, { 1: { code: 0, data: { gid: 9, canvasType: 1, fieldsValid: 1 } }, 2: pgm }))
   await badGid.actions.string_quick_preset.callback({
     options: { deviceId: 1, isSelectAll: false, preset: 3, gid: 1 }
   })
-  assert.deepEqual(badGid.sent, [
-    ...mode0Gets,
-    { cmd: 'qp', op: 'set', sid: 1, data: { preset: 3, gid: 2 } }
-  ])
+  assert.deepEqual(badGid.sent, [...mode0Gets, { cmd: 'qp', op: 'set', sid: 1, data: { preset: 3, gid: 2 } }])
 })
 
 test('the first of two PGMs is used and two PVWs send no qp', async () => {

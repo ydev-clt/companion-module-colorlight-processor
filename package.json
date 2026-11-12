@@ -1,14 +1,18 @@
 {
   "name": "companion-module-colorlight-processor",
   "version": "1.2.1",
-  "description": "simply control colorlight processors",
+  "description": "Control Colorlight LED processors over the String-Protocol",
   "author": "clt",
   "license": "MIT",
   "main": "dist/index.js",
   "scripts": {
     "dev": "node scripts/dev.js --watch",
     "build": "node scripts/dev.js",
+    "pretest": "npm run build",
     "test": "node --test \"test/*.test.cjs\"",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "package": "companion-module-build"
   },
   "dependencies": {
@@ -17,6 +21,7 @@
   "devDependencies": {
     "@companion-module/tools": "2.7.2",
     "@types/node": "^20.14.9",
+    "prettier": "^3.6.2",
     "typescript": "^5.5.2"
   }
 }

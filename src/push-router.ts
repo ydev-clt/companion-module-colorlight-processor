@@ -43,8 +43,7 @@ export function routePush(input: PushRouteInput): PushRouteResult {
   }
 
   const addGid = pushedGroupToAdd(input.identity, input.cmd, input.data, input.managedGroupIds)
-  const nextGroupIds =
-    addGid !== undefined ? [...(input.managedGroupIds ?? []), addGid] : undefined
+  const nextGroupIds = addGid !== undefined ? [...(input.managedGroupIds ?? []), addGid] : undefined
   const slots = nextGroupIds ? buildScreenGroupPlan(input.identity, nextGroupIds) : input.slots
   const values = valuesFromPush({ cmd: input.cmd, code: input.code, data: input.data }, input.identity, slots)
   const result: PushRouteResult = {}

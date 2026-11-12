@@ -4,11 +4,9 @@ const fs = require('node:fs')
 const { setupStringActions } = require('../dist/actions/string-protocol/index')
 
 function setup(modelByte) {
-  return setupStringActions(
-    { config: {}, state: { protocol: 'B-Protocol', modelByte } },
-    {},
-    () => { throw new Error('setVariableValues should not run during setup') }
-  )
+  return setupStringActions({ config: {}, state: { protocol: 'B-Protocol', modelByte } }, {}, () => {
+    throw new Error('setVariableValues should not run during setup')
+  })
 }
 
 test('get action definitions are gone from source', () => {
@@ -24,7 +22,10 @@ test('get action definitions are gone from source', () => {
 test('U9 exposes set actions and no get actions', () => {
   const actions = setup(35)
   const ids = Object.keys(actions)
-  assert.equal(ids.some((id) => id.endsWith('_get')), false)
+  assert.equal(
+    ids.some((id) => id.endsWith('_get')),
+    false
+  )
   assert.equal(ids.includes('string_brightness_set'), true)
   assert.equal(ids.includes('string_reboot'), true)
   assert.equal(ids.includes('string_hue_set'), false)

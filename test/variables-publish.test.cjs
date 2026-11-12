@@ -46,7 +46,9 @@ test('V10 publishes every screen-group variable on gid 1', () => {
   assert.equal(defs.sg_1_output_frame_rate.name.includes('output_frame_rate (Hz)'), true)
   assert.equal(defs.sg_1_low_gray_enable.name.includes('low_gray_enable (0: off, 1: on)'), true)
   assert.equal(
-    defs.sg_1_vsync_src.name.includes('vsync_src (0: input board/signal, 1: Genlock, 2: internal, 3: auto lock, 4: ODCK)'),
+    defs.sg_1_vsync_src.name.includes(
+      'vsync_src (0: input board/signal, 1: Genlock, 2: internal, 3: auto lock, 4: ODCK)'
+    ),
     true
   )
   assert.equal(defs.sg_2_brightness, undefined)
@@ -66,5 +68,8 @@ test('an unknown list publishes device variables only', () => {
   const defs = listPublishedVariables(u9, [], false)
   assert.equal(defs.port_output !== undefined, true)
   assert.equal(defs.screen_group_count, undefined)
-  assert.equal(Object.keys(defs).some((id) => id.startsWith('sg_')), false)
+  assert.equal(
+    Object.keys(defs).some((id) => id.startsWith('sg_')),
+    false
+  )
 })

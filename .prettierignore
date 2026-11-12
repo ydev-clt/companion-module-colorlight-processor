@@ -1,4 +1,7 @@
 node_modules
 dist
+pkg
 yarn.lock
 *.md
+*.wasm
+src/str2bin/sp_session.js

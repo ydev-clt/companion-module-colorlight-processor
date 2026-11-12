@@ -114,7 +114,7 @@ export function setupPictureActions(host: StringActionHost): CompanionActionDefi
         id: 'hue',
         min: PIC_ADJ_MODE_HELP[0].min,
         max: PIC_ADJ_MODE_HELP[0].max,
-        default: PIC_ADJ_MODE_HELP[0].default,
+        default: PIC_ADJ_MODE_HELP[0].default
       },
       gidField()
     ],
@@ -139,7 +139,7 @@ export function setupPictureActions(host: StringActionHost): CompanionActionDefi
         id: 'sat',
         min: PIC_ADJ_MODE_HELP[1].min,
         max: PIC_ADJ_MODE_HELP[1].max,
-        default: PIC_ADJ_MODE_HELP[1].default,
+        default: PIC_ADJ_MODE_HELP[1].default
       },
       gidField()
     ],
@@ -164,7 +164,7 @@ export function setupPictureActions(host: StringActionHost): CompanionActionDefi
         id: 'con',
         min: PIC_ADJ_MODE_HELP[3].min,
         max: PIC_ADJ_MODE_HELP[3].max,
-        default: PIC_ADJ_MODE_HELP[3].default,
+        default: PIC_ADJ_MODE_HELP[3].default
       },
       gidField()
     ],
@@ -190,7 +190,7 @@ export function setupPictureActions(host: StringActionHost): CompanionActionDefi
         tooltip: 'Brightness compensation range: -30 to 30.',
         min: PIC_ADJ_MODE_HELP[2].min,
         max: PIC_ADJ_MODE_HELP[2].max,
-        default: PIC_ADJ_MODE_HELP[2].default,
+        default: PIC_ADJ_MODE_HELP[2].default
       },
       gidField()
     ],

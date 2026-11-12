@@ -139,8 +139,7 @@ async function doLoad(): Promise<EmscriptenModule> {
   let factory: ((arg?: unknown) => Promise<EmscriptenModule>) | null = null
   try {
     const mod = crequire(gluePath) as
-      | ((arg?: unknown) => Promise<EmscriptenModule>)
-      | { default?: (arg?: unknown) => Promise<EmscriptenModule> }
+      ((arg?: unknown) => Promise<EmscriptenModule>) | { default?: (arg?: unknown) => Promise<EmscriptenModule> }
     if (typeof mod === 'function') {
       factory = mod
     } else if (mod && typeof mod.default === 'function') {
@@ -149,7 +148,7 @@ async function doLoad(): Promise<EmscriptenModule> {
   } catch (err) {
     const e = new Error(
       `Failed to load emscripten glue from ${gluePath}: ${(err as Error).message}. ` +
-        `Check build-config.cjs#extraFiles includes "src/str2bin/wasm/".`
+        `Check build-config.cjs#extraFiles includes "src/str2bin/".`
     ) as WasmLoadError
     e.code = 'ERR_WASM_GLUE'
     logger.error(e.message)

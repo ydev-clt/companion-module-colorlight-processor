@@ -72,7 +72,10 @@ test('canvas switch copies, and toggles only from 0 or 1', async () => {
     canvas_switch_mode: { code: 0, data: { switchMode: 3, valid: 1, gid: 1 } }
   })
   await invalid.actions.string_canvas_switch_mode_set.callback({ options: { ...device, switchMode: 2 } })
-  assert.equal(invalid.sent.some((entry) => entry.op === 'set'), false)
+  assert.equal(
+    invalid.sent.some((entry) => entry.op === 'set'),
+    false
+  )
   assert.deepEqual(copy.writes, [])
   assert.deepEqual(toggle.writes, [])
   assert.deepEqual(invalid.writes, [])

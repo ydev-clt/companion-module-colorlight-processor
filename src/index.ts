@@ -112,9 +112,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
   private initActions(): void {
     logger.info('Init actions.')
     // After refactoring: actions unified to String-Protocol
-    this.setActionDefinitions(
-      setupActions(this, this.spTransmitter, this.writebackVariableValues, this.actionMutex)
-    )
+    this.setActionDefinitions(setupActions(this, this.spTransmitter, this.writebackVariableValues, this.actionMutex))
   }
 
   /**

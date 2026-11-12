@@ -130,12 +130,7 @@ function makeCtGainAction(
           logger.warn(`${channel.colorName}-gain step skipped: GET ${channel.cmd} is not supported on this device.`)
           return
         }
-        const resp = await conn.sendAndAwait<unknown, Record<string, unknown>>(
-          channel.cmd,
-          'get',
-          sid,
-          requestData
-        )
+        const resp = await conn.sendAndAwait<unknown, Record<string, unknown>>(channel.cmd, 'get', sid, requestData)
         const rawCurrent = resp?.data?.[channel.field]
         const current = finiteNumber(rawCurrent)
         if (!resp || resp.code !== 0 || current === undefined) {

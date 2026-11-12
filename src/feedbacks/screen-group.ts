@@ -9,12 +9,7 @@ const SCREEN_GROUP_DEFAULT = 1
  * Companion may return the gid option as a non-integer. Those values use screen group 1.
  */
 export function screenGroupId(value: unknown): number {
-  if (
-    typeof value === 'number' &&
-    Number.isInteger(value) &&
-    value >= SCREEN_GROUP_MIN &&
-    value <= SCREEN_GROUP_MAX
-  ) {
+  if (typeof value === 'number' && Number.isInteger(value) && value >= SCREEN_GROUP_MIN && value <= SCREEN_GROUP_MAX) {
     return value
   }
   return SCREEN_GROUP_DEFAULT

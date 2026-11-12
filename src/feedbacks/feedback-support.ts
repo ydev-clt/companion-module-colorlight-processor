@@ -22,8 +22,7 @@ export function filterFeedbacksForDevice(
   const removed: string[] = []
   for (const [id, def] of Object.entries(feedbacks)) {
     const mapped = FEEDBACK_CMD[id as FEEDBACK_ID]
-    const supported =
-      mapped === 'always' || (typeof mapped === 'string' && isCmdOpSupported(mapped, 'get', device))
+    const supported = mapped === 'always' || (typeof mapped === 'string' && isCmdOpSupported(mapped, 'get', device))
     if (supported) {
       filtered[id] = def
     } else {

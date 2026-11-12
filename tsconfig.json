@@ -4,8 +4,7 @@
     "outDir": "./dist",
     "sourceMap": false,
     "paths": {
-      "@companion-module/base": ["./node_modules/@companion-module/base/dist/main.d.ts"],
-      "*": ["../node_modules/*"]
+      "@companion-module/base": ["./node_modules/@companion-module/base/dist/main.d.ts"]
     }
   },
   "include": ["src/**/*.ts"],
