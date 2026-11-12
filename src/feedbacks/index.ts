@@ -20,7 +20,7 @@ export function setupFeedbacks(context: CltProcessorType): CompanionFeedbackDefi
     [FEEDBACK_ID.LOW_GRAY]: setupLowGrayFeedback(context)
   }
   const feedbacks = filterFeedbacksForDevice(built, {
-    protocol: context.config.protocol,
+    protocol: context.state.protocol,
     modelByte: context.state.modelByte
   })
 

@@ -2,7 +2,7 @@ import type { SomeCompanionConfigField } from '@companion-module/base'
 import type { ProcessorBase, DeviceConfig, ModuleTypes } from './common/types'
 import type { SPTransmitterHost } from './actions/string-protocol/core/transmitter'
 import { InstanceBase } from '@companion-module/base'
-import { defaultConfig, generateConfigFields } from './config'
+import { defaultConfig, generateConfigFields, normalizeConfig } from './config'
 import { DeviceProtocolEnum } from './common/types'
 import { Connection } from './connection'
 import { StateCache } from './state'
@@ -17,15 +17,15 @@ import {
   buildScreenGroupPlan,
   groupIdsFromPrGroup,
   managedGroupIds,
-  pushedGroupToAdd,
   screenGroupCountValue,
   type ScreenGroupSlot
 } from './variables/screen-groups'
-import { valuesFromPush } from './variables/push'
 import { getProtocolForDeviceType, type ProbeResult } from './udp-probe'
-import { downlinkChecksumForFamily, resolveDeviceModel } from './common/device-models'
+import { resolveDeviceModel } from './common/device-models'
 import { isCmdOpSupported } from './common/cmd-support'
 import { discoverInputVideoSources } from './common/input-video-sources'
+import { bindSession } from './session-bind'
+import { routePush } from './push-router'
 
 class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
   // device config
@@ -92,8 +92,6 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
    */
   public async init(config: DeviceConfig, _isFirstInit: boolean, _secrets: undefined): Promise<void> {
     logger.info('Init connection instance.')
-    config.protocol = DeviceProtocolEnum.None
-
     await this.configUpdated(config, undefined)
   }
 
@@ -149,9 +147,16 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
    */
   public async configUpdated(config: DeviceConfig, _secrets: undefined): Promise<void> {
     this._linkGeneration++
-    this.config = config
+    const normalized = normalizeConfig(config)
+    this.config = normalized.config
+    // A new config means a new link; do not keep the previous device identity,
+    // input signals, or screen-group plan until the probe answers again.
+    this.state.reset()
+    this.managedGroupIds = null
+    this.screenGroupPlan = []
 
-    logger.info(`Config updated. protocol=${this.config.protocol}`)
+    logger.info(`Config updated. host=${this.config.host}, port=${this.config.port}`)
+    if (normalized.error) logger.error(normalized.error)
 
     // Probe success binds SpSession. Link loss clears identity and reconnects.
     this.connection.setOnProbeResult((result) => {
@@ -176,10 +181,9 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     }
     this.spTransmitter.init(transmitterHost)
 
-    if (this.config.host) {
+    if (!normalized.error && this.config.host) {
       this.connection.open(this.config.host, this.config.port)
     } else {
-      logger.error('Host config is empty.')
       this.connection.close()
     }
 
@@ -217,9 +221,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
 
   private _clearDetectedIdentity(host: string): void {
     logger.warn(`Probe lost device (host=${host}); clearing identity`)
-    this.config.protocol = DeviceProtocolEnum.None
-    this.state.modelByte = null
-    this.state.inputVideoSources = []
+    this.state.reset()
     // Unknown list: device variables stay, screen-group variables do not.
     this.managedGroupIds = null
     this.screenGroupPlan = []
@@ -230,69 +232,51 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
   }
 
   private _bindSpSessionFromConfig(generation: number): void {
-    if (this.config.protocol === DeviceProtocolEnum.None) return
-    const proto = this.config.protocol === DeviceProtocolEnum.A ? 1 : 2
-    const model = resolveDeviceModel(this.config.protocol, this.state.modelByte)
-    const downlinkChecksum = downlinkChecksumForFamily(model?.family)
-    this.spTransmitter
-      .bindSpSession(proto, { downlinkChecksum })
-      .then(async () => {
-        if (generation !== this._linkGeneration) return
-        this.spTransmitter.setOnPush((item) => {
-          if (generation !== this._linkGeneration) return
-          const cmd = item.cmd
-          const code = item.code
-          if (typeof cmd !== 'string') return
-          if (typeof code === 'number' && code !== 0) {
-            logger.warn(`push ${cmd} code=${code} ignored`)
-            return
-          }
-          const identity = { protocol: this.config.protocol, modelByte: this.state.modelByte }
-          if (cmd === 'pr_group') {
-            // Replace the whole list. An empty or unusable body is ignored so
-            // a bad push cannot wipe groups that are already managed.
-            const parsed = groupIdsFromPrGroup({ code: typeof code === 'number' ? code : undefined, data: item.data })
-            if (parsed.length === 0) return
-            this.commitScreenGroups(managedGroupIds(identity, parsed))
-            return
-          }
-          // A command can append one missing gid only when that command belongs
-          // on that gid. The pushed leaves are written after the plan updates.
-          // Nothing here sends another get for the new group.
-          const addGid = pushedGroupToAdd(identity, cmd, item.data, this.managedGroupIds)
-          if (addGid !== undefined) {
-            this.commitScreenGroups([...(this.managedGroupIds ?? []), addGid])
-          }
-          const values = valuesFromPush({ cmd, code, data: item.data }, identity, this.screenGroupPlan)
-          if (Object.keys(values).length === 0) return
-          this.writebackVariableValues(values)
-        })
-        this.connection.beginReceiving()
-        const subscribed = await this.spTransmitter.subscribePush()
-        if (!subscribed) {
-          logger.warn('comm_obj subscribe was not sent; continuing with heartbeat and initial poll')
-        }
-        if (generation !== this._linkGeneration) return
-        this.spTransmitter.startHeartbeat(
-          () => {
-            logger.warn('Heartbeat lost.')
-            this.failLink()
-          },
-          (fn) => this.actionMutex.run(fn)
-        )
-        this._startInitialPoll(generation)
-        this._discoverInputVideoSources(generation)
-      })
-      .catch((err: Error) => {
-        if (generation !== this._linkGeneration) return
-        logger.error(`bindSpSession failed: ${err.message ?? String(err)}`)
+    void bindSession(generation, {
+      transmitter: this.spTransmitter,
+      connection: this.connection,
+      identity: () => this.deviceIdentity(),
+      isCurrent: (current) => current === this._linkGeneration,
+      onPush: (item) => this._handlePush(item),
+      onHeartbeatLost: () => {
+        logger.warn('Heartbeat lost.')
         this.failLink()
-      })
+      },
+      onBindFailed: () => this.failLink(),
+      startInitialPoll: (current) => this._startInitialPoll(current),
+      discoverInputSources: (current) => this._discoverInputVideoSources(current),
+      runSerialized: (fn) => this.actionMutex.run(fn)
+    })
+  }
+
+  /**
+   * Apply one accepted push notice. Protocol validation stays here so the
+   * pure router only decides how the plan changes and which leaves to write.
+   */
+  private _handlePush(item: Record<string, unknown>): void {
+    const cmd = item.cmd
+    const code = item.code
+    if (typeof cmd !== 'string') return
+    if (typeof code === 'number' && code !== 0) {
+      logger.warn(`push ${cmd} code=${code} ignored`)
+      return
+    }
+
+    const route = routePush({
+      cmd,
+      code,
+      data: item.data,
+      identity: this.deviceIdentity(),
+      managedGroupIds: this.managedGroupIds,
+      slots: this.screenGroupPlan
+    })
+    if (route.nextGroupIds) this.commitScreenGroups(route.nextGroupIds)
+    if (route.values) this.writebackVariableValues(route.values)
   }
 
   /** Protocol and model byte the plan and support checks read. */
   private deviceIdentity(): { protocol: DeviceProtocolEnum; modelByte: number | null } {
-    return { protocol: this.config.protocol, modelByte: this.state.modelByte }
+    return { protocol: this.state.protocol, modelByte: this.state.modelByte }
   }
 
   /**
@@ -360,9 +344,9 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
   /**
    * Read installed input boards, then each board's signals, and keep the list
    * for video sync and layer video source. Discovery runs when this device
-   * supports `videosrc` set. The dropdown stays empty until this probe
-   * returns at least one named signal. A failed or empty read does not replace
-   * signals already stored, and does not drop the link.
+   * supports `videosrc` set. The dropdown stays empty until this probe returns
+   * signals. The result replaces the list even when empty, because the list
+   * belongs to the current link; a failed probe does not drop the link.
    */
   private _discoverInputVideoSources(generation: number): void {
     if (
@@ -376,8 +360,6 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     )
       .then((sources) => {
         if (generation !== this._linkGeneration) return
-        // A failed or empty probe must not replace signals already shown.
-        if (sources.length === 0) return
         this.state.inputVideoSources = sources
         this.initActions()
       })
@@ -421,9 +403,8 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
 
   /**
    * Apply the probe-detected device identity (protocol + model byte).
-   *  - protocol → `this.config.protocol` (in-memory, existing behavior)
-   *  - modelByte → `this.state.modelByte` (runtime state, not config:
-   *    config expresses user intent, state expresses measured identity)
+   *  - protocol → `this.state.protocol` (probe-derived, not config)
+   *  - modelByte → `this.state.modelByte`
    * Re-registers actions and feedbacks when either component changes.
    *
    * SpSession rebinding is left to the caller (`_onProbeResult`) so that
@@ -433,7 +414,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     const mapped = getProtocolForDeviceType(result.deviceType)
     if (!mapped) {
       logger.warn(
-        `Unknown device type ${result.deviceType} (host=${host}); keeping identity (protocol=${this.config.protocol})`
+        `Unknown device type ${result.deviceType} (host=${host}); keeping identity (protocol=${this.state.protocol})`
       )
       return
     }
@@ -444,20 +425,22 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
       ? `${model.label}${model.family !== undefined ? ` (family=${model.family})` : ''}`
       : `unresolved (modelByte=${modelByte})`
 
-    if (mapped === this.config.protocol && modelByte === this.state.modelByte) {
-      // Same device still drops the previous link's groups. This link discovers them again.
+    if (mapped === this.state.protocol && modelByte === this.state.modelByte) {
+      // Same device still drops the previous link's groups and input signals.
+      // This link discovers them again.
       this.managedGroupIds = null
       this.screenGroupPlan = []
+      this.state.inputVideoSources = []
       this.refreshVariableDefinitions()
       logger.info(`Probe confirms identity: protocol=${mapped}, ${modelDesc}`)
       return
     }
 
     logger.info(
-      `Probe detected identity change: protocol ${this.config.protocol} → ${mapped}, ` +
+      `Probe detected identity change: protocol ${this.state.protocol} → ${mapped}, ` +
         `modelByte ${this.state.modelByte} → ${modelByte} (${modelDesc}) (deviceType=${result.deviceType}, host=${host})`
     )
-    this.config.protocol = mapped
+    this.state.protocol = mapped
     this.state.modelByte = modelByte
     this.state.inputVideoSources = []
     // The previous screen-group list belonged to the old identity.

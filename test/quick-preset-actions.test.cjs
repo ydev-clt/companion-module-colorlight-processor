@@ -5,7 +5,7 @@ const { setupPresetActions } = require('../dist/actions/string-protocol/actions/
 function host(modelByte, reply) {
   const sent = []
   const actions = setupPresetActions({
-    ctx: { config: { protocol: 'B-Protocol' }, state: { modelByte } },
+    ctx: { config: {}, state: { protocol: 'B-Protocol', modelByte } },
     conn: {
       sendAndAwait: async (cmd, op, sid, data) => {
         sent.push({ cmd, op, sid, data })

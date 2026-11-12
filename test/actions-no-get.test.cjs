@@ -5,7 +5,7 @@ const { setupStringActions } = require('../dist/actions/string-protocol/index')
 
 function setup(modelByte) {
   return setupStringActions(
-    { config: { protocol: 'B-Protocol' }, state: { modelByte } },
+    { config: {}, state: { protocol: 'B-Protocol', modelByte } },
     {},
     () => { throw new Error('setVariableValues should not run during setup') }
   )

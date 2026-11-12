@@ -65,8 +65,8 @@ test('low gray feedback reads the selected screen group and falls back to 1', ()
 function variableHost() {
   const checks = []
   const context = {
-    config: { protocol: 'B-Protocol' },
-    state: { modelByte: 50 },
+    config: {},
+    state: { protocol: 'B-Protocol', modelByte: 50 },
     checkFeedbacks: (id) => checks.push(id),
     setVariableDefinitions() {},
     setVariableValues() {}

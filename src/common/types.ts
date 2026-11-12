@@ -19,7 +19,6 @@ export enum DeviceProtocolEnum {
 export interface DeviceConfig {
   host: string
   port: number
-  protocol: DeviceProtocolEnum
 }
 
 export interface ModuleTypes extends InstanceTypes {

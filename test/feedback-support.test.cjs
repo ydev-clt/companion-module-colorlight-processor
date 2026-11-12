@@ -11,7 +11,7 @@ const LOW_GRAY = 'string_low_gray_feedback'
 const SUPPORTED = [BLACKOUT, FREEZE, LOW_GRAY]
 
 function context(protocol, modelByte) {
-  return { config: { protocol }, state: { modelByte } }
+  return { config: {}, state: { protocol, modelByte } }
 }
 
 function sortedKeys(definitions) {

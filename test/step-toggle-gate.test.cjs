@@ -6,7 +6,7 @@ function host(modelByte, sendAndAwait) {
   const ops = []
   const writes = []
   const actions = setupDisplayActions({
-    ctx: { config: { protocol: 'B-Protocol' }, state: { modelByte } },
+    ctx: { config: {}, state: { protocol: 'B-Protocol', modelByte } },
     conn: {
       sendAndAwait: sendAndAwait ?? (async (_cmd, op) => {
         ops.push(op)

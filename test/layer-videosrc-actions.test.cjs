@@ -14,8 +14,8 @@ function host(sources, modelByte = 35, reply) {
   const writes = []
   const actions = setupLayerActions({
     ctx: {
-      config: { protocol: 'B-Protocol' },
-      state: { modelByte, inputVideoSources: sources }
+      config: {},
+      state: { protocol: 'B-Protocol', modelByte, inputVideoSources: sources }
     },
     conn: {
       sendAndAwait: async (cmd, op, sid, data) => {
@@ -153,7 +153,7 @@ test('U9 and V20 register layer video source and an unresolved model does not', 
   const registered = (modelByte) =>
     Object.keys(
       setupStringActions(
-        { config: { protocol: 'B-Protocol' }, state: { modelByte, inputVideoSources: [] } },
+        { config: {}, state: { protocol: 'B-Protocol', modelByte, inputVideoSources: [] } },
         {},
         () => {}
       )

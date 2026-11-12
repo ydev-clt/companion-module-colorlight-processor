@@ -57,7 +57,7 @@ export function setupPresetActions(host: StringActionHost): CompanionActionDefin
 
   // ---- svpreset ----
   // A protocol does not support setting the preset name, only B protocol does.
-  const isProtocolA = host.ctx.config.protocol === DeviceProtocolEnum.A
+  const isProtocolA = host.ctx.state.protocol === DeviceProtocolEnum.A
   const svpresetNameField = isProtocolA
     ? null
     : ({

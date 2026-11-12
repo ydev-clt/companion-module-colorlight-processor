@@ -42,7 +42,7 @@ export function sidFromOptions(isSelectAll: boolean | undefined, deviceId: numbe
 
 /** Probe-derived identity used by action support checks. */
 export function deviceIdentity(host: StringActionHost): DeviceIdentity {
-  return { protocol: host.ctx.config.protocol, modelByte: host.ctx.state.modelByte }
+  return { protocol: host.ctx.state.protocol, modelByte: host.ctx.state.modelByte }
 }
 
 /** Optional `{ gid }` fragment. A number is kept even when it is 0, matching older saved buttons. */

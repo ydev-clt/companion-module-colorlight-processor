@@ -86,7 +86,7 @@ export function setupVariables(
   function applyDefinitions(): void {
     const screen = readScreenGroups()
     const defs = listPublishedVariables(
-      { protocol: context.config.protocol, modelByte: context.state.modelByte },
+      { protocol: context.state.protocol, modelByte: context.state.modelByte },
       screen.slots,
       screen.groupListKnown
     )

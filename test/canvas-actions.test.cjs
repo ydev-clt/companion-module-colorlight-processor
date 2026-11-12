@@ -7,7 +7,7 @@ function host(responses) {
   const sent = []
   const writes = []
   const actions = setupCanvasActions({
-    ctx: { config: { protocol: 'B-Protocol' }, state: { modelByte: 50 } },
+    ctx: { config: {}, state: { protocol: 'B-Protocol', modelByte: 50 } },
     conn: {
       sendAndAwait: async (cmd, op, sid, data) => {
         sent.push({ cmd, op, sid, data })
@@ -127,7 +127,7 @@ test('video sync keeps source, frame rate, and the selected input signal', async
 
 test('V20 registers the five canvas actions and U9 keeps low gray and video sync', () => {
   const v20 = Object.keys(
-    setupStringActions({ config: { protocol: 'B-Protocol' }, state: { modelByte: 50 } }, {}, () => {})
+    setupStringActions({ config: {}, state: { protocol: 'B-Protocol', modelByte: 50 } }, {}, () => {})
   )
   for (const id of [
     'string_low_gray_set',
@@ -139,7 +139,7 @@ test('V20 registers the five canvas actions and U9 keeps low gray and video sync
     assert.equal(v20.includes(id), true)
   }
   const u9 = Object.keys(
-    setupStringActions({ config: { protocol: 'B-Protocol' }, state: { modelByte: 35 } }, {}, () => {})
+    setupStringActions({ config: {}, state: { protocol: 'B-Protocol', modelByte: 35 } }, {}, () => {})
   )
   assert.equal(u9.includes('string_take'), false)
   assert.equal(u9.includes('string_low_gray_set'), true)

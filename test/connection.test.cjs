@@ -65,7 +65,7 @@ function harness(options = {}) {
   const linkLosses = []
   const conn = new Connection(
     {
-      config: { host: '127.0.0.1', port: 9999, protocol: 'None' },
+      config: { host: '127.0.0.1', port: 9999 },
       handleIncoming: (buf) => incoming.push(Buffer.from(buf)),
       updateStatus: (status) => statuses.push(status)
     },

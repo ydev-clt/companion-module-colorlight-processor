@@ -35,7 +35,7 @@ const VSYNC_MULTIPLIER_CHOICES: DropdownChoice[] = [
 
 export function setupDeviceActions(host: StringActionHost): CompanionActionDefinitions {
   const { conn } = host
-  const isUSeries = resolveDeviceModel(host.ctx.config.protocol, host.ctx.state.modelByte)?.family === 'U'
+  const isUSeries = resolveDeviceModel(host.ctx.state.protocol, host.ctx.state.modelByte)?.family === 'U'
   const multiplierChoices = isUSeries
     ? VSYNC_MULTIPLIER_CHOICES.filter((choice) => {
         const id = Number(choice.id)

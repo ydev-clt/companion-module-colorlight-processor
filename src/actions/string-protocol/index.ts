@@ -61,7 +61,7 @@ export function setupStringActions(
   // Single filtering point: keep a set action when its command supports set
   // on this device. `string_raw_command` stays even when the model is unresolved.
   const all = filterActionsForDevice(merged, {
-    protocol: ctx.config.protocol,
+    protocol: ctx.state.protocol,
     modelByte: ctx.state.modelByte
   })
 

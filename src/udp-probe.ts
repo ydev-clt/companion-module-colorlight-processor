@@ -1,4 +1,3 @@
-import type { DeviceConfig } from './common/types'
 import { DeviceProtocolEnum } from './common/types'
 import type { InstanceStatus } from '@companion-module/base'
 import { InstanceStatus as Status, UDPHelper } from '@companion-module/base'
@@ -26,7 +25,7 @@ export interface ProbeResult {
  * Processors (deviceType 2) speak B-Protocol. Sender cards and player boxes
  * speak A-Protocol. Any other byte is also treated as A.
  */
-export function getProtocolForDeviceType(deviceType: number): DeviceConfig['protocol'] | undefined {
+export function getProtocolForDeviceType(deviceType: number): DeviceProtocolEnum | undefined {
   return deviceType === 2 ? DeviceProtocolEnum.B : DeviceProtocolEnum.A
 }
 

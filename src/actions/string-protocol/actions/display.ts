@@ -377,7 +377,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
   // ---- zerodelay ----
   // A protocol only supports mode=1 (0-frame); B protocol also supports mode=2 (1-frame).
   const zerodelayModeChoices: Array<{ id: 1 | 2; label: string }> = [{ id: 1, label: '0-frame' }]
-  if (host.ctx.config.protocol === DeviceProtocolEnum.B) {
+  if (host.ctx.state.protocol === DeviceProtocolEnum.B) {
     zerodelayModeChoices.push({ id: 2, label: '1-frame' })
   }
 
@@ -392,7 +392,7 @@ export function setupDisplayActions(host: StringActionHost): CompanionActionDefi
         label: 'Delay mode',
         id: 'mode',
         tooltip:
-          host.ctx.config.protocol === DeviceProtocolEnum.A
+          host.ctx.state.protocol === DeviceProtocolEnum.A
             ? 'Delay mode: 0-frame delay (A protocol only supports 0-frame)'
             : 'Delay mode: 0-frame delay / 1-frame delay',
         default: 1,

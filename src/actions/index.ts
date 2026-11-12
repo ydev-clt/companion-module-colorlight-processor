@@ -7,9 +7,9 @@ import type { ActionMutex } from './string-protocol/core/action-mutex'
 /**
  * Initialize actions.
  *
- * The action set is unified to String-Protocol. `config.protocol` only decides
- * which proto (1=Z, 2=V) the SpSession uses; it does not affect the
- * action-registration branch.
+ * The action set is unified to String-Protocol. The probe-detected protocol
+ * only decides which proto (1=Z, 2=V) the SpSession uses; it does not affect
+ * the action-registration branch.
  *
  * `setVariableValues` is the variable writeback hook installed by
  * CltProcessor. Get-actions invoke it on every successful response so the
@@ -24,7 +24,7 @@ export function setupActions(
   logger.info('Actions setup start')
   // None means the probe has not identified a device yet. Registering actions
   // before that would show commands the device may not support.
-  return context.config.protocol === 'None'
+  return context.state.protocol === 'None'
     ? {}
     : setupStringActions(context, spTransmitter, setVariableValues, mutex)
 }
