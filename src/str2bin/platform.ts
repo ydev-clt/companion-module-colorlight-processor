@@ -49,9 +49,6 @@ const here = dirname(__filename)
 const gluePath = resolve(here, WASM_GLUE_NAME)
 const wasmPath = resolve(here, WASM_BINARY_NAME)
 
-/** Read the .wasm binary eagerly. Throws on ENOENT/EACCES. */
-const wasmBytes = readFileSync(wasmPath)
-
 /** Discriminated error type so the call site can decide between `warn` vs `error`. */
 export type WasmLoadErrorCode = 'ERR_WASM_BYTES' | 'ERR_WASM_GLUE' | 'ERR_WASM_INSTANTIATE'
 
@@ -132,6 +129,22 @@ export function loadWasmModule(): Promise<EmscriptenModule> {
 }
 
 async function doLoad(): Promise<EmscriptenModule> {
+  // Read the binary lazily so importing the module never fails before
+  // Companion can render its config fields. A missing asset surfaces when a
+  // session is actually bound, with a clear error code.
+  let wasmBytes: Buffer
+  try {
+    wasmBytes = readFileSync(wasmPath)
+  } catch (err) {
+    const e = new Error(
+      `Failed to read WASM binary from ${wasmPath}: ${(err as Error).message}. ` +
+        `Check build-config.cjs#extraFiles includes "src/str2bin/".`
+    ) as WasmLoadError
+    e.code = 'ERR_WASM_BYTES'
+    logger.error(e.message)
+    throw e
+  }
+
   // 1) Load the emscripten glue. The original dist/sp_session.js is a UMD
   //    wrapper that exposes `module.exports = SpSessionModule` when
   //    required from CommonJS. The factory itself is the default export
