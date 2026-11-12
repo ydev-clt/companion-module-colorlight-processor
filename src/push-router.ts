@@ -1,3 +1,4 @@
+import { CMD } from './common/commands'
 import type { DeviceIdentity } from './common/cmd-support'
 import {
   buildScreenGroupPlan,
@@ -32,7 +33,7 @@ export interface PushRouteResult {
  * against the updated plan. The caller applies the result in order.
  */
 export function routePush(input: PushRouteInput): PushRouteResult {
-  if (input.cmd === 'pr_group') {
+  if (input.cmd === CMD.PR_GROUP) {
     // An empty or unusable body must not wipe groups that are already managed.
     const parsed = groupIdsFromPrGroup({
       code: typeof input.code === 'number' ? input.code : undefined,

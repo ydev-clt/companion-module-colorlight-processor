@@ -1,4 +1,4 @@
-import type { Cmd } from '../../common/commands'
+import { CMD, type Cmd } from '../../common/commands'
 import { isCmdOpSupported, type DeviceIdentity } from '../../common/cmd-support'
 import { extractValuesForCmd } from '../core/registry'
 import type { ScreenGroupSlot } from '../screen-groups'
@@ -24,67 +24,67 @@ const POLL_SID = 1 as const
 
 /** Screen-group commands read once per gid during the startup poll. */
 export const INITIAL_SCREEN_COMMANDS: readonly Cmd[] = [
-  'bright',
-  'colortemp',
-  'freeze',
-  'blackout',
-  'testmode',
-  'hdrmode',
-  'mute',
-  'fade',
-  'fadetime',
-  'zerodelay',
-  'grp_hue',
-  'grp_saturation',
-  'grp_contrast',
-  'grp_brtcomp',
-  'bg_box',
-  'c_depth',
-  'colorspace',
-  'prec_mgr',
-  'ct_r',
-  'ct_g',
-  'ct_b',
-  'grp_gain',
-  'virtual_pixel',
-  'eye_switch',
-  'mode3d',
-  'dual_3d',
-  'stereo_fmt',
-  'vsync_mul',
-  'framerate',
-  'osd',
-  'low_gray',
-  'canvas_mode',
-  'canvas_switch_mode',
-  'out_fps',
-  'vsync_src'
+  CMD.BRIGHT,
+  CMD.COLORTEMP,
+  CMD.FREEZE,
+  CMD.BLACKOUT,
+  CMD.TESTMODE,
+  CMD.HDRMODE,
+  CMD.MUTE,
+  CMD.FADE,
+  CMD.FADETIME,
+  CMD.ZERODELAY,
+  CMD.GRP_HUE,
+  CMD.GRP_SATURATION,
+  CMD.GRP_CONTRAST,
+  CMD.GRP_BRTCOMP,
+  CMD.BG_BOX,
+  CMD.C_DEPTH,
+  CMD.COLORSPACE,
+  CMD.PREC_MGR,
+  CMD.CT_R,
+  CMD.CT_G,
+  CMD.CT_B,
+  CMD.GRP_GAIN,
+  CMD.VIRTUAL_PIXEL,
+  CMD.EYE_SWITCH,
+  CMD.MODE3D,
+  CMD.DUAL_3D,
+  CMD.STEREO_FMT,
+  CMD.VSYNC_MUL,
+  CMD.FRAMERATE,
+  CMD.OSD,
+  CMD.LOW_GRAY,
+  CMD.CANVAS_MODE,
+  CMD.CANVAS_SWITCH_MODE,
+  CMD.OUT_FPS,
+  CMD.VSYNC_SRC
 ]
 
 /** Device-wide commands read once, on sid 1, during the startup poll. */
-export const INITIAL_DEVICE_COMMANDS: readonly Cmd[] = ['sn', 'uh5_st', 'low_pwr', 'allports', 'portout']
+export const INITIAL_DEVICE_COMMANDS: readonly Cmd[] = [CMD.SN, CMD.UH5_ST, CMD.LOW_PWR, CMD.ALLPORTS, CMD.PORTOUT]
 
 /**
  * Known commands that are not read at startup. They stay in the catalog so a
  * later poll phase can opt in without a second command list.
  */
 const RESERVED: readonly Cmd[] = [
-  'layer',
-  'layer_border',
-  'brt_port',
-  'pic_adj',
-  'sndinfo',
-  'snd_eth',
-  'pr_layer',
-  'pr_group',
-  'pr_video',
-  'pr_vsync',
-  'port_area',
-  'pr_video_count',
-  'mfc_probe',
-  'rcv_probe',
-  'mod_probe',
-  'pr_rcv_state'
+  CMD.LAYER,
+  CMD.LAYER_BORDER,
+  CMD.BRT_PORT,
+  CMD.PIC_ADJ,
+  CMD.SNDINFO,
+  CMD.SND_ETH,
+  CMD.PR_LAYER,
+  CMD.PR_GROUP,
+  CMD.PR_VIDEO,
+  CMD.PR_VSYNC,
+  CMD.PORT_AREA,
+  CMD.PR_VIDEO_COUNT,
+  CMD.MFC_PROBE,
+  CMD.RCV_PROBE,
+  CMD.MOD_PROBE,
+  CMD.PR_RCV_STATE
 ]
 
 function entry(cmd: Cmd, scope: PollScope, phase: PollPhase): PollEntry {
@@ -113,7 +113,7 @@ export function selectPollRequests(device: DeviceIdentity, slots: readonly Scree
   for (const item of POLL_CATALOG) {
     if (item.phase !== 'initial' || item.scope !== 'device') continue
     if (!isCmdOpSupported(item.cmd, 'get', device)) continue
-    if (item.cmd === 'portout') {
+    if (item.cmd === CMD.PORTOUT) {
       requests.push({ cmd: item.cmd, sid: POLL_SID, data: { port: 1 } })
       continue
     }
@@ -133,19 +133,19 @@ function finiteNumber(value: unknown): number | undefined {
  * `out_fps` arrives as fps×10000. `vsync_src` keeps only `src`.
  */
 function projectCanvasSync(cmd: string, data: unknown): Record<string, number | string> | undefined {
-  if (cmd !== 'low_gray' && cmd !== 'canvas_mode' && cmd !== 'canvas_switch_mode' && cmd !== 'out_fps') {
+  if (cmd !== CMD.LOW_GRAY && cmd !== CMD.CANVAS_MODE && cmd !== CMD.CANVAS_SWITCH_MODE && cmd !== CMD.OUT_FPS) {
     return undefined
   }
   const obj = data !== null && typeof data === 'object' ? (data as Record<string, unknown>) : {}
-  if (cmd === 'low_gray') {
+  if (cmd === CMD.LOW_GRAY) {
     const en = finiteNumber(obj.en)
     return en === 0 || en === 1 ? { low_gray_enable: en } : {}
   }
-  if (cmd === 'canvas_mode') {
+  if (cmd === CMD.CANVAS_MODE) {
     const mode = finiteNumber(obj.mode)
     return obj.valid === 1 && mode !== undefined ? { canvas_mode: mode } : { canvas_mode: '' }
   }
-  if (cmd === 'canvas_switch_mode') {
+  if (cmd === CMD.CANVAS_SWITCH_MODE) {
     const switchMode = finiteNumber(obj.switchMode)
     return obj.valid === 1 && switchMode !== undefined ? { canvas_switch_mode: switchMode } : { canvas_switch_mode: '' }
   }
@@ -160,7 +160,7 @@ function projectCanvasSync(cmd: string, data: unknown): Record<string, number | 
  * commands have their own shapes; every other command uses the variable registry.
  */
 export function projectPollData(cmd: string, data: unknown): Record<string, number | string | object> {
-  if (cmd === 'portout') {
+  if (cmd === CMD.PORTOUT) {
     const projected = projectPortOutput(data)
     if (projected === undefined) return {}
     return { port_output: projected }

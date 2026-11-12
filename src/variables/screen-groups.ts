@@ -1,4 +1,4 @@
-import type { Cmd } from '../common/commands'
+import { CMD, type Cmd } from '../common/commands'
 import { isCmdOpSupported, type DeviceIdentity } from '../common/cmd-support'
 import { resolveDeviceModel } from '../common/device-models'
 import { parseGroupIds } from '../common/protocol-data'
@@ -19,20 +19,20 @@ export interface ScreenGroupSlot {
  * Membership decides which commands enter the plan. Every slot uses gid 1.
  */
 export const V_VX_SCREEN_COMMANDS: readonly Cmd[] = [
-  'bright',
-  'colortemp',
-  'freeze',
-  'blackout',
-  'testmode',
-  'c_depth',
-  'ct_r',
-  'ct_g',
-  'ct_b',
-  'low_gray',
-  'canvas_mode',
-  'canvas_switch_mode',
-  'out_fps',
-  'vsync_src'
+  CMD.BRIGHT,
+  CMD.COLORTEMP,
+  CMD.FREEZE,
+  CMD.BLACKOUT,
+  CMD.TESTMODE,
+  CMD.C_DEPTH,
+  CMD.CT_R,
+  CMD.CT_G,
+  CMD.CT_B,
+  CMD.LOW_GRAY,
+  CMD.CANVAS_MODE,
+  CMD.CANVAS_SWITCH_MODE,
+  CMD.OUT_FPS,
+  CMD.VSYNC_SRC
 ]
 
 /**

@@ -1,4 +1,4 @@
-import type { Cmd } from '../../common/commands'
+import { CMD, type Cmd } from '../../common/commands'
 import { VARIABLE_ID } from './ids'
 
 /**
@@ -73,43 +73,43 @@ function percentFromRaw(value: number): number {
 const REGISTRY_GROUPS: RegistryGroup[] = [
   // === Display / picture ===
   {
-    cmd: 'bright',
+    cmd: CMD.BRIGHT,
     entries: [{ field: 'brt', variableId: VARIABLE_ID.BRIGHTNESS, transform: percentFromRaw }]
   },
   {
-    cmd: 'colortemp',
+    cmd: CMD.COLORTEMP,
     entries: [{ field: 'ct', variableId: VARIABLE_ID.COLOR_TEMPERATURE }]
   },
   {
-    cmd: 'freeze',
+    cmd: CMD.FREEZE,
     entries: [{ field: 'en', variableId: VARIABLE_ID.FREEZE_ENABLE }]
   },
   {
-    cmd: 'blackout',
+    cmd: CMD.BLACKOUT,
     entries: [{ field: 'en', variableId: VARIABLE_ID.BLACKOUT_ENABLE }]
   },
   {
-    cmd: 'testmode',
+    cmd: CMD.TESTMODE,
     entries: [{ field: 'tp', variableId: VARIABLE_ID.TESTMODE_PATTERN }]
   },
   {
-    cmd: 'hdrmode',
+    cmd: CMD.HDRMODE,
     entries: [{ field: 'mode', variableId: VARIABLE_ID.HDRMODE }]
   },
   {
-    cmd: 'mute',
+    cmd: CMD.MUTE,
     entries: [{ field: 'en', variableId: VARIABLE_ID.MUTE_ENABLE }]
   },
   {
-    cmd: 'fade',
+    cmd: CMD.FADE,
     entries: [{ field: 'en', variableId: VARIABLE_ID.FADE_ENABLE }]
   },
   {
-    cmd: 'fadetime',
+    cmd: CMD.FADETIME,
     entries: [{ field: 'ms', variableId: VARIABLE_ID.FADETIME_MS }]
   },
   {
-    cmd: 'zerodelay',
+    cmd: CMD.ZERODELAY,
     entries: [
       {
         variableId: VARIABLE_ID.ZERODELAY,
@@ -118,7 +118,7 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
     ]
   },
   {
-    cmd: 'uh5_st',
+    cmd: CMD.UH5_ST,
     entries: [{ field: 'en', variableId: VARIABLE_ID.UH5_STATUS_ENABLE }]
   },
 
@@ -127,49 +127,49 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
   // SATURATION / CONTRAST / BRTCOMP_VALUE based on the response's `mode`
   // field. See src/actions/string-protocol/actions/picture.ts.
   {
-    cmd: 'grp_hue',
+    cmd: CMD.GRP_HUE,
     entries: [{ field: 'hue', variableId: VARIABLE_ID.HUE }]
   },
   {
-    cmd: 'grp_saturation',
+    cmd: CMD.GRP_SATURATION,
     entries: [{ field: 'sat', variableId: VARIABLE_ID.SATURATION }]
   },
   {
-    cmd: 'grp_contrast',
+    cmd: CMD.GRP_CONTRAST,
     entries: [{ field: 'con', variableId: VARIABLE_ID.CONTRAST }]
   },
   {
-    cmd: 'grp_brtcomp',
+    cmd: CMD.GRP_BRTCOMP,
     entries: [{ field: 'bc', variableId: VARIABLE_ID.BRTCOMP_VALUE }]
   },
 
   // === Device ===
   {
-    cmd: 'sn',
+    cmd: CMD.SN,
     entries: [{ field: 'serial', variableId: VARIABLE_ID.SERIAL_NUMBER }]
   },
 
   // === Audio / 3D ===
   {
-    cmd: 'eye_switch',
+    cmd: CMD.EYE_SWITCH,
     entries: [{ field: 'eye', variableId: VARIABLE_ID.EYE_SWITCH_EYE }]
   },
   {
-    cmd: 'mode3d',
+    cmd: CMD.MODE3D,
     entries: [{ field: 'en', variableId: VARIABLE_ID.MODE3D_ENABLE }]
   },
   {
-    cmd: 'dual_3d',
+    cmd: CMD.DUAL_3D,
     entries: [{ field: 'mode', variableId: VARIABLE_ID.DUAL_3D_MODE }]
   },
   {
-    cmd: 'stereo_fmt',
+    cmd: CMD.STEREO_FMT,
     entries: [{ field: 'fmt', variableId: VARIABLE_ID.STEREO_FORMAT }]
   },
 
   // === Network port ===
   {
-    cmd: 'portout',
+    cmd: CMD.PORTOUT,
     entries: [
       {
         variableId: VARIABLE_ID.PORTOUT,
@@ -178,11 +178,11 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
     ]
   },
   {
-    cmd: 'allports',
+    cmd: CMD.ALLPORTS,
     entries: [{ field: 'en', variableId: VARIABLE_ID.ALLPORTS_ENABLE }]
   },
   {
-    cmd: 'brt_port',
+    cmd: CMD.BRT_PORT,
     entries: [
       {
         variableId: VARIABLE_ID.BRT_PORT,
@@ -191,7 +191,7 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
     ]
   },
   {
-    cmd: 'c_depth',
+    cmd: CMD.C_DEPTH,
     entries: [{ field: 'depth', variableId: VARIABLE_ID.C_DEPTH_BITS }]
   },
 
@@ -200,7 +200,7 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
   // Object keys: { layer (index), x, y, width, height } — sourced from
   // the protocol fields { layer, x, y, w, h }.
   {
-    cmd: 'layer',
+    cmd: CMD.LAYER,
     entries: [
       {
         variableId: VARIABLE_ID.LAYER,
@@ -215,7 +215,7 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
     ]
   },
   {
-    cmd: 'layer_border',
+    cmd: CMD.LAYER_BORDER,
     entries: [
       {
         variableId: VARIABLE_ID.LAYER_BORDER,
@@ -232,7 +232,7 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
     ]
   },
   {
-    cmd: 'bg_box',
+    cmd: CMD.BG_BOX,
     entries: [
       {
         variableId: VARIABLE_ID.BG_BOX,
@@ -243,31 +243,31 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
 
   // === Color / gain ===
   {
-    cmd: 'colorspace',
+    cmd: CMD.COLORSPACE,
     entries: [{ field: 'space', variableId: VARIABLE_ID.COLORSPACE }]
   },
   {
-    cmd: 'prec_mgr',
+    cmd: CMD.PREC_MGR,
     entries: [{ field: 'en', variableId: VARIABLE_ID.PREC_MGR_ENABLE }]
   },
   {
-    cmd: 'ct_r',
+    cmd: CMD.CT_R,
     entries: [{ field: 'r', variableId: VARIABLE_ID.CT_R_VALUE, transform: percentFromRaw }]
   },
   {
-    cmd: 'ct_g',
+    cmd: CMD.CT_G,
     entries: [{ field: 'g', variableId: VARIABLE_ID.CT_G_VALUE, transform: percentFromRaw }]
   },
   {
-    cmd: 'ct_b',
+    cmd: CMD.CT_B,
     entries: [{ field: 'b', variableId: VARIABLE_ID.CT_B_VALUE, transform: percentFromRaw }]
   },
   {
-    cmd: 'grp_gain',
+    cmd: CMD.GRP_GAIN,
     entries: [{ field: 'gain', variableId: VARIABLE_ID.GRP_GAIN_VALUE }]
   },
   {
-    cmd: 'virtual_pixel',
+    cmd: CMD.VIRTUAL_PIXEL,
     entries: [
       {
         variableId: VARIABLE_ID.VIRTUAL_PIXEL,
@@ -284,7 +284,7 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
 
   // === Device ===
   {
-    cmd: 'vsync_mul',
+    cmd: CMD.VSYNC_MUL,
     entries: [
       {
         variableId: VARIABLE_ID.VSYNC_MUL,
@@ -299,41 +299,41 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
 
   // === Frame rate / system / OSD ===
   {
-    cmd: 'framerate',
+    cmd: CMD.FRAMERATE,
     entries: [{ field: 'mode', variableId: VARIABLE_ID.FRAMERATE_MODE }]
   },
   {
-    cmd: 'osd',
+    cmd: CMD.OSD,
     entries: [{ field: 'en', variableId: VARIABLE_ID.OSD_ENABLE }]
   },
   {
-    cmd: 'low_pwr',
+    cmd: CMD.LOW_PWR,
     entries: [{ field: 'en', variableId: VARIABLE_ID.LOW_PWR_ENABLE }]
   },
   {
-    cmd: 'low_gray',
+    cmd: CMD.LOW_GRAY,
     entries: [{ field: 'en', variableId: VARIABLE_ID.LOW_GRAY_ENABLE }]
   },
   {
-    cmd: 'canvas_mode',
+    cmd: CMD.CANVAS_MODE,
     entries: [{ field: 'mode', variableId: VARIABLE_ID.CANVAS_MODE }]
   },
   {
-    cmd: 'canvas_switch_mode',
+    cmd: CMD.CANVAS_SWITCH_MODE,
     entries: [{ field: 'switchMode', variableId: VARIABLE_ID.CANVAS_SWITCH_MODE }]
   },
   {
-    cmd: 'out_fps',
+    cmd: CMD.OUT_FPS,
     entries: [{ field: 'fps10000', variableId: VARIABLE_ID.OUTPUT_FRAME_RATE }]
   },
   {
-    cmd: 'vsync_src',
+    cmd: CMD.VSYNC_SRC,
     entries: [{ field: 'src', variableId: VARIABLE_ID.VSYNC_SRC }]
   },
 
   // === Probe (query-only) ===
   {
-    cmd: 'sndinfo',
+    cmd: CMD.SNDINFO,
     entries: [
       {
         variableId: VARIABLE_ID.SNDINFO,
@@ -352,7 +352,7 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
     ]
   },
   {
-    cmd: 'snd_eth',
+    cmd: CMD.SND_ETH,
     entries: [
       {
         variableId: VARIABLE_ID.SND_ETH,
@@ -361,7 +361,7 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
     ]
   },
   {
-    cmd: 'pr_layer',
+    cmd: CMD.PR_LAYER,
     entries: [
       {
         variableId: VARIABLE_ID.PR_LAYER,
@@ -370,7 +370,7 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
     ]
   },
   {
-    cmd: 'pr_group',
+    cmd: CMD.PR_GROUP,
     entries: [
       {
         variableId: VARIABLE_ID.PR_GROUP,
@@ -379,7 +379,7 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
     ]
   },
   {
-    cmd: 'pr_video',
+    cmd: CMD.PR_VIDEO,
     entries: [
       {
         variableId: VARIABLE_ID.PR_VIDEO,
@@ -388,7 +388,7 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
     ]
   },
   {
-    cmd: 'pr_vsync',
+    cmd: CMD.PR_VSYNC,
     entries: [
       {
         variableId: VARIABLE_ID.PR_VSYNC,
@@ -397,7 +397,7 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
     ]
   },
   {
-    cmd: 'port_area',
+    cmd: CMD.PORT_AREA,
     entries: [
       {
         variableId: VARIABLE_ID.PORT_AREA,
@@ -414,11 +414,11 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
     ]
   },
   {
-    cmd: 'pr_video_count',
+    cmd: CMD.PR_VIDEO_COUNT,
     entries: [{ field: 'count', variableId: VARIABLE_ID.PR_VIDEO_COUNT }]
   },
   {
-    cmd: 'mfc_probe',
+    cmd: CMD.MFC_PROBE,
     entries: [
       {
         variableId: VARIABLE_ID.MFC_PROBE,
@@ -433,7 +433,7 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
     ]
   },
   {
-    cmd: 'rcv_probe',
+    cmd: CMD.RCV_PROBE,
     entries: [
       {
         variableId: VARIABLE_ID.RCV_PROBE,
@@ -451,7 +451,7 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
     ]
   },
   {
-    cmd: 'mod_probe',
+    cmd: CMD.MOD_PROBE,
     entries: [
       {
         variableId: VARIABLE_ID.MOD_PROBE,
@@ -460,7 +460,7 @@ const REGISTRY_GROUPS: RegistryGroup[] = [
     ]
   },
   {
-    cmd: 'pr_rcv_state',
+    cmd: CMD.PR_RCV_STATE,
     entries: [
       {
         variableId: VARIABLE_ID.PR_RCV_STATE,

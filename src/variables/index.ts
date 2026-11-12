@@ -3,6 +3,7 @@ import type { CltProcessorType } from '../common/types'
 import { logger } from '../common/log'
 import { FEEDBACK_ID } from '../common/feedback-ids'
 import { isCmdOpSupported, type DeviceIdentity } from '../common/cmd-support'
+import { CMD } from '../common/commands'
 import { INITIAL_SCREEN_COMMANDS, POLL_CATALOG } from './initial'
 import { getSpecsByCmd } from './core/registry'
 import type { ScreenGroupSlot } from './screen-groups'
@@ -52,7 +53,7 @@ export function listPublishedVariables(
     }
   }
   if (groupListKnown) {
-    const spec = getSpecsByCmd('pr_group')[0]
+    const spec = getSpecsByCmd(CMD.PR_GROUP)[0]
     if (spec) out[publishVariableId('device', spec.variableId)] = { name: spec.displayName }
   }
   return out

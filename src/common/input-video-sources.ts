@@ -1,4 +1,5 @@
 import type { DropdownChoice } from '@companion-module/base'
+import { CMD, type Cmd } from './commands'
 import { inputSignalName } from './input-board-names'
 
 /**
@@ -166,7 +167,7 @@ export function inputVideoSourceChoices(
   return choices
 }
 
-type ProbeGet = (cmd: string, data?: Record<string, number>) => Promise<{ code?: unknown; data?: unknown } | undefined>
+type ProbeGet = (cmd: Cmd, data?: Record<string, number>) => Promise<{ code?: unknown; data?: unknown } | undefined>
 
 /**
  * Discover every input signal and keep the flat list for video sync and the
@@ -180,14 +181,14 @@ export async function discoverInputVideoSources(
   get: ProbeGet,
   log: (message: string) => void = () => {}
 ): Promise<InputVideoSource[]> {
-  const boardResponse = await get('pr_vin_board')
+  const boardResponse = await get(CMD.PR_VIN_BOARD)
   const boards = boardsFromVinBoard(boardResponse)
   if (boards.length === 0 && (boardResponse === undefined || boardResponse.code !== 0)) {
     log(`input video sources: pr_vin_board unavailable (code=${String(boardResponse?.code)}).`)
   }
   const sources: InputVideoSource[] = []
   for (const board of boards) {
-    const video = await get('pr_video', { slotCode: board.slotCode, boardKind: board.boardKind })
+    const video = await get(CMD.PR_VIDEO, { slotCode: board.slotCode, boardKind: board.boardKind })
     if (video === undefined || (video.code !== undefined && video.code !== 0)) {
       log(
         `input video sources: pr_video skipped for slot ${board.slotCode} kind ${board.boardKind} (code=${String(video?.code)}).`
@@ -199,7 +200,7 @@ export async function discoverInputVideoSources(
   if (sources.length > 0) return sources
   // Single-board devices accept pr_video with no slot. Use that when the
   // board list is missing or none of its slots returned a signal.
-  const video = await get('pr_video')
+  const video = await get(CMD.PR_VIDEO)
   if (video === undefined || (video.code !== undefined && video.code !== 0)) {
     log(`input video sources: pr_video returned no signals (code=${String(video?.code)}).`)
     return []

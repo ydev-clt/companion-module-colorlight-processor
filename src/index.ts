@@ -23,6 +23,7 @@ import {
 import { getProtocolForDeviceType, type ProbeResult } from './udp-probe'
 import { resolveDeviceModel } from './common/device-models'
 import { isCmdOpSupported } from './common/cmd-support'
+import { CMD } from './common/commands'
 import { discoverInputVideoSources } from './common/input-video-sources'
 import { bindSession } from './session-bind'
 import { routePush } from './push-router'
@@ -309,7 +310,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     try {
       // Timeout and transport failure come back as undefined; this catch
       // runs only when sendAndAwait actually throws.
-      const response = await this.spTransmitter.sendAndAwait('pr_group', 'get', 1)
+      const response = await this.spTransmitter.sendAndAwait(CMD.PR_GROUP, 'get', 1)
       if (generation !== this._linkGeneration) return this.screenGroupPlan
       parsed = groupIdsFromPrGroup(response)
     } catch (err) {
@@ -348,8 +349,8 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
    */
   private _discoverInputVideoSources(generation: number): void {
     if (
-      !isCmdOpSupported('pr_vin_board', 'get', this.deviceIdentity()) ||
-      !isCmdOpSupported('pr_video', 'get', this.deviceIdentity())
+      !isCmdOpSupported(CMD.PR_VIN_BOARD, 'get', this.deviceIdentity()) ||
+      !isCmdOpSupported(CMD.PR_VIDEO, 'get', this.deviceIdentity())
     )
       return
     void discoverInputVideoSources(
