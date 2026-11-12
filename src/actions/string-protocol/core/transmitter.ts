@@ -240,6 +240,7 @@ export class SPTransmitter {
     let result: ReturnType<SpSession['outbound']>
     try {
       result = this._spSession.outbound(this._token, data)
+      logger.debug(`SpSession.outbound result: ${JSON.stringify(result)}`)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       logger.error(`SpSession.outbound threw: ${message}`)
