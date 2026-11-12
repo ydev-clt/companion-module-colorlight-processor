@@ -4,6 +4,14 @@ const { HeartbeatRunner } = require('../dist/actions/string-protocol/core/heartb
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
+async function waitFor(predicate, timeoutMs = 2000) {
+  const started = Date.now()
+  while (!predicate()) {
+    if (Date.now() - started > timeoutMs) throw new Error('waitFor timed out')
+    await delay(5)
+  }
+}
+
 test('schedules the next beat after a response, including a non-zero code', async () => {
   let calls = 0
   const failures = []
@@ -33,7 +41,7 @@ test('schedules the next beat after a response, including a non-zero code', asyn
   }
 })
 
-test('a missing response fails the link once', async () => {
+test('a missing response fails the link only after three consecutive failures', async () => {
   let calls = 0
   const failures = []
   const runner = new HeartbeatRunner(
@@ -46,11 +54,40 @@ test('a missing response fails the link once', async () => {
   )
   try {
     runner.start()
-    await delay(20)
-    assert.equal(calls, 1)
+    await waitFor(() => calls >= 1)
+    assert.deepEqual(failures, [])
+    await waitFor(() => calls >= 2)
+    assert.deepEqual(failures, [])
+    await waitFor(() => failures.length > 0)
     assert.deepEqual(failures, ['fail'])
-    await delay(60)
-    assert.equal(calls, 1)
+    assert.equal(calls, 3)
+    await delay(80)
+    assert.equal(calls, 3)
+  } finally {
+    runner.stop()
+  }
+})
+
+test('a successful beat resets the consecutive failure count', async () => {
+  let calls = 0
+  const failures = []
+  const runner = new HeartbeatRunner(
+    () => {
+      calls += 1
+      return Promise.resolve(calls === 3 ? { code: 0 } : undefined)
+    },
+    40,
+    () => failures.push('fail')
+  )
+  try {
+    runner.start()
+    await waitFor(() => calls >= 2)
+    assert.deepEqual(failures, [])
+    await waitFor(() => calls >= 4)
+    assert.deepEqual(failures, [])
+    await waitFor(() => failures.length > 0)
+    assert.deepEqual(failures, ['fail'])
+    assert.equal(calls, 6)
   } finally {
     runner.stop()
   }
