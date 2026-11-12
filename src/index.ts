@@ -354,7 +354,11 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
    * signals already stored, and does not drop the link.
    */
   private _discoverInputVideoSources(generation: number): void {
-    if (!isCmdOpSupported('videosrc', 'set', this.deviceIdentity())) return
+    if (
+      !isCmdOpSupported('pr_vin_board', 'get', this.deviceIdentity()) ||
+      !isCmdOpSupported('pr_video', 'get', this.deviceIdentity())
+    )
+      return
     void discoverInputVideoSources(
       (cmd, data) => this.spTransmitter.sendAndAwait(cmd, 'get', 1, data),
       (message) => logger.warn(message)
