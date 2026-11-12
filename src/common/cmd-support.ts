@@ -109,7 +109,7 @@ export const CMD_SUPPORT: Record<string, CmdSupport> = {
 
   // set only, AB
   qp: { set: AB },
-  videosrc: { set: AB },
+  videosrc: { set: AB_EXCEPT_V_VX },
 
   // set only, AB except V / VX
   svpreset: { set: AB_EXCEPT_V_VX },
@@ -139,7 +139,7 @@ export const CMD_SUPPORT: Record<string, CmdSupport> = {
   vsync_src: { get: [B], set: [B] },
 
   // V/VX canvas sync (libsp 1.0.7). No set side means no action.
-  low_gray: { get: V_VX_ONLY, set: V_VX_ONLY },
+  low_gray: { get: AB, set: AB },
   canvas_switch_mode: { get: V_VX_ONLY, set: V_VX_ONLY },
   take: { set: V_VX_ONLY },
   cut: { set: V_VX_ONLY },
@@ -151,8 +151,8 @@ export const CMD_SUPPORT: Record<string, CmdSupport> = {
   snd_eth: { get: EMPTY_GET },
   pr_layer: { get: EMPTY_GET },
   pr_group: { get: EMPTY_GET },
-  pr_video: { get: EMPTY_GET },
-  pr_vin_board: { get: EMPTY_GET },
+  pr_video: { get: AB },
+  pr_vin_board: { get: AB },
   pr_vsync: { get: EMPTY_GET },
   port_area: { get: EMPTY_GET },
   pr_video_count: { get: EMPTY_GET },
