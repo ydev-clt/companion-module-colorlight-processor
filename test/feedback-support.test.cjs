@@ -25,9 +25,9 @@ test('resolved V and VX register freeze, blackout, and low gray', () => {
   }
 })
 
-test('resolved non-V/VX keeps freeze and blackout only', () => {
+test('resolved non-V/VX also registers low gray', () => {
   const keys = sortedKeys(setupFeedbacks(context('B-Protocol', 35)))
-  assert.deepEqual(keys, [BLACKOUT, FREEZE])
+  assert.deepEqual(keys, SUPPORTED)
 })
 
 test('unresolved model and A-Protocol register no feedbacks', () => {

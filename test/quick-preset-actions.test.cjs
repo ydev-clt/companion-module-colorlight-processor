@@ -56,7 +56,7 @@ test('V10 and VX20 send qp to the first PGM after a PVW', async () => {
     ])
     assert.equal(
       run.actions.string_quick_preset.description,
-      'Switch to the specified preset. Canvas mode comes from the lowest screen group; the preset is sent to PGM or PVW.'
+      'According to the current canvas mode, change the preset on PGM or PVW.'
     )
     assert.equal(gidOption(run.actions), undefined)
   }

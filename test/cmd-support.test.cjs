@@ -56,12 +56,16 @@ test('V20 and VX20 support the canvas sync commands', () => {
   }
 })
 
-test('U9 and an unresolved model do not support canvas sync commands', () => {
-  for (const device of [u9, unresolved]) {
-    for (const cmd of ['low_gray', 'take', 'cut', 'canvas_switch_mode', 'canvas_mode', 'out_fps']) {
-      assert.equal(isCmdOpSupported(cmd, 'get', device), false)
-      assert.equal(isCmdOpSupported(cmd, 'set', device), false)
-    }
+test('U9 supports low_gray but not the V/VX-only canvas sync commands', () => {
+  assert.equal(isCmdOpSupported('low_gray', 'get', u9), true)
+  assert.equal(isCmdOpSupported('low_gray', 'set', u9), true)
+  for (const cmd of ['take', 'cut', 'canvas_switch_mode', 'canvas_mode', 'out_fps']) {
+    assert.equal(isCmdOpSupported(cmd, 'get', u9), false)
+    assert.equal(isCmdOpSupported(cmd, 'set', u9), false)
+  }
+  for (const cmd of ['low_gray', 'take', 'cut', 'canvas_switch_mode', 'canvas_mode', 'out_fps']) {
+    assert.equal(isCmdOpSupported(cmd, 'get', unresolved), false)
+    assert.equal(isCmdOpSupported(cmd, 'set', unresolved), false)
   }
 })
 

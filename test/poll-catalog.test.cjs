@@ -41,7 +41,7 @@ test('U9 selection skips reserved and unsupported gets', () => {
     [
       'bright', 'colortemp', 'freeze', 'blackout', 'testmode', 'hdrmode', 'mute', 'fade', 'fadetime', 'zerodelay',
       'bg_box', 'c_depth', 'colorspace', 'prec_mgr', 'ct_r', 'ct_g', 'ct_b', 'virtual_pixel', 'eye_switch',
-      'mode3d', 'dual_3d', 'stereo_fmt', 'vsync_mul', 'osd', 'vsync_src', 'sn', 'allports', 'portout'
+      'mode3d', 'dual_3d', 'stereo_fmt', 'vsync_mul', 'osd', 'low_gray', 'vsync_src', 'sn', 'allports', 'portout'
     ]
   )
   assert.equal(requests.some((request) => request.cmd === 'layer'), false)

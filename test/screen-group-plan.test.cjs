@@ -47,7 +47,7 @@ test('pushedGroupToAdd only returns a missing eligible gid', () => {
 
 test('buildScreenGroupPlan repeats the current U9 screen commands per gid', () => {
   const one = buildScreenGroupPlan(u9, [1]).map((slot) => slot.cmd)
-  assert.equal(one.includes('low_gray'), false)
+  assert.equal(one.includes('low_gray'), true)
   assert.equal(one.includes('canvas_mode'), false)
   assert.equal(one.includes('out_fps'), false)
   assert.equal(one.includes('vsync_src'), true)

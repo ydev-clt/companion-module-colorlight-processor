@@ -125,7 +125,7 @@ test('video sync keeps source, frame rate, and the selected input signal', async
   assert.deepEqual(h.writes, [])
 })
 
-test('V20 registers the five canvas actions and U9 does not', () => {
+test('V20 registers the five canvas actions and U9 keeps low gray and video sync', () => {
   const v20 = Object.keys(
     setupStringActions({ config: { protocol: 'B-Protocol' }, state: { modelByte: 50 } }, {}, () => {})
   )
@@ -142,6 +142,6 @@ test('V20 registers the five canvas actions and U9 does not', () => {
     setupStringActions({ config: { protocol: 'B-Protocol' }, state: { modelByte: 35 } }, {}, () => {})
   )
   assert.equal(u9.includes('string_take'), false)
-  assert.equal(u9.includes('string_low_gray_set'), false)
+  assert.equal(u9.includes('string_low_gray_set'), true)
   assert.equal(u9.includes('string_vsync_src_set'), true)
 })

@@ -17,6 +17,7 @@ test('U9 publishes sg_1 names and skips reserved and unsupported commands', () =
   assert.equal(defs.sg_1_hue, undefined)
   assert.equal(defs.layer, undefined)
   assert.equal(defs.sg_1_layer, undefined)
+  assert.equal(defs.sg_1_low_gray_enable !== undefined, true)
   assert.equal(defs.sg_1_vsync_src !== undefined, true)
   assert.equal(defs.sg_1_vsync_source, undefined)
   assert.equal(defs.sg_1_vsync_current_source, undefined)

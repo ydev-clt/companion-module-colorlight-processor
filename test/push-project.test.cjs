@@ -71,11 +71,18 @@ test('reserved, unknown, unsupported, and failed pushes write nothing', () => {
   )
   assert.deepEqual(valuesFromPush({ cmd: 'not_a_cmd', code: 0, data: {} }, u9, u9One), {})
   assert.deepEqual(
-    valuesFromPush({ cmd: 'low_gray', code: 0, data: { en: 1, gid: 1 } }, u9, u9One),
+    valuesFromPush({ cmd: 'bright', code: 9008, data: { brt: 8000, gid: 1 } }, u9, u9One),
     {}
   )
+})
+
+test('U9 low gray is published on the planned screen group', () => {
   assert.deepEqual(
-    valuesFromPush({ cmd: 'bright', code: 9008, data: { brt: 8000, gid: 1 } }, u9, u9One),
+    valuesFromPush({ cmd: 'low_gray', code: 0, data: { en: 1, gid: 1 } }, u9, u9One),
+    { sg_1_low_gray_enable: 1 }
+  )
+  assert.deepEqual(
+    valuesFromPush({ cmd: 'low_gray', code: 0, data: { en: 2, gid: 1 } }, u9, u9One),
     {}
   )
 })

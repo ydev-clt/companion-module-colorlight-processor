@@ -109,7 +109,7 @@ export const CMD_SUPPORT: Record<string, CmdSupport> = {
 
   // set only, AB
   qp: { set: AB },
-  videosrc: { set: AB_EXCEPT_V_VX },
+  videosrc: { set: AB },
 
   // set only, AB except V / VX
   svpreset: { set: AB_EXCEPT_V_VX },
