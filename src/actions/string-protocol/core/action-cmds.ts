@@ -1,11 +1,12 @@
 import { ACTION_ID } from './ids'
+import type { Cmd } from './constants'
 
 /**
  * Maps each registered action to the protocol command used for set-support
  * checks. `'always'` stays registered on every device, including an
  * unresolved model. A missing entry is not registered.
  */
-export const ACTION_CMD: Record<ACTION_ID, string | 'always'> = {
+export const ACTION_CMD: Record<ACTION_ID, Cmd | 'always'> = {
   // === Display / picture ===
   [ACTION_ID.BRIGHT_SET]: 'bright',
   [ACTION_ID.COLORTEMP_SET]: 'colortemp',

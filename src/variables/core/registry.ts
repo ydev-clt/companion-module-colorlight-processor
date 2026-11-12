@@ -1,3 +1,4 @@
+import type { Cmd } from '../../common/commands'
 import { VARIABLE_ID } from './ids'
 
 /**
@@ -15,7 +16,7 @@ export interface VariableSpec {
   /** Stable Companion variableId (see VARIABLE_ID). */
   variableId: VARIABLE_ID
   /** Protocol cmd that supplies the value. */
-  cmd: string
+  cmd: Cmd
   /**
    * Single protocol field whose value becomes the variable value
    * (mutually exclusive with `composite`).
@@ -60,7 +61,7 @@ type RegistryEntry =
 
 /** Group multiple variables under a single cmd by sharing the same `cmd` value. */
 type RegistryGroup = {
-  cmd: string
+  cmd: Cmd
   entries: RegistryEntry[]
 }
 

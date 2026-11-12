@@ -1,3 +1,4 @@
+import type { Cmd } from '../../common/commands'
 import { isCmdOpSupported, type DeviceIdentity } from '../../common/cmd-support'
 import { extractValuesForCmd } from '../core/registry'
 import type { ScreenGroupSlot } from '../screen-groups'
@@ -7,13 +8,13 @@ export type PollPhase = 'initial' | 'reserved'
 export type PollScope = 'screen-group' | 'device'
 
 export interface PollEntry {
-  cmd: string
+  cmd: Cmd
   scope: PollScope
   phase: PollPhase
 }
 
 export interface PollRequest {
-  cmd: string
+  cmd: Cmd
   sid: 1
   gid?: number
   data?: Record<string, unknown>
@@ -22,7 +23,7 @@ export interface PollRequest {
 const POLL_SID = 1 as const
 
 /** Screen-group commands read once per gid during the startup poll. */
-const INITIAL_SCREEN: readonly string[] = [
+export const INITIAL_SCREEN_COMMANDS: readonly Cmd[] = [
   'bright',
   'colortemp',
   'freeze',
@@ -61,13 +62,13 @@ const INITIAL_SCREEN: readonly string[] = [
 ]
 
 /** Device-wide commands read once, on sid 1, during the startup poll. */
-const INITIAL_DEVICE: readonly string[] = ['sn', 'uh5_st', 'low_pwr', 'allports', 'portout']
+export const INITIAL_DEVICE_COMMANDS: readonly Cmd[] = ['sn', 'uh5_st', 'low_pwr', 'allports', 'portout']
 
 /**
  * Known commands that are not read at startup. They stay in the catalog so a
  * later poll phase can opt in without a second command list.
  */
-const RESERVED: readonly string[] = [
+const RESERVED: readonly Cmd[] = [
   'layer',
   'layer_border',
   'brt_port',
@@ -86,14 +87,14 @@ const RESERVED: readonly string[] = [
   'pr_rcv_state'
 ]
 
-function entry(cmd: string, scope: PollScope, phase: PollPhase): PollEntry {
+function entry(cmd: Cmd, scope: PollScope, phase: PollPhase): PollEntry {
   return { cmd, scope, phase }
 }
 
 /** Spec order: screen-group initial, then device initial, then reserved. */
 export const POLL_CATALOG: readonly PollEntry[] = [
-  ...INITIAL_SCREEN.map((cmd) => entry(cmd, 'screen-group', 'initial')),
-  ...INITIAL_DEVICE.map((cmd) => entry(cmd, 'device', 'initial')),
+  ...INITIAL_SCREEN_COMMANDS.map((cmd) => entry(cmd, 'screen-group', 'initial')),
+  ...INITIAL_DEVICE_COMMANDS.map((cmd) => entry(cmd, 'device', 'initial')),
   ...RESERVED.map((cmd) => entry(cmd, 'device', 'reserved'))
 ]
 
@@ -104,9 +105,7 @@ export const POLL_CATALOG: readonly PollEntry[] = [
  */
 export function selectPollRequests(device: DeviceIdentity, slots: readonly ScreenGroupSlot[]): PollRequest[] {
   const requests: PollRequest[] = []
-  const screenCommands = new Set(
-    POLL_CATALOG.filter((item) => item.phase === 'initial' && item.scope === 'screen-group').map((item) => item.cmd)
-  )
+  const screenCommands = new Set<Cmd>(INITIAL_SCREEN_COMMANDS)
   for (const slot of slots) {
     if (!screenCommands.has(slot.cmd)) continue
     requests.push({ cmd: slot.cmd, sid: POLL_SID, gid: slot.gid, data: { gid: slot.gid } })

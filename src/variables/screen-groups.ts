@@ -1,7 +1,8 @@
+import type { Cmd } from '../common/commands'
 import { isCmdOpSupported, type DeviceIdentity } from '../common/cmd-support'
 import { resolveDeviceModel } from '../common/device-models'
 import { parseGroupIds } from '../common/protocol-data'
-import { POLL_CATALOG } from './initial/catalog'
+import { INITIAL_SCREEN_COMMANDS } from './initial/catalog'
 
 /**
  * One `(cmd, gid)` plan shared by variable definitions, the initial poll,
@@ -9,7 +10,7 @@ import { POLL_CATALOG } from './initial/catalog'
  * Resolved V and VX devices publish every command in the list once, on gid 1.
  */
 export interface ScreenGroupSlot {
-  cmd: string
+  cmd: Cmd
   gid: number
 }
 
@@ -17,7 +18,7 @@ export interface ScreenGroupSlot {
  * Screen-group commands a resolved V or VX device publishes.
  * Membership decides which commands enter the plan. Every slot uses gid 1.
  */
-const V_VX_SCREEN_COMMANDS = [
+export const V_VX_SCREEN_COMMANDS: readonly Cmd[] = [
   'bright',
   'colortemp',
   'freeze',
@@ -32,7 +33,7 @@ const V_VX_SCREEN_COMMANDS = [
   'canvas_switch_mode',
   'out_fps',
   'vsync_src'
-] as const
+]
 
 /**
  * Read `groupIds` from a `pr_group` get or push.
@@ -97,9 +98,7 @@ export function pushedGroupToAdd(
  */
 export function buildScreenGroupPlan(device: DeviceIdentity, groupIds: readonly number[]): ScreenGroupSlot[] {
   const ids = managedGroupIds(device, groupIds)
-  const commands = POLL_CATALOG.filter((entry) => entry.phase === 'initial' && entry.scope === 'screen-group').map(
-    (entry) => entry.cmd
-  )
+  const commands = INITIAL_SCREEN_COMMANDS
   if (isVvxDevice(device)) return vvxScreenGroupPlan(ids, commands, device)
   const slots: ScreenGroupSlot[] = []
   for (const gid of ids) {
@@ -119,11 +118,11 @@ export function buildScreenGroupPlan(device: DeviceIdentity, groupIds: readonly 
  */
 function vvxScreenGroupPlan(
   ids: readonly number[],
-  commands: readonly string[],
+  commands: readonly Cmd[],
   device: DeviceIdentity
 ): ScreenGroupSlot[] {
   if (!ids.some((gid) => gid === 1 || gid === 2)) return []
-  const allow = new Set<string>(V_VX_SCREEN_COMMANDS)
+  const allow = new Set<Cmd>(V_VX_SCREEN_COMMANDS)
   const slots: ScreenGroupSlot[] = []
   for (const cmd of commands) {
     if (!allow.has(cmd)) continue

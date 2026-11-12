@@ -320,7 +320,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
    * again before any warning or commit, so a dead link neither logs a
    * skip nor writes the new session.
    */
-  private async _discoverScreenGroups(generation: number): Promise<readonly { cmd: string; gid: number }[]> {
+  private async _discoverScreenGroups(generation: number): Promise<readonly ScreenGroupSlot[]> {
     if (generation !== this._linkGeneration) return this.screenGroupPlan
     const identity = this.deviceIdentity()
     let parsed: number[]

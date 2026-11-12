@@ -1,12 +1,14 @@
+import type { Cmd } from '../../common/commands'
 import type { DeviceIdentity } from '../../common/cmd-support'
+import type { ScreenGroupSlot } from '../screen-groups'
 import { publishVariableId } from '../publish'
 import { selectPollRequests, projectPollData, type PollRequest } from './catalog'
 
 export interface InitialPollArgs {
   identity: DeviceIdentity
-  slots: readonly { cmd: string; gid: number }[]
+  slots: readonly ScreenGroupSlot[]
   isCurrent: () => boolean
-  slotStillPublished?: (cmd: string, gid: number) => boolean
+  slotStillPublished?: (cmd: Cmd, gid: number) => boolean
   send: (request: PollRequest) => Promise<{ code: number; data?: unknown } | undefined>
   write: (values: Record<string, number | string | object>) => void
   log: (message: string) => void

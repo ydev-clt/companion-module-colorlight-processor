@@ -1,6 +1,8 @@
 import { DeviceProtocolEnum } from './types'
 import type { DeviceFamilyId } from './device-models'
 import { resolveDeviceModel } from './device-models'
+import type { Cmd } from './commands'
+import { isCmd } from './commands'
 
 const { A, B } = DeviceProtocolEnum
 /** Shorthand for commands supported by both protocols (shared readonly instance) */
@@ -55,7 +57,7 @@ function isProtocolBaseline(rule: SupportRule): rule is readonly DeviceProtocolE
  * A missing side is unsupported. An empty protocol array is also unsupported
  * (used by probe-only gets that later tasks must not poll).
  */
-export const CMD_SUPPORT: Record<string, CmdSupport> = {
+export const CMD_SUPPORT: Partial<Record<Cmd, CmdSupport>> = {
   // Both sides AB
   bright: { get: AB, set: AB },
   colortemp: { get: AB, set: AB },
@@ -170,6 +172,7 @@ export const CMD_SUPPORT: Record<string, CmdSupport> = {
  * its protocol matches. An `only` rule requires a listed family.
  */
 export function isCmdOpSupported(cmd: string, op: CmdOp, device: DeviceIdentity): boolean {
+  if (!isCmd(cmd)) return false
   const rule = CMD_SUPPORT[cmd]?.[op]
   if (rule === undefined) return false
   if (rule === 'always') return true

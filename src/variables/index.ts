@@ -3,7 +3,7 @@ import type { CltProcessorType } from '../common/types'
 import { logger } from '../common/log'
 import { FEEDBACK_ID } from '../common/feedback-ids'
 import { isCmdOpSupported, type DeviceIdentity } from '../common/cmd-support'
-import { POLL_CATALOG } from './initial'
+import { INITIAL_SCREEN_COMMANDS, POLL_CATALOG } from './initial'
 import { getSpecsByCmd } from './core/registry'
 import type { ScreenGroupSlot } from './screen-groups'
 import { publishVariableId } from './publish'
@@ -44,11 +44,7 @@ export function listPublishedVariables(
       out[publishVariableId('device', spec.variableId)] = { name: spec.displayName }
     }
   }
-  const screenCommands = new Set(
-    POLL_CATALOG.filter((entry) => entry.phase === 'initial' && entry.scope === 'screen-group').map(
-      (entry) => entry.cmd
-    )
-  )
+  const screenCommands = new Set(INITIAL_SCREEN_COMMANDS)
   for (const slot of slots) {
     if (!screenCommands.has(slot.cmd) || !isCmdOpSupported(slot.cmd, 'get', device)) continue
     for (const spec of getSpecsByCmd(slot.cmd)) {
