@@ -28,6 +28,7 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
         label: 'OSD type',
         id: 'type',
         default: 0,
+        disableAutoExpression: true,
         choices: [
           { id: 0, label: 'Subtitle OSD' },
           { id: 1, label: 'Image OSD' },
@@ -41,7 +42,8 @@ export function setupSystemActions(host: StringActionHost): CompanionActionDefin
         id: 'osdId',
         min: 1,
         max: Number.MAX_SAFE_INTEGER,
-        default: 1
+        default: 1,
+        isVisibleExpression: '$(options:type) !== 2'
       },
       gidField()
     ],
