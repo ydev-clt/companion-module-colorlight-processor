@@ -98,18 +98,31 @@ export const POLL_CATALOG: readonly PollEntry[] = [
   ...RESERVED.map((cmd) => entry(cmd, 'device', 'reserved'))
 ]
 
+/** Membership test for the initial screen-group commands. */
+const SCREEN_COMMAND_SET = new Set<Cmd>(INITIAL_SCREEN_COMMANDS)
+
+/**
+ * Screen-group requests for `slots`, in slot order.
+ * Shared by the startup poll and by the one-shot sync that runs when a push
+ * adds a screen group. Commands that are not initial screen-group entries are
+ * skipped.
+ */
+export function selectScreenRequests(slots: readonly ScreenGroupSlot[]): PollRequest[] {
+  const requests: PollRequest[] = []
+  for (const slot of slots) {
+    if (!SCREEN_COMMAND_SET.has(slot.cmd)) continue
+    requests.push({ cmd: slot.cmd, sid: POLL_SID, gid: slot.gid, data: { gid: slot.gid } })
+  }
+  return requests
+}
+
 /**
  * Build the startup get list for this device.
  * Screen-group requests follow the published slots, one group at a time.
  * Unsupported device commands are omitted. `portout` samples port 1.
  */
 export function selectPollRequests(device: DeviceIdentity, slots: readonly ScreenGroupSlot[]): PollRequest[] {
-  const requests: PollRequest[] = []
-  const screenCommands = new Set<Cmd>(INITIAL_SCREEN_COMMANDS)
-  for (const slot of slots) {
-    if (!screenCommands.has(slot.cmd)) continue
-    requests.push({ cmd: slot.cmd, sid: POLL_SID, gid: slot.gid, data: { gid: slot.gid } })
-  }
+  const requests = selectScreenRequests(slots)
   for (const item of POLL_CATALOG) {
     if (item.phase !== 'initial' || item.scope !== 'device') continue
     if (!isCmdOpSupported(item.cmd, 'get', device)) continue

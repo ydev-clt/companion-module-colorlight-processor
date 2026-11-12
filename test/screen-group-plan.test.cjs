@@ -1,6 +1,7 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const {
+  addedGroupIds,
   groupIdsFromPrGroup,
   managedGroupIds,
   screenGroupCountValue,
@@ -28,6 +29,15 @@ test('managedGroupIds filters V and VX down to groups 1 and 2', () => {
   assert.deepEqual(managedGroupIds(v10, [3]), [])
   assert.deepEqual(screenGroupCountValue([2, 1]), { count: 2, ids: [2, 1] })
   assert.deepEqual(screenGroupCountValue([]), { count: 0, ids: [] })
+})
+
+test('addedGroupIds returns only the gids new to the managed list', () => {
+  assert.deepEqual(addedGroupIds(null, [1, 2, 3]), [1, 2, 3])
+  assert.deepEqual(addedGroupIds([1], [1, 2, 3]), [2, 3])
+  assert.deepEqual(addedGroupIds([1, 2], [1, 2, 3]), [3])
+  assert.deepEqual(addedGroupIds([1, 2], [2, 1]), [])
+  assert.deepEqual(addedGroupIds([1, 2, 3], [2]), [])
+  assert.deepEqual(addedGroupIds([], [3]), [3])
 })
 
 test('pushedGroupToAdd only returns a missing eligible gid', () => {

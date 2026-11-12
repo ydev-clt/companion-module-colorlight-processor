@@ -101,3 +101,20 @@ test('a screen slot removed during the poll is not written', async () => {
     false
   )
 })
+
+test('screen-only sync skips device requests and uses its own log label', async () => {
+  const { args, sent, logs, written } = harness({
+    includeDeviceRequests: false,
+    logLabel: 'screen group sync',
+    send: async (request) => {
+      sent.push(request.cmd)
+      if (request.cmd === 'freeze') return { code: 1, data: { en: 1 } }
+      if (request.cmd === 'blackout') return { code: 0, data: { en: 0, gid: 1 } }
+      return { code: 0, data: { brt: 5000, gid: 1 } }
+    }
+  })
+  await runInitialPoll(args)
+  assert.deepEqual(sent, ['bright', 'freeze', 'blackout'])
+  assert.deepEqual(written, [{ sg_1_brightness: 50 }, { sg_1_blackout_enable: 0 }])
+  assert.deepEqual(logs, ['screen group sync freeze failed gid=1'])
+})

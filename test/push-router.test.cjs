@@ -61,6 +61,56 @@ test('a V/VX push does not add a gid but writes the planned group 1 leaf', () =>
   assert.deepEqual(route.values, { sg_1_brightness: 80 })
 })
 
+test('pr_group names the gids it added', () => {
+  const route = routePush({
+    cmd: 'pr_group',
+    code: 0,
+    data: { groupIds: [1, 2, 3] },
+    identity: u9,
+    managedGroupIds: [1, 2],
+    slots: buildScreenGroupPlan(u9, [1, 2])
+  })
+  assert.deepEqual(route.nextGroupIds, [1, 2, 3])
+  assert.deepEqual(route.addedGroupIds, [3])
+})
+
+test('a pr_group reorder adds no gid', () => {
+  const route = routePush({
+    cmd: 'pr_group',
+    code: 0,
+    data: { groupIds: [2, 1] },
+    identity: u9,
+    managedGroupIds: [1, 2],
+    slots: u9One
+  })
+  assert.deepEqual(route.nextGroupIds, [2, 1])
+  assert.equal(route.addedGroupIds, undefined)
+})
+
+test('a screen push names the gid it added', () => {
+  const route = routePush({
+    cmd: 'bright',
+    code: 0,
+    data: { brt: 8000, gid: 2 },
+    identity: u9,
+    managedGroupIds: [1],
+    slots: u9One
+  })
+  assert.deepEqual(route.addedGroupIds, [2])
+})
+
+test('a V/VX push adds no gid', () => {
+  const route = routePush({
+    cmd: 'bright',
+    code: 0,
+    data: { brt: 8000, gid: 2 },
+    identity: v10,
+    managedGroupIds: [1, 2],
+    slots: vBoth
+  })
+  assert.equal(route.addedGroupIds, undefined)
+})
+
 test('a push without projected leaves returns no values', () => {
   const route = routePush({
     cmd: 'not_a_cmd',

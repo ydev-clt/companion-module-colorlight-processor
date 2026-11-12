@@ -236,7 +236,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
       connection: this.connection,
       identity: () => this.deviceIdentity(),
       isCurrent: (current) => current === this._linkGeneration,
-      onPush: (item) => this._handlePush(item),
+      onPush: (item) => this._handlePush(generation, item),
       onHeartbeatLost: () => {
         logger.warn('Heartbeat lost.')
         this.failLink()
@@ -251,8 +251,10 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
   /**
    * Apply one accepted push notice. Protocol validation stays here so the
    * pure router only decides how the plan changes and which leaves to write.
+   * The router also names the gids this push added; they get one get round so
+   * the variables the push did not carry do not stay empty.
    */
-  private _handlePush(item: Record<string, unknown>): void {
+  private _handlePush(generation: number, item: Record<string, unknown>): void {
     const cmd = item.cmd
     const code = item.code
     if (typeof cmd !== 'string') return
@@ -269,8 +271,36 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
       managedGroupIds: this.managedGroupIds,
       slots: this.screenGroupPlan
     })
+    this.logPushRoute(cmd, item.data, route)
     if (route.nextGroupIds) this.commitScreenGroups(route.nextGroupIds)
+    if (route.addedGroupIds && route.addedGroupIds.length > 0) {
+      this.syncAddedScreenGroups(generation, route.addedGroupIds)
+    }
     if (route.values) this.writebackVariableValues(route.values)
+  }
+
+  /**
+   * Diagnostic line for the push route. `pr_group` and any push that added a
+   * gid are logged at info; a screen push for an unmanaged gid is logged at
+   * debug so a noisy device does not flood the log.
+   */
+  private logPushRoute(cmd: string, data: unknown, route: ReturnType<typeof routePush>): void {
+    const managed = this.managedGroupIds?.join(',') ?? 'unset'
+    if (cmd === CMD.PR_GROUP) {
+      logger.info(
+        `push pr_group: data=${JSON.stringify(data)} managed=[${managed}] ` +
+          `next=[${route.nextGroupIds?.join(',') ?? '-'}] added=[${route.addedGroupIds?.join(',') ?? '-'}]`
+      )
+      return
+    }
+    if (route.addedGroupIds && route.addedGroupIds.length > 0) {
+      logger.info(`push ${cmd}: added gid [${route.addedGroupIds.join(',')}] to managed=[${managed}]`)
+      return
+    }
+    const pushedGid = gidFromPushData(data)
+    if (pushedGid !== undefined && !(this.managedGroupIds ?? []).includes(pushedGid)) {
+      logger.debug(`push ${cmd}: gid=${pushedGid} is not managed [${managed}]; no slot added for it`)
+    }
   }
 
   /** Protocol and model byte the plan and support checks read. */
@@ -290,6 +320,43 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     this.screenGroupPlan = buildScreenGroupPlan(this.deviceIdentity(), this.managedGroupIds)
     if (changed) this.refreshVariableDefinitions()
     this.writebackVariableValues({ screen_group_count: screenGroupCountValue(this.managedGroupIds) })
+  }
+
+  /**
+   * GET every published screen-group slot of the gids a push just added.
+   * Their definitions were installed by `commitScreenGroups`, but a push only
+   * carries the leaves the device chose to broadcast, so the rest would stay
+   * empty until the next link's startup poll. This one-shot sync closes that
+   * gap. It shares the get gate and the generation checks with the startup
+   * poll, and a slot removed while its get is in flight is not written.
+   * No timer and no retry: a failed get is logged and skipped.
+   */
+  private syncAddedScreenGroups(generation: number, gids: readonly number[]): void {
+    if (generation !== this._linkGeneration) {
+      logger.info(`Screen group sync skipped: stale link (gids=[${gids.join(',')}])`)
+      return
+    }
+    const wanted = new Set(gids)
+    const slots = this.screenGroupPlan.filter((slot) => wanted.has(slot.gid))
+    if (slots.length === 0) {
+      logger.info(`Screen group sync skipped: no published slots for gid [${gids.join(',')}]`)
+      return
+    }
+    logger.info(`Screen group sync: gid ${gids.join(', ')} (${slots.length} gets)`)
+    void initialPoll
+      .runInitialPoll({
+        identity: this.deviceIdentity(),
+        slots,
+        includeDeviceRequests: false,
+        logLabel: 'screen group sync',
+        isCurrent: () => generation === this._linkGeneration,
+        slotStillPublished: (cmd, gid) => this.screenGroupPlan.some((slot) => slot.cmd === cmd && slot.gid === gid),
+        send: (request) => this.spTransmitter.sendAndAwait(request.cmd, 'get', request.sid, request.data),
+        write: this.writebackVariableValues,
+        log: (message) => logger.warn(message)
+      })
+      .then(() => logger.info(`Screen group sync finished: gid ${gids.join(', ')}`))
+      .catch((err: Error) => logger.warn(`screen group sync failed: ${err.message ?? String(err)}`))
   }
 
   /**
@@ -476,6 +543,13 @@ function sameMembership(left: readonly number[], right: readonly number[]): bool
   const a = [...left].sort((x, y) => x - y)
   const b = [...right].sort((x, y) => x - y)
   return a.every((value, index) => value === b[index])
+}
+
+/** Numeric gid a push body carries, or undefined when it carries none. */
+function gidFromPushData(data: unknown): number | undefined {
+  if (data === null || typeof data !== 'object') return undefined
+  const gid = (data as { gid?: unknown }).gid
+  return typeof gid === 'number' && Number.isFinite(gid) ? gid : undefined
 }
 
 export = CltProcessor

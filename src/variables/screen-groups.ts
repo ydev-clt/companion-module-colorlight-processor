@@ -59,6 +59,16 @@ export function managedGroupIds(device: DeviceIdentity, parsedIds: readonly numb
 }
 
 /**
+ * Gids present in `next` but not in `previous`, in `next` order.
+ * `null` means no list existed yet, so every id in `next` is new.
+ * Reordering the same ids returns `[]`.
+ */
+export function addedGroupIds(previous: readonly number[] | null, next: readonly number[]): number[] {
+  const known = new Set(previous ?? [])
+  return next.filter((gid) => !known.has(gid))
+}
+
+/**
  * Value of the existing `screen_group_count` variable.
  * `count` is this list's length. The device's own `groupCount` field is not used.
  * The id array is copied so a later edit of the caller's list cannot change the published value.
@@ -73,6 +83,7 @@ export function screenGroupCountValue(ids: readonly number[]): { count: number; 
  * Resolved V and VX return `undefined`: their variables stay on screen group 1,
  * and `screen_group_count` changes only when `pr_group` replaces the list.
  * Other families require the command to appear on that gid in a one-gid plan.
+ * This only decides membership; the caller syncs the new gid's leaves with gets.
  */
 export function pushedGroupToAdd(
   device: DeviceIdentity,

@@ -1,6 +1,11 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
-const { POLL_CATALOG, selectPollRequests, projectPollData } = require('../dist/variables/initial/catalog')
+const {
+  POLL_CATALOG,
+  selectPollRequests,
+  selectScreenRequests,
+  projectPollData
+} = require('../dist/variables/initial/catalog')
 const { buildScreenGroupPlan } = require('../dist/variables/screen-groups')
 
 const initialScreen = [
@@ -151,6 +156,32 @@ test('multiple screen groups expand one group at a time', () => {
   assert.deepEqual(
     bright.map((request) => `${request.cmd}:${request.gid}`),
     ['bright:1', 'colortemp:1', 'bright:2', 'colortemp:2']
+  )
+})
+
+test('selectScreenRequests returns screen slots only', () => {
+  const u9 = { protocol: 'B-Protocol', modelByte: 35 }
+  const requests = selectScreenRequests(buildScreenGroupPlan(u9, [1, 2]))
+  assert.equal(
+    requests.some((request) => request.gid === undefined),
+    false
+  )
+  assert.deepEqual(
+    requests.filter((request) => request.cmd === 'freeze').map((request) => request.gid),
+    [1, 2]
+  )
+  assert.equal(
+    requests.some((request) => request.cmd === 'sn' || request.cmd === 'portout'),
+    false
+  )
+  assert.deepEqual(
+    requests.find((request) => request.cmd === 'bright'),
+    {
+      cmd: 'bright',
+      sid: 1,
+      gid: 1,
+      data: { gid: 1 }
+    }
   )
 })
 
