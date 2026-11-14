@@ -1,6 +1,7 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { isCmdOpSupported } = require('../dist/common/cmd-support')
+const { describeDeviceSupport } = require('../dist/common/device-models')
 
 const u9 = { protocol: 'B-Protocol', modelByte: 35 }
 const v20 = { protocol: 'B-Protocol', modelByte: 50 }
@@ -101,4 +102,27 @@ test('videosrc set is supported on resolved A/B models and has no get', () => {
   assert.equal(isCmdOpSupported('videosrc', 'set', unresolved), false)
   assert.equal(isCmdOpSupported('videosrc', 'get', unresolved), false)
   assert.equal(isCmdOpSupported('videosrc', 'set', { protocol: 'A-Protocol', modelByte: 35 }), false)
+})
+
+test('the VX10 model byte is reported unsupported without a name', () => {
+  assert.deepEqual(describeDeviceSupport('B-Protocol', 23), {
+    state: 'unsupported',
+    label: 'model 0x17',
+    modelByte: 23
+  })
+})
+
+test('device support classifies registered, unknown, and unprobed identities', () => {
+  assert.equal(describeDeviceSupport('B-Protocol', 34).state, 'supported')
+  assert.equal(describeDeviceSupport('B-Protocol', 50).state, 'supported')
+  assert.deepEqual(describeDeviceSupport('None', null), {
+    state: 'unknown',
+    label: 'unknown',
+    modelByte: null
+  })
+  assert.deepEqual(describeDeviceSupport('B-Protocol', 77), {
+    state: 'unsupported',
+    label: 'model 0x4d',
+    modelByte: 77
+  })
 })

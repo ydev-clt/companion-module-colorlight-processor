@@ -62,6 +62,7 @@ function harness(options = {}) {
   const incoming = []
   const statuses = []
   const probes = []
+  const probeFlags = []
   const linkLosses = []
   const conn = new Connection(
     {
@@ -85,12 +86,15 @@ function harness(options = {}) {
       ...options
     }
   )
-  conn.setOnProbeResult((result) => probes.push(result))
+  conn.setOnProbeResult((result, tcpConnected) => {
+    probes.push(result)
+    probeFlags.push(tcpConnected)
+  })
   conn.setOnLinkLost(() => linkLosses.push('lost'))
-  return { conn, udps, tcps, incoming, statuses, probes, linkLosses }
+  return { conn, udps, tcps, incoming, statuses, probes, probeFlags, linkLosses }
 }
 
-function discover(udp, deviceType = 2, model = 1) {
+function discover(udp, deviceType = 2, model = 34) {
   udp.emit('data', ea(deviceType, model))
 }
 
@@ -107,7 +111,7 @@ test('exposes the TCP session hooks', () => {
 })
 
 test('opens UDP first and delivers the probe only after TCP connects', async () => {
-  const { conn, udps, tcps, probes, statuses } = harness()
+  const { conn, udps, tcps, probes, probeFlags, statuses } = harness()
   conn.open('127.0.0.1', 9999)
   await delay(10)
   assert.equal(udps.length, 1)
@@ -130,11 +134,27 @@ test('opens UDP first and delivers the probe only after TCP connects', async () 
   assert.equal(probes.length, 1)
   assert.equal(probes[0].deviceType, 2)
   assert.equal(probes[0].model, 34)
+  assert.deepEqual(probeFlags, [true])
   tcps[0].emit('connect')
   await delay(10)
   assert.equal(tcps[0].sent.length, 0)
   assert.equal(probes.length, 1)
   assert.deepEqual(statuses, [InstanceStatus.Connecting, InstanceStatus.Ok])
+  conn.close()
+})
+
+test('an unsupported probe result never opens TCP', async () => {
+  const { conn, udps, tcps, probes, probeFlags, statuses } = harness()
+  conn.open('127.0.0.1', 9999)
+  await delay(10)
+  discover(udps[0], 2, 23)
+  await delay(80)
+  assert.equal(udps[0].destroyed, true)
+  assert.equal(tcps.length, 0)
+  assert.equal(probes.length, 1)
+  assert.equal(probes[0].model, 23)
+  assert.deepEqual(probeFlags, [false])
+  assert.deepEqual(statuses, [InstanceStatus.Connecting])
   conn.close()
 })
 
@@ -192,7 +212,7 @@ test('TCP loss before delivery probes again on a new UDP socket', async () => {
   const { conn, udps, tcps, probes, linkLosses } = harness()
   conn.open('127.0.0.1', 9999)
   await delay(10)
-  discover(udps[0], 2, 7)
+  discover(udps[0], 2, 50)
   await delay(10)
   tcps[0].emit('error', new Error('down'))
   await delay(20)
@@ -204,14 +224,14 @@ test('TCP loss before delivery probes again on a new UDP socket', async () => {
   assert.equal(udps[1].port, 9099)
   assert.deepEqual(udps[1].sent[0], buildProbeRequest())
   assert.equal(tcps.length, 1)
-  discover(udps[1], 2, 8)
+  discover(udps[1], 2, 51)
   await delay(10)
   assert.equal(probes.length, 0)
   tcps[1].isConnected = true
   tcps[1].emit('connect')
   await delay(10)
   assert.equal(probes.length, 1)
-  assert.equal(probes[0].model, 8)
+  assert.equal(probes[0].model, 51)
   conn.close()
 })
 

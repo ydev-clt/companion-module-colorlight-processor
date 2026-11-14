@@ -1,7 +1,7 @@
 import type { SomeCompanionConfigField } from '@companion-module/base'
 import type { ProcessorBase, DeviceConfig, ModuleTypes } from './common/types'
 import type { SPTransmitterHost } from './actions/string-protocol/core/transmitter'
-import { InstanceBase } from '@companion-module/base'
+import { InstanceBase, InstanceStatus } from '@companion-module/base'
 import { defaultConfig, generateConfigFields, normalizeConfig } from './config'
 import { DeviceProtocolEnum } from './common/types'
 import { Connection } from './connection'
@@ -21,7 +21,7 @@ import {
   type ScreenGroupSlot
 } from './variables/screen-groups'
 import { getProtocolForDeviceType, type ProbeResult } from './udp-probe'
-import { resolveDeviceModel } from './common/device-models'
+import { describeDeviceSupport, resolveDeviceModel } from './common/device-models'
 import { isCmdOpSupported } from './common/cmd-support'
 import { CMD } from './common/commands'
 import { discoverInputVideoSources } from './common/input-video-sources'
@@ -158,9 +158,9 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     if (normalized.error) logger.error(normalized.error)
 
     // Probe success binds SpSession. Link loss clears identity and reconnects.
-    this.connection.setOnProbeResult((result) => {
+    this.connection.setOnProbeResult((result, tcpConnected) => {
       const host = this.config.host
-      this._onProbeResult(result, host)
+      this._onProbeResult(result, host, tcpConnected)
     })
     this.connection.setOnLinkLost(() => {
       logger.warn('Link lost.')
@@ -209,10 +209,12 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     this.checkFeedbacksById(id)
   }
 
-  private _onProbeResult(result: ProbeResult | null, host: string): void {
+  private _onProbeResult(result: ProbeResult | null, host: string, tcpConnected: boolean): void {
     if (result) {
       this._applyDetectedIdentity(result, host)
-      this._bindSpSessionFromConfig(this._linkGeneration)
+      // An unsupported model is reported without opening TCP; there is no
+      // session to bind, so keep heartbeat and polling off as well.
+      if (tcpConnected) this._bindSpSessionFromConfig(this._linkGeneration)
       return
     }
     this._clearDetectedIdentity(host)
@@ -468,6 +470,31 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
   }
 
   /**
+   * Report an unsupported probe identity on the instance status.
+   *
+   * Called after the probe identity has been applied. For a supported device
+   * this overrides the Connection's initial Ok status; for an unsupported one
+   * no TCP is opened, so the warning is the only status the user sees. A
+   * supported identity restores Ok so a warning from the previous link cannot
+   * stick.
+   */
+  private _publishDeviceSupportStatus(): void {
+    const support = describeDeviceSupport(this.state.protocol, this.state.modelByte)
+
+    if (support.state === 'supported') {
+      this.updateStatus(InstanceStatus.Ok)
+      return
+    }
+    if (support.state !== 'unsupported') return
+
+    const message =
+      `Unsupported device: ${support.label}. ` +
+      'This module supports U-series, V10, V20 and VX20 only; controls are disabled.'
+    logger.warn(message)
+    this.updateStatus(InstanceStatus.UnknownWarning, message)
+  }
+
+  /**
    * Apply the probe-detected device identity (protocol + model byte).
    *  - protocol → `this.state.protocol` (probe-derived, not config)
    *  - modelByte → `this.state.modelByte`
@@ -499,6 +526,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
       this.state.inputVideoSources = []
       this.refreshVariableDefinitions()
       logger.info(`Probe confirms identity: protocol=${mapped}, ${modelDesc}`)
+      this._publishDeviceSupportStatus()
       return
     }
 
@@ -518,6 +546,7 @@ class CltProcessor extends InstanceBase<ModuleTypes> implements ProcessorBase {
     this.initActions()
     // Feedback unified to String-Protocol
     this.initFeedbacks()
+    this._publishDeviceSupportStatus()
   }
 
   /**

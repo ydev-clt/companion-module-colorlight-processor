@@ -20,6 +20,16 @@ import { logger } from './log'
 export const DEVICE_FAMILIES = ['U', 'V', 'VX'] as const
 export type DeviceFamilyId = (typeof DEVICE_FAMILIES)[number]
 
+/**
+ * Labels for model bytes that are known but intentionally not registered as
+ * supported. They stay out of B_DEVICE_MODELS on purpose: a registry entry
+ * without a family would still pass the protocol-baseline support rules.
+ */
+const UNSUPPORTED_B_MODEL_LABELS: Readonly<Record<number, string>> = {
+  // Intentionally unnamed: VX10 is reported by model byte only.
+  // 23: 'VX10' // 0x17
+}
+
 export interface DeviceModelInfo {
   /** 「处理器型号低位」byte value (0xEA offset 23 / 0xF1 offset 12) */
   readonly modelByte: number
@@ -131,6 +141,37 @@ export function resolveDeviceModel(
   const index =
     protocol === DeviceProtocolEnum.B ? B_MODEL_INDEX : protocol === DeviceProtocolEnum.A ? A_MODEL_INDEX : undefined
   return index?.get(modelByte)
+}
+
+export type DeviceSupportState = 'unknown' | 'supported' | 'unsupported'
+
+export interface DeviceSupportInfo {
+  state: DeviceSupportState
+  label: string
+  modelByte: number | null
+}
+
+/**
+ * Classify a probe-detected identity for user-facing status reporting.
+ *
+ * A resolved registry entry is treated as supported because that is exactly
+ * what the action filter allows; an unresolved byte is unsupported. `unknown`
+ * means the probe has not produced an identity yet.
+ */
+export function describeDeviceSupport(protocol: DeviceProtocolEnum, modelByte: number | null): DeviceSupportInfo {
+  if (protocol === DeviceProtocolEnum.None || modelByte === null || modelByte < 0) {
+    return { state: 'unknown', label: 'unknown', modelByte }
+  }
+
+  const model = resolveDeviceModel(protocol, modelByte)
+  if (model) return { state: 'supported', label: model.label, modelByte }
+
+  const known = protocol === DeviceProtocolEnum.B ? UNSUPPORTED_B_MODEL_LABELS[modelByte] : undefined
+  return {
+    state: 'unsupported',
+    label: known ?? `model 0x${modelByte.toString(16).padStart(2, '0')}`,
+    modelByte
+  }
 }
 
 /** True only for families whose session must enable downlink checksum after create. */

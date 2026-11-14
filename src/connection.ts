@@ -2,7 +2,8 @@ import type { ConnectionContext } from './common/types'
 import type { InstanceStatus } from '@companion-module/base'
 import { TCPHelper as TCPHelperCtor, InstanceStatus as Status } from '@companion-module/base'
 import { logger } from './common/log'
-import { UdpProbe, type ProbeResult, type UdpProbeSocket } from './udp-probe'
+import { UdpProbe, getProtocolForDeviceType, type ProbeResult, type UdpProbeSocket } from './udp-probe'
+import { describeDeviceSupport } from './common/device-models'
 
 const DEFAULT_PROBE_TIMEOUT_MS = 1500
 const DEFAULT_RETRY_DELAY_MS = 2000
@@ -25,7 +26,7 @@ export interface ConnectionOptions {
   retryDelayMs?: number
 }
 
-type Phase = 'closed' | 'discovering' | 'tcp-connecting' | 'holding' | 'business'
+type Phase = 'closed' | 'discovering' | 'unsupported' | 'tcp-connecting' | 'holding' | 'business'
 
 /**
  * UDP discovery on port 9099, then a TCP session for commands.
@@ -34,6 +35,7 @@ type Phase = 'closed' | 'discovering' | 'tcp-connecting' | 'holding' | 'business
  * Phases:
  *  - closed: no session
  *  - discovering: waiting for a probe result
+ *  - unsupported: probe succeeded but the device model is not supported; no TCP is opened
  *  - tcp-connecting: probe succeeded, TCP handshake in progress
  *  - holding: TCP is up, but inbound bytes are ignored until SpSession is bound
  *  - business: commands and device push may flow
@@ -56,7 +58,7 @@ class Connection {
   private closed = true
   private host = ''
   private tcpPort = 0
-  private onProbeResult: ((result: ProbeResult | null) => void) | null = null
+  private onProbeResult: ((result: ProbeResult | null, tcpConnected: boolean) => void) | null = null
   private onLinkLost: (() => void) | null = null
   /** True once TCP has connected, before the probe callback runs. */
   private delivered = false
@@ -146,7 +148,7 @@ class Connection {
     }
   }
 
-  public setOnProbeResult(cb: ((result: ProbeResult | null) => void) | null): void {
+  public setOnProbeResult(cb: ((result: ProbeResult | null, tcpConnected: boolean) => void) | null): void {
     this.onProbeResult = cb
   }
 
@@ -156,6 +158,19 @@ class Connection {
 
   private onUdpResult(result: ProbeResult): void {
     if (this.closed || this.phase !== 'discovering') return
+
+    const protocol = getProtocolForDeviceType(result.deviceType)
+    const support = protocol ? describeDeviceSupport(protocol, result.model) : null
+    if (!support || support.state !== 'supported') {
+      this.phase = 'unsupported'
+      this.pendingResult = null
+      logger.warn(
+        `UDP probe detected unsupported device ${support?.label ?? 'unknown'} (model=${result.model}); TCP connection skipped`
+      )
+      this.notifyProbeResult(result, false)
+      return
+    }
+
     this.pendingResult = result
     this.phase = 'tcp-connecting'
     const generation = this.generation
@@ -177,8 +192,12 @@ class Connection {
     this.publishStatus(Status.Ok)
     const generation = this.generation
     if (generation !== this.generation || this.closed) return
+    this.notifyProbeResult(result, true)
+  }
+
+  private notifyProbeResult(result: ProbeResult, tcpConnected: boolean): void {
     try {
-      this.onProbeResult?.(result)
+      this.onProbeResult?.(result, tcpConnected)
     } catch (err) {
       logger.error(`onProbeResult callback threw: ${(err as Error).message ?? String(err)}`)
     }
