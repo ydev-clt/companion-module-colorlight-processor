@@ -6,6 +6,9 @@ import { CMD } from '../core/constants'
 import { deviceAndBroadcastFields, gidField, openCloseField, sidFromOptions, withGid } from './_shared'
 import type { StringActionHost } from './_shared'
 
+/** Serial number input limit; longer values are rejected instead of truncating the device identity. */
+const SN_MAX_LENGTH = 32
+
 /** U-series specify-multiplier only accepts 2x / 3x (ids 1–2). */
 const U_SERIES_VSYNC_MULTIPLIER_MIN = 1
 const U_SERIES_VSYNC_MULTIPLIER_MAX = 2
@@ -50,12 +53,27 @@ export function setupDeviceActions(host: StringActionHost): CompanionActionDefin
     description: 'Set the device serial number.',
     options: [
       ...deviceAndBroadcastFields({ allowSelectAll: false }),
-      { type: 'textinput', label: 'Serial number', id: 'serial', default: '', minLength: 1, useVariables: true }
+      {
+        type: 'textinput',
+        label: 'Serial number',
+        id: 'serial',
+        tooltip: `Maximum ${SN_MAX_LENGTH} characters.`,
+        default: '',
+        minLength: 1,
+        regex: `^[\\s\\S]{1,${SN_MAX_LENGTH}}$`,
+        useVariables: true
+      }
     ],
     callback: async (event) => {
       const o = event.options as { deviceId: number; serial: string }
+      // Companion textinput has no maxLength and variables can exceed any regex hint, so cap here.
+      const full = String(o.serial ?? '')
+      const serial = full.slice(0, SN_MAX_LENGTH)
+      if (serial !== full) {
+        logger.warn(`Serial number is ${full.length} characters; truncated to ${SN_MAX_LENGTH}: "${serial}".`)
+      }
       const sid = sidFromOptions(false, o.deviceId)
-      await conn.sendOnly(CMD.SN, 'set', sid, { serial: o.serial })
+      await conn.sendOnly(CMD.SN, 'set', sid, { serial })
     }
   }
 
