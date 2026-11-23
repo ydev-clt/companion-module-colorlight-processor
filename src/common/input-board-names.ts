@@ -18,14 +18,14 @@ interface NamedId {
 /** V10 and V20 share one input-interface table. */
 const V10_V20_VIDEO_INTERFACES: readonly NamedId[] = [
   { id: 0x22, name: '12G_SDI_IN' },
-  { id: 0x21, name: 'DP1.4_IN' },
+  { id: 0x21, name: 'DP1.2_IN' },
   { id: 0x20, name: 'HDMI2.0_IN' }
 ]
 
 /** VX20 input interfaces. 0x11 is HDMI1.4_IN on this model. */
 const VX20_VIDEO_INTERFACES: readonly NamedId[] = [
   { id: 0x22, name: '12G_SDI_IN' },
-  { id: 0x21, name: 'DP1.4_IN' },
+  { id: 0x21, name: 'DP1.2_IN' },
   { id: 0x20, name: 'HDMI2.0_IN' },
   { id: 0x11, name: 'HDMI1.4_IN' },
   { id: 0x25, name: 'MOSAIC_IN' }
